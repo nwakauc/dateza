@@ -66,3 +66,413 @@ main a:hover {
   font-weight: 600;
   font-family: Outfit, sans-serif;
 }
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Backstop only — the actual overflow causes (min-width lock, fixed-px
+   grid columns, absolute hero art) are fixed per-component below. */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+main a:focus-visible,
+main button:focus-visible {
+  outline: 2px solid #e8375a;
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dz-page *,
+  .dz-nav-links {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Mobile nav toggle: hidden on the real (>=1400px) desktop design, shown
+   below it since the desktop nav row has no room to collapse into. */
+.dz-menu-btn {
+  display: none;
+}
+
+.dz-nav-backdrop {
+  display: none;
+}
+
+/* ===================================================================
+   Responsive layer. The approved design is untouched at >=1400px
+   (matches its own 1360px desktop floor). Everything below overrides
+   the inline styles for smaller screens, so !important is required —
+   inline style attributes otherwise always win over stylesheet rules.
+   =================================================================== */
+@media (max-width: 1399px) {
+  .dz-page {
+    min-width: 0;
+  }
+
+  /* ---- Section rhythm: tighter side padding, generous on tablet ---- */
+  .dz-section {
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+  }
+
+  .dz-hero {
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+    overflow: hidden !important;
+  }
+
+  .dz-nav {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  .dz-footer {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  /* ---- Fluid headings (never smaller than comfortably readable) ---- */
+  .dz-hero-title {
+    font-size: clamp(2.375rem, 6vw + 1rem, 5.75rem) !important;
+  }
+
+  .dz-hero-sub {
+    font-size: clamp(1.5rem, 4vw, 2.5rem) !important;
+  }
+
+  .dz-h2 {
+    font-size: clamp(1.7rem, 4.5vw, 2.875rem) !important;
+  }
+
+  .dz-h2-sm {
+    font-size: clamp(1.3rem, 3.2vw, 1.95rem) !important;
+  }
+
+  .dz-cta-title {
+    font-size: clamp(2rem, 7vw, 4rem) !important;
+  }
+
+  /* ---- Nav: collapse into an off-canvas panel ---- */
+  .dz-menu-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border: none;
+    border-radius: 12px;
+    background: #fff0f3;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .dz-menu-btn span {
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+    background: #1c1720;
+  }
+
+  .dz-nav-links {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 86vw);
+    box-sizing: border-box;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    background: #fff;
+    padding: 96px 28px 28px !important;
+    box-shadow: -18px 0 50px rgba(28, 23, 32, 0.18);
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+    z-index: 30;
+    overflow-y: auto;
+  }
+
+  .dz-nav-links.dz-nav-open {
+    transform: translateX(0);
+  }
+
+  .dz-nav-links a {
+    display: block;
+    width: 100%;
+    padding: 12px 4px;
+    font-size: 16px;
+  }
+
+  .dz-nav-links .dz-nav-join {
+    display: inline-block;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .dz-nav-backdrop.dz-nav-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 12, 18, 0.35);
+    z-index: 25;
+  }
+
+  /* ---- Hero: single column, art scales as one composition ---- */
+  .dz-hero-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 40px !important;
+  }
+
+  .dz-hero-glow {
+    width: 260px !important;
+    height: 260px !important;
+    top: -40px !important;
+    right: -60px !important;
+  }
+
+  .dz-hero-visual-wrap {
+    container-type: inline-size;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    height: calc(680 * (100cqw / 760));
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dz-hero-visual {
+    width: 760px !important;
+    height: 680px !important;
+    transform: scale(calc(100cqw / 760));
+    transform-origin: top left;
+  }
+
+  /* ---- Two-column marketing sections stack on laptop-and-below ---- */
+  .dz-ai-match {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 40px 32px !important;
+    gap: 32px !important;
+  }
+
+  .dz-discovery-find {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dz-lifestyle {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 40px !important;
+    gap: 28px !important;
+  }
+
+  .dz-realme {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 36px 28px !important;
+  }
+
+  .dz-showcase {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-top: 8px !important;
+  }
+
+  .dz-phone-frame {
+    width: clamp(96px, 27vw, 215px) !important;
+  }
+
+  .dz-phone-screen {
+    height: auto !important;
+    aspect-ratio: 199 / 430;
+  }
+
+  /* Text-heavy "match" screen doesn't scale like the photo screens —
+     let it size to its own content instead of clipping to the ratio. */
+  .dz-phone-screen.dz-phone-screen--match {
+    aspect-ratio: auto;
+  }
+
+  .dz-cta {
+    padding: 56px 32px !important;
+  }
+
+  .dz-cta-actions {
+    flex-wrap: wrap;
+  }
+
+  .dz-footer {
+    flex-direction: column;
+    gap: 14px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 1023px) {
+  .dz-tonight-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: 190px !important;
+  }
+
+  .dz-tonight-card--tall {
+    grid-row: auto !important;
+  }
+
+  .dz-cities-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .dz-cities-grid a {
+    height: 150px !important;
+  }
+
+  .dz-lifestyle-mosaic {
+    grid-auto-rows: 125px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .dz-section {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  .dz-hero {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+    padding-top: 28px !important;
+  }
+
+  .dz-nav {
+    padding: 14px 20px !important;
+  }
+
+  .dz-df-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 28px !important;
+    text-align: center;
+  }
+
+  .dz-df-thumb {
+    width: 100% !important;
+    height: 180px !important;
+    align-self: center;
+    max-width: 260px;
+  }
+
+  .dz-ai-match {
+    padding: 32px 22px !important;
+  }
+
+  .dz-ai-progress > div > span:first-child {
+    width: 76px !important;
+    flex: none;
+  }
+
+  .dz-ai-progress > div > div {
+    margin: 0 8px !important;
+  }
+
+  .dz-pair-visual {
+    gap: 10px !important;
+  }
+
+  .dz-pair-photo {
+    width: 92px !important;
+    height: 92px !important;
+  }
+
+  .dz-pair-connector svg:first-child,
+  .dz-pair-connector svg:last-child {
+    width: 40px !important;
+  }
+
+  .dz-pair-connector > div {
+    width: 82px !important;
+    height: 82px !important;
+  }
+
+  .dz-realme-card {
+    width: 100% !important;
+    max-width: 330px;
+  }
+
+  .dz-cta-title {
+    line-height: 1.1 !important;
+  }
+
+  .dz-cta-actions a {
+    padding: 15px 24px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .dz-tonight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: 200px !important;
+    gap: 12px !important;
+  }
+
+  .dz-cities-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dz-lifestyle-mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dz-lifestyle-card--tall {
+    grid-row: auto !important;
+  }
+
+  .dz-phones {
+    flex-wrap: wrap;
+    row-gap: 24px;
+  }
+}
+
+@media (max-width: 479px) {
+  .dz-hero-ctas {
+    flex-wrap: wrap;
+  }
+
+  .dz-hero-trust {
+    gap: 14px !important;
+    row-gap: 8px !important;
+  }
+
+  .dz-cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dz-cta-actions a {
+    text-align: center;
+  }
+
+  .dz-tonight-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: 240px !important;
+  }
+
+  .dz-tonight-card--tall {
+    grid-row: auto !important;
+  }
+
+  .dz-cities-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dz-cities-grid a {
+    height: 170px !important;
+  }
+}
