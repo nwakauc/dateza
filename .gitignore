@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+.DS_Store
+.env
+.env.local
+
+# Raw AI-generated source photos (multi-MB originals) — optimized webp
+# copies used by the app live in public/images/.
+/user-images
