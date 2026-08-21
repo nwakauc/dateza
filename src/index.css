@@ -49,6 +49,31 @@ main a:hover {
   object-fit: cover;
 }
 
+/* City photos carry a baked-in caption low in the frame; bias the crop
+   down so it survives being cover-cropped into a short, wide card. */
+.dz-cities-grid .dz-img {
+  object-position: center 72%;
+}
+
+/* Mirrors a portrait so its gaze reads toward the other side of a
+   composition — used to make the hero pair look at each other instead
+   of both facing the same way. */
+.dz-flip-x {
+  transform: scaleX(-1);
+}
+
+/* Responsive content-count utilities. Desktop (>=1400px) shows
+   everything; below that, "extra-4plus" items drop first (tablet keeps
+   3 examples), then "extra-3" drops too (mobile keeps 2). Mirrors:
+   .dz-mobile-only / .dz-desktop-only swap which copy variant renders. */
+.dz-mobile-only {
+  display: none;
+}
+
+.dz-hero-visual-mobile {
+  display: none;
+}
+
 /* Stand-in for lifestyle photography not yet supplied. */
 .ph-slot {
   width: 100%;
@@ -241,21 +266,23 @@ main button:focus-visible {
     right: -60px !important;
   }
 
+  /* Below desktop, the full multi-layer composition (floating cards,
+     doodle, toast) doesn't reflow cleanly at arbitrary widths — swap it
+     for one clean couple portrait instead of scaling seven absolutely
+     positioned layers down together. */
   .dz-hero-visual-wrap {
-    container-type: inline-size;
-    width: 100%;
-    max-width: 760px;
-    margin: 0 auto;
-    height: calc(680 * (100cqw / 760));
-    position: relative;
-    overflow: hidden;
+    display: none !important;
   }
 
-  .dz-hero-visual {
-    width: 760px !important;
-    height: 680px !important;
-    transform: scale(calc(100cqw / 760));
-    transform-origin: top left;
+  .dz-hero-visual-mobile {
+    display: block;
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 4 / 5;
+    margin: 0 auto;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(28, 23, 32, 0.18);
   }
 
   /* ---- Two-column marketing sections stack on laptop-and-below ---- */
@@ -316,6 +343,12 @@ main button:focus-visible {
 }
 
 @media (max-width: 1023px) {
+  /* Tablet keeps ~3 examples per repeated-content section instead of
+     the full desktop set — same story, fewer duplicates. */
+  .dz-extra-4plus {
+    display: none !important;
+  }
+
   .dz-tonight-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     grid-auto-rows: 190px !important;
@@ -336,6 +369,13 @@ main button:focus-visible {
   .dz-lifestyle-mosaic {
     grid-auto-rows: 125px !important;
   }
+
+  /* Tablet: 2 phone mockups, same as mobile — the 3rd (Messages) adds
+     height without adding a new idea (Discovery + Match already cover
+     "see a profile" and "get a match"). */
+  .dz-phone-messages {
+    display: none !important;
+  }
 }
 
 @media (max-width: 767px) {
@@ -354,6 +394,47 @@ main button:focus-visible {
     padding: 14px 20px !important;
   }
 
+  /* Mobile keeps 2 examples per repeated-content section — the 3rd
+     (still visible on tablet) drops here too. */
+  .dz-extra-3 {
+    display: none !important;
+  }
+
+  .dz-mobile-only {
+    display: block;
+  }
+
+  .dz-desktop-only {
+    display: none !important;
+  }
+
+  /* Section headings: a 2-line serif heading fighting a "See more" link
+     on the same row reads as misaligned clutter at narrow widths — stack
+     them instead. */
+  .dz-section-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .dz-tonight {
+    padding-top: 48px !important;
+  }
+
+  .dz-tonight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: 220px !important;
+    gap: 12px !important;
+  }
+
+  .dz-cities-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dz-cities-grid a {
+    height: 190px !important;
+  }
+
   .dz-df-card {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -368,8 +449,18 @@ main button:focus-visible {
     max-width: 260px;
   }
 
+  .dz-lifestyle {
+    padding-top: 40px !important;
+    padding-bottom: 40px !important;
+  }
+
   .dz-ai-match {
-    padding: 32px 22px !important;
+    padding: 26px 20px !important;
+    gap: 24px !important;
+  }
+
+  .dz-ai-progress {
+    gap: 7px !important;
   }
 
   .dz-ai-progress > div > span:first-child {
@@ -400,9 +491,21 @@ main button:focus-visible {
     height: 82px !important;
   }
 
+  .dz-realme {
+    margin-bottom: 40px !important;
+  }
+
   .dz-realme-card {
     width: 100% !important;
     max-width: 330px;
+  }
+
+  .dz-showcase {
+    padding-bottom: 48px !important;
+  }
+
+  .dz-cta {
+    margin-bottom: 20px !important;
   }
 
   .dz-cta-title {
@@ -416,16 +519,6 @@ main button:focus-visible {
 }
 
 @media (max-width: 639px) {
-  .dz-tonight-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    grid-auto-rows: 200px !important;
-    gap: 12px !important;
-  }
-
-  .dz-cities-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
   .dz-lifestyle-mosaic {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
@@ -433,21 +526,11 @@ main button:focus-visible {
   .dz-lifestyle-card--tall {
     grid-row: auto !important;
   }
-
-  .dz-phones {
-    flex-wrap: wrap;
-    row-gap: 24px;
-  }
 }
 
 @media (max-width: 479px) {
   .dz-hero-ctas {
     flex-wrap: wrap;
-  }
-
-  .dz-hero-trust {
-    gap: 14px !important;
-    row-gap: 8px !important;
   }
 
   .dz-cta-actions {
@@ -460,16 +543,7 @@ main button:focus-visible {
   }
 
   .dz-tonight-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-auto-rows: 240px !important;
-  }
-
-  .dz-tonight-card--tall {
-    grid-row: auto !important;
-  }
-
-  .dz-cities-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: 210px !important;
   }
 
   .dz-cities-grid a {
