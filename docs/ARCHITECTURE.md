@@ -1,6 +1,6 @@
 # DateZA Frontend Architecture
 
-**Status:** Current baseline  
+**Status:** Current baseline
 **Last verified:** 2026-08-22
 
 ## System boundary
@@ -32,15 +32,21 @@ not fork the engine.
 
 ## Repository state
 
-The executable app is currently a React 18 + TypeScript + Vite public landing
-page. `src/pages/landingMarkup.ts` is a static design port rendered through
-`dangerouslySetInnerHTML`; `src/pages/LandingPage.tsx` adds imperative mobile
-navigation. This is acknowledged legacy presentation debt, not the pattern for
-the authenticated app.
+The executable app is a React 18 + TypeScript + Vite public site. `/` still
+renders the approved landing page (`src/pages/landingMarkup.ts` via
+`dangerouslySetInnerHTML`, plus the imperative mobile-menu adapter in
+`LandingPage.tsx`). That port is acknowledged legacy presentation debt, not
+the pattern for the authenticated app.
 
-There is currently no router, API client, remote-state library, test runner,
-authenticated application shell, or D8N SDK in this repository. Do not infer
-their existence from planning documents.
+Client routing uses React Router with `BrowserRouter` (see
+`docs/decisions/0001-spa-routing.md`). Public product paths are `/`, `/sign-up`,
+`/sign-in`, `/forgot-password`, `/reset-password`, a protected `/signed-in`
+placeholder after authentication, and a public catch-all 404. Session bootstrap
+uses `GET /api/v1/me` with an in-memory bearer token (see
+`docs/decisions/0002-in-memory-bearer-session.md`). Password register, login,
+logout, and recovery call the verified D8N auth contract. There is still no
+remote-state library, authenticated application chrome, or generated D8N SDK.
+Do not infer onboarding or dating features from planning documents.
 
 ## Dependency direction
 

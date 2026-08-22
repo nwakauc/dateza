@@ -12,7 +12,7 @@ What user/system outcome changed and why?
 
 - [ ] `npm run check`
 - [ ] `npm run build`
-- [ ] Relevant automated tests
+- [ ] Automated tests, or `None warranted — <reason>`
 - [ ] Browser/accessibility review where applicable
 
 Exact results and skipped/failed checks:

@@ -85,8 +85,9 @@ acceptance criteria, and evidence are clear. Use
    and rollback where risky.
 3. After approval, implement the smallest coherent vertical slice. Do not mix
    unrelated refactors or generated churn into the ticket.
-4. Add behavior-focused tests; bug fixes normally begin with a failing
-   regression test.
+4. Add automated tests only when they protect a meaningful DateZA invariant.
+   Do not generate unit or component tests for trivial presentation. High-risk
+   bug fixes that warrant automation begin with a failing regression test.
 5. Run required checks, inspect the final diff, report failures honestly, and
    update only documentation made stale by the change.
 
@@ -100,18 +101,25 @@ implicitly; propose a superseding ADR or stop and report the conflict.
 
 ## Verification
 
+Frontend testing is lean and risk-based. Confidence over test volume. Effort
+scales with risk × complexity × likelihood of regression. Unit tests are not
+the default. Before writing an automated test, name the realistic regression it
+protects; if you cannot, skip it. Browser QA is first-class evidence. High-risk
+member, safety, session, and privacy behavior still needs strong automated
+evidence. Details: `docs/TESTING.md`.
+
 Use npm (`package-lock.json`):
 
 ```sh
 npm ci
 npm run check
 npm run build
+git diff --check
 ```
 
-For UI, also test the changed journey in a real browser at mobile, tablet, and
-desktop widths; inspect keyboard flow, reduced motion, console, and network.
-Follow `docs/TESTING.md`. Do not claim a check passed if it was not run, and do
-not weaken a gate to make work pass.
+For UI, inspect the changed journey in a real browser at relevant widths;
+check keyboard flow, reduced motion, console, and network. Do not claim a check
+passed if it was not run, and do not weaken a gate to make work pass.
 
 Pause before changing API assumptions, auth/session storage, brand resolution,
 eligibility, authorization, age/consent, safety copy, retention, sensitive
@@ -139,7 +147,10 @@ Report:
 
 - `IMPLEMENTED` and `FILES CHANGED`;
 - `API / DATA CHANGES`;
-- `TESTS ADDED` and exact `TEST RESULTS`;
+- `AUTOMATED TESTS` (or `None — not warranted because …`);
+- `BROWSER QA`, `VIEWPORTS`, `ACCESSIBILITY QA`;
+- `STATIC VERIFICATION` (exact commands and results);
+- `CONSOLE / NETWORK` and `REMAINING RISK`;
 - `SECURITY / PRIVACY / ACCESSIBILITY`;
 - `DEPLOYMENT / ROLLBACK`;
 - `KNOWN LIMITATIONS`, `NOT IMPLEMENTED`, and `FOLLOW-UP`.

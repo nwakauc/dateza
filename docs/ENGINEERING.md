@@ -1,7 +1,7 @@
 # DateZA Engineering Guide
 
-**Status:** Adopted repository standard  
-**Last reviewed:** 2026-08-22  
+**Status:** Adopted repository standard
+**Last reviewed:** 2026-08-22
 **Applies to:** DateZA web repository contributors and coding agents
 
 The root `AGENTS.md` is the concise operational contract. This document records
@@ -23,9 +23,11 @@ deliberate:
 DateZA web -> brand-bound D8N API -> platform domains and providers
 ```
 
-At this review the executable repository is a public landing page built with
-React 18, TypeScript in strict mode, and Vite 5. The landing page is largely a
-static HTML design port with responsive CSS and a small imperative mobile-menu
+At this review the executable repository is a public landing page at `/` plus
+authentication screens, a protected signed-in placeholder, and a public 404,
+built with React 18, TypeScript in strict mode, Vite 5, and React Router
+(`docs/decisions/0001-spa-routing.md`). The landing page is largely a static
+HTML design port with responsive CSS and a small imperative mobile-menu
 adapter. Product specifications describe the future authenticated application,
 but plans are not evidence that a feature or API exists.
 
@@ -85,9 +87,10 @@ demonstrated need justifies their ownership cost.
 
 ### Make quality executable
 
-A written rule is weak if the repository cannot check it. Static analysis,
-builds, tests, and focused browser verification are the quality gates. Any
-known gap should be recorded honestly and closed before depending on it.
+A written rule is weak if the repository cannot check it. Strict TypeScript,
+lint, production builds, and focused browser verification are always in play.
+Automated tests are added when they protect meaningful regression risk—not as
+ceremony. Known quality gaps should be recorded honestly.
 
 ## 4. Frontend boundaries
 
@@ -104,9 +107,10 @@ src/
 This is a direction, not permission to scaffold empty architecture.
 
 Keep remote state close to its feature until shared coordination is real. If a
-data-fetching library or router becomes necessary, record why the platform and
-current stack are insufficient. Keep API errors machine-readable internally and
-map them to safe, humane copy at the UI boundary.
+data-fetching library becomes necessary, record why the platform and current
+stack are insufficient. Client routing is recorded in
+`docs/decisions/0001-spa-routing.md`. Keep API errors machine-readable internally
+and map them to safe, humane copy at the UI boundary.
 
 The current `landingMarkup.ts` file is a temporary design port. It is acceptable
 to repair its presentation narrowly, but feature work should migrate toward
@@ -130,7 +134,8 @@ For every screen verify:
 - useful loading, empty, offline, expired-session, forbidden, and retry states;
 - safe content around location, verification, reports, and account closure.
 
-Avoid snapshotting large markup trees. Test what a person can perceive and do.
+How to verify those qualities is in `docs/TESTING.md`. Do not snapshot large
+markup trees.
 
 ## 6. API, privacy, and security review
 
@@ -155,25 +160,21 @@ person's private preferences.
 
 ## 7. Testing strategy
 
-Use the smallest test that gives confidence:
+`docs/TESTING.md` is the frontend testing policy. Do not duplicate it here.
+
+Summary: lean and risk-based; unit tests are not the default; browser QA is
+first-class; add automation when it protects a meaningful regression (auth,
+session, safety, privacy, server reconciliation, important journeys). Do not
+install a test runner solely for routing, a static 404, or simple presentation.
 
 | Change | Minimum evidence |
 | --- | --- |
 | Documentation/configuration | lint/typecheck where applicable; inspect diff |
-| Pure function | unit tests for happy, boundary, and invalid inputs |
-| Component behavior | browser-backed component test including accessibility |
-| API-connected feature | contract fixtures plus failure and stale-state cases |
-| Critical member journey | real-browser end-to-end test against a controlled environment |
-| Bug fix | reproducing regression test, then fix and full relevant checks |
-
-Tests must be deterministic and independent. Do not use production member data,
-real secrets, precise locations, or message content in fixtures. Keep selectors
-based on roles, labels, and stable user-visible behavior rather than CSS layout.
-
-The repository currently has no automated test runner. Introduce one alongside
-the first behavior needing automated coverage, make the choice explicit, and add
-it to `npm run check`. Until then, `npm run check`, `npm run build`, and a focused
-browser pass are required for UI changes.
+| Low-risk visual UI | `npm run check`, `npm run build` when appropriate, browser and accessibility QA |
+| Isolated non-trivial logic | small unit tests when the logic has real edge cases |
+| Meaningful interactive or high-risk UI | static checks, build, browser QA, plus focused automated tests |
+| Critical member journey | real-browser verification; later a small E2E suite |
+| Bug fix | failing regression test only when automation is the chosen evidence |
 
 ## 8. Dependencies and generated assets
 
@@ -227,6 +228,6 @@ Install or update skills with telemetry disabled. Review their source, origin,
 security assessment, lockfile change, and any scripts before use. Do not update
 skills incidentally during application work.
 
-Review this engineering guide when the application gains a router, API client,
-test runner, state library, mobile workspace, deployment pipeline, or accepted
-ADR. Replace stale statements instead of appending contradictory rules.
+Review this engineering guide when the application gains an API client,
+state library, mobile workspace, deployment pipeline, or a new accepted ADR.
+Replace stale statements instead of appending contradictory rules.

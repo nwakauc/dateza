@@ -45,7 +45,9 @@ keyboard/focus, announcements, reduced motion, responsive behavior.
 
 ## Test evidence required
 
-List the exact unit/component/contract/journey cases that will prove completion.
+List the automated cases that will prove completion, **or** state that none are
+warranted and why (see `docs/TESTING.md`). Browser QA, viewports, and
+accessibility checks belong here when they are the primary evidence.
 
 ## Deployment and rollback
 

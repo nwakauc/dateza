@@ -8,8 +8,8 @@ export const landingMarkup = `
   <button type="button" id="dz-menu-btn" class="dz-menu-btn" aria-expanded="false" aria-controls="dz-nav-links" aria-label="Open menu"><span></span><span></span><span></span></button>
   <div id="dz-nav-links" class="dz-nav-links" style="display:flex;gap:28px;align-items:center;font-size:14px;font-weight:500;color:#5F5566">
     <a href="#discover" style="color:#1C1720;font-weight:600;border-bottom:2px solid #E8375A;padding-bottom:3px;text-decoration:none;cursor:pointer">Discover</a><a href="#how-it-works" style="color:inherit;text-decoration:none;cursor:pointer">How It Works</a><a href="#safety" style="color:inherit;text-decoration:none;cursor:pointer">Safety</a><a href="#success-stories" style="color:inherit;text-decoration:none;cursor:pointer">Success Stories</a><a href="#sa-lifestyle" style="color:inherit;text-decoration:none;cursor:pointer">SA Lifestyle</a>
-    <a href="#sign-in" class="dz-nav-signin" style="color:#1C1720;font-weight:600;text-decoration:none;cursor:pointer">Sign In</a>
-    <a href="#join" class="dz-nav-join" style="background:#E8375A;color:#fff;padding:12px 26px;border-radius:999px;font-weight:700;box-shadow:0 10px 26px rgba(232,55,90,.32);text-decoration:none;cursor:pointer;display:inline-block">Join Free</a>
+    <a href="/sign-in" class="dz-nav-signin" style="color:#1C1720;font-weight:600;text-decoration:none;cursor:pointer">Sign In</a>
+    <a href="/sign-up" class="dz-nav-join" style="background:#E8375A;color:#fff;padding:12px 26px;border-radius:999px;font-weight:700;box-shadow:0 10px 26px rgba(232,55,90,.32);text-decoration:none;cursor:pointer;display:inline-block">Join Free</a>
   </div>
   <div id="dz-nav-backdrop" class="dz-nav-backdrop"></div>
 </div>
@@ -25,7 +25,7 @@ export const landingMarkup = `
       </div>
       <p class="dz-hero-desc" style="margin:0;font-size:17.5px;line-height:1.65;color:#5F5566;max-width:400px;text-wrap:pretty">Real South Africans. RealMe verified. Smarter matches based on what actually matters to you.</p>
       <div class="dz-hero-ctas" style="display:flex;gap:14px;align-items:center">
-        <a href="#join" class="dz-btn-primary-lg" style="background:#1C1720;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;text-decoration:none;cursor:pointer;display:inline-block">Start Matching →</a>
+        <a href="/sign-up" class="dz-btn-primary-lg" style="background:#1C1720;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;text-decoration:none;cursor:pointer;display:inline-block">Start Matching →</a>
         <a href="#how-it-works" style="display:block;color:inherit;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:600"><span style="width:46px;height:46px;border-radius:50%;background:#FFF0F3;color:#E8375A;display:inline-flex;align-items:center;justify-content:center;font-size:13px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-0.15em;flex:none;margin-left:0.08em"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>See How It Works</a>
       </div>
     </div>
@@ -259,7 +259,7 @@ export const landingMarkup = `
   <div class="dz-cta-title" style="font-family:'Instrument Serif',serif;font-size:64px;line-height:1.05;color:#fff">Your person is out there.<br><em style="color:#FF6B8A">Right here.</em></div>
   <p style="margin:22px auto 0;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.7);max-width:440px">Join free, get RealMe verified, and meet your ten for today.</p>
   <div class="dz-cta-actions" style="display:flex;justify-content:center;gap:14px;margin-top:32px">
-    <a href="#join" style="background:#E8375A;color:#fff;padding:18px 40px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 14px 40px rgba(232,55,90,.45);text-decoration:none;cursor:pointer;display:inline-block">Join DateZA Free →</a>
+    <a href="/sign-up" style="background:#E8375A;color:#fff;padding:18px 40px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 14px 40px rgba(232,55,90,.45);text-decoration:none;cursor:pointer;display:inline-block">Join DateZA Free →</a>
     <a href="#get-app" style="border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:600;text-decoration:none;cursor:pointer;display:inline-block">Get the app</a>
   </div>
 </div>
