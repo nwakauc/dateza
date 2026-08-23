@@ -5,6 +5,7 @@ import { getCurrentIdentity } from "../../lib/api/me.ts";
 import { ConfigError } from "../../lib/config.ts";
 import { SessionContext } from "./SessionContext.ts";
 import type { SessionState } from "./sessionState.ts";
+import type { VerificationState } from "./verificationState.ts";
 
 type Props = {
   children: ReactNode;
@@ -34,6 +35,7 @@ async function loadSession(): Promise<SessionState> {
 
 export function SessionProvider({ children }: Props) {
   const [session, setSession] = useState<SessionState>({ status: "unknown" });
+  const [verification, setVerification] = useState<VerificationState>({ status: "unknown" });
 
   const refreshSession = useCallback(async () => {
     const next = await loadSession();
@@ -45,6 +47,7 @@ export function SessionProvider({ children }: Props) {
 
     setUnauthorizedListener(() => {
       setSession({ status: "unauthenticated" });
+      setVerification({ status: "unknown" });
     });
 
     void loadSession().then((next) => {
@@ -60,8 +63,8 @@ export function SessionProvider({ children }: Props) {
   }, []);
 
   const value = useMemo(
-    () => ({ session, refreshSession }),
-    [session, refreshSession],
+    () => ({ session, refreshSession, verification, setVerification }),
+    [session, refreshSession, verification],
   );
 
   return (

@@ -37,6 +37,10 @@ logs/analytics, sensitive data, retention, and neutral errors.
 Happy, loading, empty, offline/error, retry, expired session, forbidden,
 keyboard/focus, announcements, reduced motion, responsive behavior.
 
+Also record the member task (not the API field list): intended control, copy
+register, mobile-first behavior, what must be asked now versus later, and
+sensible defaults. Implementation language does not belong in member UI.
+
 ## Acceptance criteria
 
 - [ ] Observable, falsifiable outcome.
@@ -46,8 +50,10 @@ keyboard/focus, announcements, reduced motion, responsive behavior.
 ## Test evidence required
 
 List the automated cases that will prove completion, **or** state that none are
-warranted and why (see `docs/TESTING.md`). Browser QA, viewports, and
-accessibility checks belong here when they are the primary evidence.
+warranted and why (see `docs/TESTING.md`). For UI-bearing work, product/UX
+review, visual QA, responsive/viewports, interaction QA, and accessibility
+checks belong here as primary evidence. TypeScript, HTTP 200, and passing tests
+are not sufficient on their own.
 
 ## Deployment and rollback
 

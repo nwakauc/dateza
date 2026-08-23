@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
-const HOME_TITLE = "DateZA — Meet someone who gets you.";
+const HOME_TITLE = "DateZA — Meet someone who chooses you.";
 const NOT_FOUND_TITLE = "Page not found — DateZA";
 
 export default function NotFoundPage() {

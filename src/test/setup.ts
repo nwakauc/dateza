@@ -14,6 +14,12 @@ function unauthorizedResponse(): Response {
 beforeEach(() => {
   setBearerToken(undefined);
   setUnauthorizedListener(undefined);
+  if (typeof URL.createObjectURL !== "function") {
+    URL.createObjectURL = () => "blob:dateza-test";
+  }
+  if (typeof URL.revokeObjectURL !== "function") {
+    URL.revokeObjectURL = () => undefined;
+  }
   vi.stubGlobal(
     "fetch",
     vi.fn(() => Promise.resolve(unauthorizedResponse())),
@@ -25,5 +31,5 @@ afterEach(() => {
   vi.unstubAllGlobals();
   setBearerToken(undefined);
   setUnauthorizedListener(undefined);
-  document.title = "DateZA — Meet someone who gets you.";
+  document.title = "DateZA — Meet someone who chooses you.";
 });

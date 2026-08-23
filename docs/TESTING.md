@@ -26,6 +26,8 @@ The default verification stack for ordinary frontend work is:
 7. a small number of high-value end-to-end journeys as the product matures
 
 Do not replace obvious browser inspection with large unit or component suites.
+For significant UI/UX tickets, source inspection and automated tests alone are
+insufficient: inspect the rendered journey and verify the user-visible outcome.
 Do not test React, React Router, CSS engines, or the browser merely because
 those layers are easy to assert. A test must protect a meaningful DateZA
 behavior or regression.
@@ -226,7 +228,11 @@ typecheck, or build gates.
   contract errors and server-authoritative reconciliation. Do not invent
   endpoints.
 - Critical journeys: real browser at relevant widths, then a small E2E suite
-  when the journeys are stable.
+  when the journeys are stable. Representative widths for meaningful UI work
+  include 1440/1280 desktop, 768 tablet, 390 mobile, and 360 mobile; use
+  judgment rather than mechanically testing every width. A successful HTTP
+  status is not evidence that Continue, publish, or navigation actually
+  completed for the member.
 
 ## Quality rules for tests that do exist
 
@@ -249,18 +255,37 @@ Frontend tickets must report:
 
 Tests added, or `None — not warranted for this ticket because …`
 
-### BROWSER QA
+### PRODUCT / UX REVIEW
 
-Exact pages or journeys inspected.
+UX decisions made and why (control choice, copy, defaults, disclosure, mobile).
+Required for UI-bearing tickets.
 
-### VIEWPORTS
+### BROWSER QA / VISUAL QA
+
+Exact pages or journeys actually inspected (hierarchy, alignment, spacing,
+typography, readability, overflow, image crops, loading and error states).
+
+### RESPONSIVE QA / VIEWPORTS
 
 Relevant widths or devices checked.
+
+### INTERACTION QA
+
+End-to-end user actions exercised (including that primary actions actually
+progress). Required for UI-bearing tickets.
 
 ### ACCESSIBILITY QA
 
 Keyboard, focus, labels, and reduced-motion checks performed (or why they did
 not apply).
+
+### UX ISSUES FOUND AND FIXED
+
+Problems the agent identified itself during implementation.
+
+### REMAINING UX CONCERNS
+
+Anything that should not be silently accepted.
 
 ### STATIC VERIFICATION
 

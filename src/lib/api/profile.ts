@@ -1,0 +1,351 @@
+import { ApiError } from "./errors.ts";
+import { apiRequest } from "./client.ts";
+import type { BrandSummary } from "./types.ts";
+import type {
+  ConfiguredCollection,
+  ConfiguredField,
+  ConfiguredOptionGroup,
+  CurrentProfileResponse,
+  FieldOption,
+  OwnerProfile,
+  ProfileConfiguration,
+  ProfileConfigurationResponse,
+  ProfileOnboardingStatus,
+  ProfilePreferences,
+  ProfileUpdateBody,
+} from "./profileTypes.ts";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function jsonInit(method: string, body: unknown): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function asStringOrNull(value: unknown): string | null {
+  if (value === null) {
+    return null;
+  }
+  return typeof value === "string" ? value : null;
+}
+
+function asNumberOrNull(value: unknown): number | null {
+  if (value === null) {
+    return null;
+  }
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function parseBrand(value: unknown): BrandSummary {
+  if (!isRecord(value) || typeof value.slug !== "string" || typeof value.name !== "string") {
+    throw new ApiError(502, undefined, "invalid_profile_response");
+  }
+  return { slug: value.slug, name: value.name };
+}
+
+function parseCompletion(value: unknown): ProfileOnboardingStatus["completion"] {
+  if (!isRecord(value) || typeof value.complete !== "boolean" || typeof value.percent !== "number") {
+    throw new ApiError(502, undefined, "invalid_onboarding_response");
+  }
+  if (!Array.isArray(value.missing) || !value.missing.every((item) => typeof item === "string")) {
+    throw new ApiError(502, undefined, "invalid_onboarding_response");
+  }
+  return { complete: value.complete, percent: value.percent, missing: value.missing };
+}
+
+const ONBOARDING_STATES = new Set([
+  "profile_required",
+  "profile_incomplete",
+  "ready_to_publish",
+  "complete",
+  "profile_suspended",
+]);
+const ONBOARDING_STEPS = new Set([
+  "profile",
+  "preferences",
+  "photos",
+  "options",
+  "publication",
+]);
+
+export function parseOnboardingStatus(value: unknown): ProfileOnboardingStatus {
+  if (!isRecord(value)) {
+    throw new ApiError(502, undefined, "invalid_onboarding_response");
+  }
+  const state = asString(value.state);
+  const nextStep = value.next_step === null ? null : asString(value.next_step);
+  const profileExists = asBoolean(value.profile_exists);
+  const profileComplete = asBoolean(value.profile_complete);
+  const profilePublished = asBoolean(value.profile_published);
+  if (
+    state === undefined ||
+    !ONBOARDING_STATES.has(state) ||
+    (nextStep !== null && (nextStep === undefined || !ONBOARDING_STEPS.has(nextStep))) ||
+    profileExists === undefined ||
+    profileComplete === undefined ||
+    profilePublished === undefined
+  ) {
+    throw new ApiError(502, undefined, "invalid_onboarding_response");
+  }
+  return {
+    state: state as ProfileOnboardingStatus["state"],
+    next_step: nextStep as ProfileOnboardingStatus["next_step"],
+    profile_exists: profileExists,
+    profile_complete: profileComplete,
+    profile_published: profilePublished,
+    completion: parseCompletion(value.completion),
+  };
+}
+
+function parseOptionsMap(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const selections: Record<string, string[]> = {};
+  for (const [key, codes] of Object.entries(value)) {
+    if (Array.isArray(codes) && codes.every((code) => typeof code === "string")) {
+      selections[key] = codes;
+    }
+  }
+  return selections;
+}
+
+function parseOwnerProfile(value: unknown): OwnerProfile {
+  if (!isRecord(value) || typeof value.id !== "string") {
+    throw new ApiError(502, undefined, "invalid_profile_response");
+  }
+  return {
+    id: value.id,
+    brand: parseBrand(value.brand),
+    status: asString(value.status) ?? "draft",
+    visibility: asString(value.visibility) ?? "hidden",
+    first_name: asStringOrNull(value.first_name),
+    last_name: asStringOrNull(value.last_name),
+    display_name: asStringOrNull(value.display_name),
+    bio: asStringOrNull(value.bio),
+    birthdate: asStringOrNull(value.birthdate),
+    gender: asStringOrNull(value.gender),
+    country_code: asStringOrNull(value.country_code),
+    city: asStringOrNull(value.city),
+    occupation: asStringOrNull(value.occupation),
+    job_title: asStringOrNull(value.job_title),
+    height_cm: asNumberOrNull(value.height_cm),
+    smoking: asStringOrNull(value.smoking),
+    drinking: asStringOrNull(value.drinking),
+    fitness: asStringOrNull(value.fitness),
+    options: parseOptionsMap(value.options),
+  };
+}
+
+function parseFieldOption(value: unknown): FieldOption | undefined {
+  if (!isRecord(value) || typeof value.code !== "string" || typeof value.label !== "string") {
+    return undefined;
+  }
+  return {
+    code: value.code,
+    label: value.label,
+    category: asStringOrNull(value.category),
+  };
+}
+
+const INPUT_TYPES = new Set([
+  "text",
+  "textarea",
+  "date",
+  "integer",
+  "select",
+  "string_list",
+  "language_list",
+]);
+
+function parseConfiguredField(value: unknown): ConfiguredField | undefined {
+  if (!isRecord(value) || typeof value.key !== "string" || typeof value.label !== "string") {
+    return undefined;
+  }
+  const inputType = asString(value.input_type);
+  const cardinality = asString(value.cardinality);
+  if (
+    typeof value.required !== "boolean" ||
+    inputType === undefined ||
+    !INPUT_TYPES.has(inputType) ||
+    (cardinality !== "single" && cardinality !== "multiple")
+  ) {
+    return undefined;
+  }
+  const options = Array.isArray(value.options)
+    ? value.options.map(parseFieldOption).filter((option) => option !== undefined)
+    : [];
+  return {
+    key: value.key,
+    label: value.label,
+    required: value.required,
+    cardinality,
+    input_type: inputType as ConfiguredField["input_type"],
+    visibility: asString(value.visibility) ?? "public_profile",
+    options,
+  };
+}
+
+function parseOptionGroup(value: unknown): ConfiguredOptionGroup | undefined {
+  if (!isRecord(value) || typeof value.key !== "string" || typeof value.label !== "string") {
+    return undefined;
+  }
+  const cardinality = asString(value.cardinality);
+  if (
+    typeof value.required !== "boolean" ||
+    typeof value.max_selections !== "number" ||
+    (cardinality !== "single" && cardinality !== "multiple")
+  ) {
+    return undefined;
+  }
+  const options = Array.isArray(value.options)
+    ? value.options.map(parseFieldOption).filter((option) => option !== undefined)
+    : [];
+  return {
+    key: value.key,
+    label: value.label,
+    cardinality,
+    max_selections: value.max_selections,
+    required: value.required,
+    visibility: asString(value.visibility) ?? "public_profile",
+    options,
+  };
+}
+
+function parseCollection(value: unknown): ConfiguredCollection | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.key !== "string" ||
+    typeof value.label !== "string" ||
+    typeof value.required !== "boolean" ||
+    typeof value.minimum_count !== "number"
+  ) {
+    return undefined;
+  }
+  return {
+    key: value.key,
+    label: value.label,
+    required: value.required,
+    minimum_count: value.minimum_count,
+  };
+}
+
+function parseConfiguration(value: unknown): ProfileConfiguration {
+  if (!isRecord(value)) {
+    throw new ApiError(502, undefined, "invalid_configuration_response");
+  }
+  const identityFields = Array.isArray(value.identity_fields)
+    ? value.identity_fields.map(parseConfiguredField).filter((field) => field !== undefined)
+    : [];
+  const profileFields = Array.isArray(value.profile_fields)
+    ? value.profile_fields.map(parseConfiguredField).filter((field) => field !== undefined)
+    : [];
+  const preferenceFields = Array.isArray(value.preference_fields)
+    ? value.preference_fields.map(parseConfiguredField).filter((field) => field !== undefined)
+    : [];
+  const collections = Array.isArray(value.collections)
+    ? value.collections.map(parseCollection).filter((item) => item !== undefined)
+    : [];
+  const optionGroups = Array.isArray(value.option_groups)
+    ? value.option_groups.map(parseOptionGroup).filter((group) => group !== undefined)
+    : [];
+  return {
+    identity_fields: identityFields,
+    profile_fields: profileFields,
+    preference_fields: preferenceFields,
+    collections,
+    option_groups: optionGroups,
+  };
+}
+
+export function getProfileConfiguration(): Promise<ProfileConfigurationResponse> {
+  return apiRequest("/api/v1/profile/configuration").then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_configuration_response");
+    }
+    return {
+      configuration: parseConfiguration(data.configuration),
+      onboarding: parseOnboardingStatus(data.onboarding),
+    };
+  });
+}
+
+export function getCurrentProfile(): Promise<CurrentProfileResponse> {
+  return apiRequest("/api/v1/profile").then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_profile_response");
+    }
+    return {
+      profile: data.profile === null ? null : parseOwnerProfile(data.profile),
+      onboarding: parseOnboardingStatus(data.onboarding),
+    };
+  });
+}
+
+export function updateCurrentProfile(body: ProfileUpdateBody): Promise<CurrentProfileResponse> {
+  return apiRequest("/api/v1/profile", jsonInit("PATCH", body)).then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_profile_response");
+    }
+    return {
+      profile: data.profile === null ? null : parseOwnerProfile(data.profile),
+      onboarding: parseOnboardingStatus(data.onboarding),
+    };
+  });
+}
+
+export function getProfilePreferences(): Promise<ProfilePreferences | null> {
+  return apiRequest("/api/v1/profile/preferences").then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_preferences_response");
+    }
+    if (data.preferences === null) {
+      return null;
+    }
+    if (!isRecord(data.preferences)) {
+      throw new ApiError(502, undefined, "invalid_preferences_response");
+    }
+    const interested = data.preferences.interested_in;
+    return {
+      min_age: asNumberOrNull(data.preferences.min_age),
+      max_age: asNumberOrNull(data.preferences.max_age),
+      max_distance_km: asNumberOrNull(data.preferences.max_distance_km),
+      interested_in: Array.isArray(interested)
+        ? interested.filter((item): item is string => typeof item === "string")
+        : [],
+    };
+  });
+}
+
+export function updateProfilePreferences(body: {
+  min_age: number;
+  max_age: number;
+  max_distance_km: number;
+  interested_in: string[];
+}): Promise<void> {
+  return apiRequest("/api/v1/profile/preferences", jsonInit("PATCH", body)).then(() => undefined);
+}
+
+export function replaceProfileOptions(selections: Record<string, string[]>): Promise<void> {
+  return apiRequest(
+    "/api/v1/profile/options",
+    jsonInit("PATCH", { selections }),
+  ).then(() => undefined);
+}
+
+export function publishCurrentProfile(): Promise<void> {
+  return apiRequest("/api/v1/profile/publication", { method: "POST" }).then(() => undefined);
+}

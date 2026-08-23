@@ -13,15 +13,17 @@ export default function SignUpPage() {
   const errorId = useId();
   const navigate = useNavigate();
   const establishSession = useEstablishSession();
+  const [method, setMethod] = useState<"email" | "phone">("email");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
   useEffect(() => {
     document.title = `${PAGE_TITLE} — DateZA`;
     return () => {
-      document.title = "DateZA — Meet someone who gets you.";
+      document.title = "DateZA — Meet someone who chooses you.";
     };
   }, []);
 
@@ -30,12 +32,17 @@ export default function SignUpPage() {
     if (pending) {
       return;
     }
+    if (password !== confirmPassword) {
+      setError("Your passwords don't match.");
+      return;
+    }
     setPending(true);
     setError(undefined);
     try {
-      const session = await registerWithPassword(identifier.trim(), password);
-      await establishSession(session.token);
-      navigate("/signed-in", { replace: true });
+      const trimmedIdentifier = identifier.trim();
+      const session = await registerWithPassword(trimmedIdentifier, password);
+      await establishSession(session, trimmedIdentifier);
+      navigate("/home", { replace: true });
     } catch (caught) {
       setError(signUpErrorMessage(caught));
       setPending(false);
@@ -53,14 +60,39 @@ export default function SignUpPage() {
             {error}
           </p>
         ) : null}
+        <div className="onboard-segmented" role="radiogroup" aria-label="Sign up with">
+          <label className="onboard-segment" data-selected={method === "email" ? "true" : "false"}>
+            <input
+              type="radio"
+              name="method"
+              value="email"
+              checked={method === "email"}
+              disabled={pending}
+              onChange={() => setMethod("email")}
+            />
+            Email
+          </label>
+          <label className="onboard-segment" data-selected={method === "phone" ? "true" : "false"}>
+            <input
+              type="radio"
+              name="method"
+              value="phone"
+              checked={method === "phone"}
+              disabled={pending}
+              onChange={() => setMethod("phone")}
+            />
+            Phone
+          </label>
+        </div>
         <div className="auth-field">
-          <label htmlFor={identifierId}>Phone or email</label>
+          <label htmlFor={identifierId}>{method === "email" ? "Email address" : "Phone number"}</label>
           <input
             id={identifierId}
             name="identifier"
             type="text"
-            inputMode="email"
+            inputMode={method === "email" ? "email" : "tel"}
             autoComplete="username"
+            placeholder={method === "email" ? "you@example.co.za" : "+27 82 123 4567"}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
             disabled={pending}
@@ -76,6 +108,15 @@ export default function SignUpPage() {
           autoComplete="new-password"
           value={password}
           onChange={setPassword}
+          disabled={pending}
+          describedBy={error ? errorId : undefined}
+        />
+        <PasswordField
+          label="Confirm password"
+          name="password_confirmation"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
           disabled={pending}
           describedBy={error ? errorId : undefined}
         />

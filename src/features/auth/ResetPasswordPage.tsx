@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     document.title = "Choose a new password — DateZA";
     return () => {
-      document.title = "DateZA — Meet someone who gets you.";
+      document.title = "DateZA — Meet someone who chooses you.";
     };
   }, []);
 

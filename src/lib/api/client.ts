@@ -18,12 +18,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function parseErrorDetails(data: unknown): Record<string, string[]> | undefined {
+  if (!isRecord(data) || !isRecord(data.details)) {
+    return undefined;
+  }
+  const details: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(data.details)) {
+    if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+      details[key] = value;
+    } else if (typeof value === "string") {
+      details[key] = [value];
+    }
+  }
+  return Object.keys(details).length > 0 ? details : undefined;
+}
+
 function parseErrorCode(data: unknown): string | undefined {
   if (!isRecord(data)) {
     return undefined;
   }
   const code = data.error;
   return typeof code === "string" ? code : undefined;
+}
+
+function parseRetryAfter(headers: Headers): number | undefined {
+  const value = headers.get("Retry-After");
+  if (!value) {
+    return undefined;
+  }
+  const seconds = Number.parseInt(value, 10);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
 export type ApiRequestOptions = {
@@ -85,6 +109,8 @@ export async function apiRequest(
       response.status,
       code,
       typeof code === "string" ? code : "request_failed",
+      parseErrorDetails(parsed),
+      response.status === 429 ? parseRetryAfter(response.headers) : undefined,
     );
   }
 

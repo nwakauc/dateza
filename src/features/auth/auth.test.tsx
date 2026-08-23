@@ -20,7 +20,72 @@ const credentialBody = {
   identifier: { kind: "email", verified: false },
   verification_required: true,
   verification_channel: "email",
-  onboarding: { state: "profile_required", next_step: "profile" },
+  onboarding: {
+    state: "profile_required",
+    next_step: "profile",
+    profile_exists: false,
+    profile_complete: false,
+    profile_published: false,
+    completion: { complete: false, percent: 0, missing: ["first_name", "last_name", "display_name"] },
+  },
+};
+
+const incompleteOnboarding = {
+  state: "profile_required",
+  next_step: "profile",
+  profile_exists: false,
+  profile_complete: false,
+  profile_published: false,
+  completion: {
+    complete: false,
+    percent: 0,
+    missing: ["display_name", "birthdate", "gender"],
+  },
+};
+
+const completeOnboarding = {
+  state: "complete",
+  next_step: null,
+  profile_exists: true,
+  profile_complete: true,
+  profile_published: true,
+  completion: { complete: true, percent: 100, missing: [] },
+};
+
+const configuration = {
+  profile_fields: [
+    {
+      key: "display_name",
+      label: "First name",
+      required: true,
+      cardinality: "single",
+      input_type: "text",
+      visibility: "public_profile",
+      options: [],
+    },
+    {
+      key: "birthdate",
+      label: "Date of birth",
+      required: true,
+      cardinality: "single",
+      input_type: "date",
+      visibility: "owner_only",
+      options: [],
+    },
+    {
+      key: "gender",
+      label: "Gender",
+      required: true,
+      cardinality: "single",
+      input_type: "text",
+      visibility: "public_profile",
+      options: [],
+    },
+  ],
+  preference_fields: [],
+  collections: [],
+  option_groups: [],
+  prompts: [],
 };
 
 const NEUTRAL_RECOVERY =
@@ -72,19 +137,29 @@ describe("authentication flows", () => {
         expect(headers.get("Authorization")).toBeNull();
         return Promise.resolve(jsonResponse(201, credentialBody));
       }
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, { configuration, onboarding: incompleteOnboarding }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, { profile: null, onboarding: incompleteOnboarding }),
+        );
+      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
     renderApp("/sign-in");
 
     await screen.findByRole("heading", { name: /welcome back/i });
-    await user.type(screen.getByLabelText(/phone or email/i), "ada@example.com");
+    await user.type(screen.getByLabelText(/email address/i), "ada@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "secret1");
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: /welcome to dateza/i }),
+        screen.getByRole("heading", { name: /let's start with you/i }),
       ).toBeInTheDocument();
     });
     expect(getBearerToken()).toBe("opaque-session-token");
@@ -107,7 +182,7 @@ describe("authentication flows", () => {
     renderApp("/sign-in");
 
     await screen.findByRole("heading", { name: /welcome back/i });
-    await user.type(screen.getByLabelText(/phone or email/i), "ada@example.com");
+    await user.type(screen.getByLabelText(/email address/i), "ada@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "wrong-password");
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
@@ -135,20 +210,41 @@ describe("authentication flows", () => {
         }
         return Promise.resolve(jsonResponse(401, { error: "unauthorized" }));
       }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: {
+              id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+              brand: meBody.brand,
+              status: "active",
+              visibility: "visible",
+              options: {},
+            },
+            onboarding: completeOnboarding,
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/find")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profiles: [],
+            next_cursor: null,
+            allowance: { limit: 10, used: 0, remaining: 10, exhausted: false, resets_at: "2026-12-02T00:00:00+02:00" },
+          }),
+        );
+      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
-    renderApp("/signed-in");
+    renderApp("/home");
 
-    await screen.findByRole("heading", { name: /welcome to dateza/i });
+    await screen.findByText(/no new profiles/i);
     await user.click(screen.getByRole("button", { name: /sign out/i }));
 
     await waitFor(() => {
       expect(getBearerToken()).toBeUndefined();
     });
-    expect(
-      screen.queryByRole("heading", { name: /welcome to dateza/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no new profiles/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();
@@ -168,19 +264,30 @@ describe("authentication flows", () => {
       if (url.endsWith("/api/v1/auth/password/register") && method === "POST") {
         return Promise.resolve(jsonResponse(201, credentialBody));
       }
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, { configuration, onboarding: incompleteOnboarding }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, { profile: null, onboarding: incompleteOnboarding }),
+        );
+      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
     renderApp("/sign-up");
 
     await screen.findByRole("heading", { name: /join dateza/i });
-    await user.type(screen.getByLabelText(/phone or email/i), "ada@example.com");
+    await user.type(screen.getByLabelText(/email address/i), "ada@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "secret1");
+    await user.type(screen.getByLabelText(/confirm password/i), "secret1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: /welcome to dateza/i }),
+        screen.getByRole("heading", { name: /let's start with you/i }),
       ).toBeInTheDocument();
     });
     expect(getBearerToken()).toBe("opaque-session-token");

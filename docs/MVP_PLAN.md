@@ -65,6 +65,17 @@ responses. It does not assume every brand has the same required fields.
 
 ### Journey B — Discovery and Find
 
+> **Update, 2026-08-23:** this section was stale. D8N now ships
+> `GET /api/v1/find` with `dateza_v1` compatibility and a durable daily
+> 10-unique-profile allowance (`FindAllowance`: `limit`/`used`/`remaining`/
+> `resets_at`), and the frontend's product-facing "Discovery" screen is built
+> on this endpoint (`src/features/discovery/`). `GET /api/v1/discovery`
+> (HookUs's `for_you`/`new_here` feed) is a *separate* endpoint that remains
+> deliberately unconfigured for the `dateza` brand per
+> `d8n/docs/api/openapi.yaml` — do not point DateZA UI at it. Re-verify against
+> the live openapi contract before trusting the "not yet exposed" framing
+> below; it described an earlier backend state.
+
 For the first build, implement the UI distinction even if the backend rollout is
 staged:
 
@@ -72,11 +83,12 @@ staged:
 - **Find:** user-controlled browsing with approved filters and server-enforced
   quota.
 
-Current D8N only exposes a general discovery endpoint with `for_you`/`new_here`,
+~~Current D8N only exposes a general discovery endpoint with `for_you`/`new_here`,
 vibe, online, cursor, and limit parameters. It does not yet expose the full
-DateZA Find contract or daily 10-profile accounting. Therefore the first
-frontend slice may use a clearly labelled baseline Discovery screen while D8N
-builds the final two-mode contract.
+DateZA Find contract or daily 10-profile accounting.~~ (No longer accurate —
+see the update above.) Therefore the first frontend slice may use a clearly
+labelled baseline Discovery screen while D8N builds the final two-mode
+contract.
 
 ### Journey C — Like to chat
 

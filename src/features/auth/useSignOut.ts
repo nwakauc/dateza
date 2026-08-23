@@ -5,7 +5,7 @@ import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { useSession } from "../session/useSession.ts";
 
 export function useSignOut() {
-  const { refreshSession } = useSession();
+  const { refreshSession, setVerification } = useSession();
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
 
@@ -21,11 +21,12 @@ export function useSignOut() {
       // session to expire; the user asked to leave this browser session.
     } finally {
       setBearerToken(undefined);
+      setVerification({ status: "unknown" });
       await refreshSession();
       setPending(false);
       navigate("/", { replace: true });
     }
-  }, [navigate, pending, refreshSession]);
+  }, [navigate, pending, refreshSession, setVerification]);
 
   return { signOut, pending };
 }

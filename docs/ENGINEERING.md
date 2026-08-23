@@ -24,10 +24,11 @@ DateZA web -> brand-bound D8N API -> platform domains and providers
 ```
 
 At this review the executable repository is a public landing page at `/` plus
-authentication screens, a protected signed-in placeholder, and a public 404,
-built with React 18, TypeScript in strict mode, Vite 5, and React Router
-(`docs/decisions/0001-spa-routing.md`). The landing page is largely a static
-HTML design port with responsive CSS and a small imperative mobile-menu
+authentication screens, schema-driven onboarding with owner photo upload, a
+protected home placeholder,
+and a public 404, built with React 18, TypeScript in strict mode, Vite 5, and
+React Router (`docs/decisions/0001-spa-routing.md`). The landing page is largely a
+static HTML design port with responsive CSS and a small imperative mobile-menu
 adapter. Product specifications describe the future authenticated application,
 but plans are not evidence that a feature or API exists.
 
@@ -92,6 +93,15 @@ lint, production builds, and focused browser verification are always in play.
 Automated tests are added when they protect meaningful regression risk—not as
 ceremony. Known quality gaps should be recorded honestly.
 
+### Own the member experience
+
+A compiling screen that mirrors the API is not finished product work. DateZA
+agents are expected to exercise product judgment: choose the right control,
+write consumer copy, design for mobile first, collect only what onboarding
+needs, and verify the journey as a member would use it. The founder is not the
+frontend QA department. The operational contract is in `AGENTS.md`; the UI
+standard below is the expanded source.
+
 ## 4. Frontend boundaries
 
 As the authenticated application grows, prefer feature ownership:
@@ -119,12 +129,117 @@ because it creates an unnecessary XSS boundary and bypasses React's model.
 
 ## 5. UI quality standard
 
+DateZA frontend work is senior product-engineering and product-design work.
+Backend contracts define validity; they do not automatically define the best
+user interface. The job is to turn verified capabilities into an excellent
+consumer dating-product experience, not to make API fields appear on screen.
+
+### Product judgment
+
+Actively evaluate UX on every frontend ticket. Do not wait for the founder to
+identify obvious problems. Before declaring work complete, ask whether a
+polished consumer app would ask the question this way; whether the control is
+correct; whether the member must understand implementation details; whether
+there is unnecessary friction; whether the question is needed now; whether
+information is requested too early; whether sensible defaults exist; whether
+the primary action and progress are obvious; whether mistakes are recoverable;
+whether the flow works naturally on mobile; whether copy sounds like a dating
+product; whether the interface feels intentional and premium; and whether
+tests would still miss an obvious interaction failure.
+
+Correct obvious poor UX when it is safe inside ticket scope. If a fix requires
+a product or backend decision outside scope, flag it rather than silently
+shipping poor UX. Preserve approved visual and product decisions, but do not
+preserve poor implementation-quality UX merely because it already exists.
+Propose substantial redesigns that sit outside scope; do not silently rewrite
+the product.
+
+Agents may improve control choice, labels, helper copy, spacing, hierarchy,
+loading and disabled states, duplicate-submit prevention, mobile usability,
+and consumer language without asking permission for every detail. Agents may
+not silently change core product policy, business rules, backend authority,
+pricing, safety policy, matching semantics, major navigation architecture, or
+brand identity.
+
+### Controls and consumer language
+
+Choose controls from the human task, not the API datatype. A backend string is
+not automatically a text box; a date is not a raw date string; an array is not
+necessarily typed text plus Add; a country code should normally be a
+human-readable country list; a constrained choice should use select, segmented
+control, radio group, chips, autocomplete, or a picker depending on set size
+and context; a boolean is not automatically a generic checkbox. The frontend
+translates between human experience and the API contract.
+
+Never expose implementation language to members—D8N, backend, API, schema,
+payload, server enforcement, internal IDs, or database terminology—unless the
+concept is genuinely part of the customer product. Do not ship copy such as
+"D8N enforces the allowed range" or "DateZA does not invent extra dating
+filters here." Translate constraints into natural product UX. Write for
+someone looking for a date.
+
+### Visual direction
+
 DateZA should feel distinctly South African through real content and restrained
 brand details—not stereotypes or decorative gimmicks. Preserve the existing
 editorial serif, warm neutral palette, and DateZA pink until a deliberate design
-decision changes them.
+decision changes them. The product should feel premium, youthful, warm,
+confident, modern, trustworthy, romantic without becoming cheesy, distinctly
+consumer-facing, and consistent with the approved landing-page direction.
 
-For every screen verify:
+Avoid generic SaaS forms, admin-dashboard aesthetics, developer-tool language,
+giant forms, unnecessary explanatory text, excessive borders, dense
+configuration screens, raw browser controls where a modest enhancement
+materially improves usability, dark HookUs-style visual language, and
+inconsistent one-off components. Do not over-design. Clarity and ease of use
+come before decoration.
+
+Every screen should make immediately understandable: where the member is; what
+they are asked to do; why it matters, if explanation is necessary; what the
+primary action is; and what happens next. Helper copy must not compete visually
+with the task.
+
+### Mobile-first, onboarding, and progressive disclosure
+
+Dating products are primarily personal and mobile. Evaluate every new
+application screen at mobile sizes first—thumb reach, tap targets, mobile
+keyboards, select/picker behavior, sticky actions, scrolling, focus, density,
+image interaction, validation placement, safe spacing, and keyboard-obscured
+controls. Desktop must remain excellent; mobile is not a compressed desktop
+layout.
+
+Onboarding should collect the minimum information needed for a useful member
+experience. Do not expose every backend preference because it exists.
+Distinguish identity/profile information, essential matching intent, discovery
+filters that can be tuned later, optional profile enrichment, and
+verification/trust as separate journeys where appropriate. Avoid narrowing a
+new member's pool before they have experienced DateZA. Use broad, sensible
+server-supported defaults where product requirements permit. Prefer getting
+the member successfully into DateZA, letting them experience value, then
+letting them refine—not configuring the entire dating engine before they see
+another person.
+
+### Interaction quality and visual QA
+
+Every interactive feature must consider loading, disabled/pending, success,
+validation, failure, retry, duplicate clicks, empty, keyboard, focus, touch,
+and asynchronous state changes. A `200` response is not proof that the UX
+works. Verify the user-visible outcome.
+
+For significant UI work, source inspection and tests alone are insufficient.
+Use the approved frontend skills, then inspect the result. Representative
+widths include 1440/1280 desktop, 768 tablet, 390 mobile, and 360 mobile; use
+judgment rather than mechanically testing every width. Check hierarchy,
+alignment, spacing, typography, control choice, readability, overflow, image
+crops, focus, keyboard behavior, loading and error states, actual
+navigation/progression, and console/network anomalies.
+
+A frontend feature is not done merely because TypeScript compiles, an API
+returns 200, tests pass, or the build succeeds. Done means, proportional to the
+ticket: correct, usable, visually intentional, responsive, accessible,
+integrated, and verified from the member's perspective.
+
+For every screen also verify:
 
 - clear primary task and hierarchy;
 - small-screen behavior without horizontal scrolling;
@@ -193,7 +308,8 @@ when their generation command and source contract are documented and reviewable.
 
 Use review effort proportional to risk:
 
-- Routine UI/copy: implementation review plus lint, typecheck, build, browser.
+- Routine UI/copy: implementation review plus lint, typecheck, build, browser,
+  and a product/UX pass (control choice, consumer copy, mobile, interaction).
 - Authentication, profile publication, discovery, messaging, or payments:
   contract and negative-path review in addition to the above.
 - Location, identity verification, trust, moderation, blocking/reporting,
@@ -215,14 +331,19 @@ Project skills are versioned in `skills-lock.json` and copied into
 `.agents/skills` so their behavior can be reviewed with the codebase. They are
 supporting workflows, not an alternate policy layer. Keep the set small.
 
+For frontend tickets, inspect this set before implementation. When a skill is
+relevant, use it. Do not ignore an applicable specialist skill and then produce
+a generic implementation. Repository rules and verified product/backend
+contracts still take precedence over generic skill guidance.
+
 Current approved skills:
 
 | Skill | Use |
 | --- | --- |
-| `frontend-design` | Intentional production UI creation and redesign |
+| `frontend-design` | Intentional production UI creation and redesign; follow DateZA's approved landing-page direction rather than a generic aesthetic |
 | `vercel-react-best-practices` | React structure and performance review |
 | `web-design-guidelines` | Accessibility and interface-quality audit |
-| `webapp-testing` | Local browser exploration and verification |
+| `webapp-testing` | Local browser exploration, screenshots, and verification for meaningful UI work |
 
 Install or update skills with telemetry disabled. Review their source, origin,
 security assessment, lockfile change, and any scripts before use. Do not update

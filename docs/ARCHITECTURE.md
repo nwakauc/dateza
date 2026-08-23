@@ -17,7 +17,11 @@ D8N domains, data stores, jobs, and providers
 ```
 
 DateZA owns presentation, navigation, local interaction state, safe display
-copy, and adaptation of approved D8N contracts. D8N owns identity,
+copy, and adaptation of approved D8N contracts. Contracts define what is valid;
+they do not automatically define the best member interface. The client
+translates between human experience and the API: control choice, consumer copy,
+mobile-first layout, progressive disclosure, and visual hierarchy are DateZA
+product work. D8N owns identity,
 authorization, profiles, media policy, eligibility, discovery/ranking, likes,
 matches, messaging, trust, moderation, quotas, entitlements, and lifecycle
 rules.
@@ -40,13 +44,23 @@ the pattern for the authenticated app.
 
 Client routing uses React Router with `BrowserRouter` (see
 `docs/decisions/0001-spa-routing.md`). Public product paths are `/`, `/sign-up`,
-`/sign-in`, `/forgot-password`, `/reset-password`, a protected `/signed-in`
-placeholder after authentication, and a public catch-all 404. Session bootstrap
-uses `GET /api/v1/me` with an in-memory bearer token (see
-`docs/decisions/0002-in-memory-bearer-session.md`). Password register, login,
-logout, and recovery call the verified D8N auth contract. There is still no
-remote-state library, authenticated application chrome, or generated D8N SDK.
-Do not infer onboarding or dating features from planning documents.
+`/sign-in`, `/forgot-password`, and `/reset-password`. Authenticated paths are
+`/onboarding` (incomplete D8N profile setup, including owner photo upload) and `/home` (published or
+suspended placeholder until Discovery exists). `/signed-in` still loads the
+home placeholder for old links. Session bootstrap uses `GET /api/v1/me` with an
+in-memory bearer token (see `docs/decisions/0002-in-memory-bearer-session.md`).
+The API origin is `VITE_D8N_API_URL`, read by `src/lib/config.ts` and consumed
+only by `src/lib/api/client.ts`. Vite embeds that value at build time; local
+dev uses `.env.development`
+(`https://dateza-staging-api.d8n.tech`) on `http://localhost:5173` so browser
+CORS matches the DateZA staging allowlist. Vercel Production and Preview must
+set the same `VITE_D8N_API_URL` and redeploy; `https://staging-api.d8n.tech` is
+HookUs, not DateZA. Do not call `http://dateza.test:3000` unless a local D8N
+process is the intended backend. Direct visits
+to `/sign-up` and other client routes need the SPA rewrite in `vercel.json`.
+Onboarding progress is server-owned (`GET /api/v1/profile` and
+`GET /api/v1/profile/configuration`). There is still no remote-state library, authenticated application chrome, or
+generated D8N SDK.
 
 ## Dependency direction
 

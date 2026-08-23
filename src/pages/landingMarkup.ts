@@ -18,7 +18,7 @@ export const landingMarkup = `
   <div class="dz-hero-glow" style="position:absolute;top:-60px;right:-80px;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(232,55,90,.07),transparent 65%)"></div>
   <div class="dz-hero-grid" style="display:grid;grid-template-columns:minmax(480px,1fr) 760px;gap:20px;align-items:center">
     <div class="dz-hero-copy" style="display:flex;flex-direction:column;gap:26px;position:relative;z-index:2">
-      <h1 class="dz-hero-title" style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:92px;line-height:.98;letter-spacing:-2px">Meet someone<br>who <em style="color:#E8375A">gets</em> you.</h1>
+      <h1 class="dz-hero-title" style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:92px;line-height:.98;letter-spacing:-2px">Meet someone<br>who <em style="color:#E8375A">chooses</em> you.</h1>
       <div class="dz-hero-subrow" style="display:flex;align-items:center;gap:14px">
         <span class="dz-hero-sub" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:40px;color:#1C1720">Right here.</span>
         <svg width="46" height="40" viewBox="0 0 46 40" style="animation:dz-pulse 2.6s ease-in-out infinite"><path d="M23 36S6 26 6 15.2C6 8.8 11 4.5 16.2 4.5c2.5 0 4.7 1 5.8 2.6 1.1-1.6 3.3-2.6 5.8-2.6C33 4.5 38 8.8 38 15.2 38 26 23 36 23 36z" fill="none" stroke="#E8375A" stroke-width="2.5"></path></svg>
@@ -29,7 +29,7 @@ export const landingMarkup = `
         <a href="#how-it-works" style="display:block;color:inherit;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:600"><span style="width:46px;height:46px;border-radius:50%;background:#FFF0F3;color:#E8375A;display:inline-flex;align-items:center;justify-content:center;font-size:13px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-0.15em;flex:none;margin-left:0.08em"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>See How It Works</a>
       </div>
     </div>
-    <div class="dz-hero-visual-mobile"><img class="dz-img" src="/images/people/couple-hero.webp" alt="A couple smiling and connecting on a Cape Town beach at sunset" loading="eager"></div>
+    <div class="dz-hero-visual-mobile"><img class="dz-img" src="/images/people/couple-hero-mobile.webp" alt="A couple smiling together at sunset" loading="eager"></div>
     <div class="dz-hero-visual-wrap"><div class="dz-hero-visual" style="position:relative;height:680px">
       <a href="#discover" style="display:block;color:inherit;text-decoration:none;cursor:pointer;position:absolute;top:64px;left:36px;width:330px;height:470px;border-radius:26px;overflow:hidden;transform:rotate(-7deg);box-shadow:0 22px 55px rgba(28,23,32,.16)">
         <img class="dz-img" src="/images/people/sipho.webp" alt="Sipho, 28, Johannesburg" loading="eager">

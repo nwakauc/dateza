@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
   useEffect(() => {
     document.title = "Forgot password — DateZA";
     return () => {
-      document.title = "DateZA — Meet someone who gets you.";
+      document.title = "DateZA — Meet someone who chooses you.";
     };
   }, []);
 

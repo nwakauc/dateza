@@ -21,7 +21,7 @@ export function GuestRoute({ children }: Props) {
   }
 
   if (session.status === "authenticated") {
-    return <Navigate to="/signed-in" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return children;
