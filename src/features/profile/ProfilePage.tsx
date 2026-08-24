@@ -2,7 +2,7 @@ import { useEffect, useId } from "react";
 import { Link } from "react-router-dom";
 import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
-import { ShieldCheckIcon, ShieldIcon, GearIcon, ChevronRightIcon, CameraIcon, SparkleIcon, PencilIcon } from "../shell/icons.tsx";
+import { ShieldCheckIcon, ShieldIcon, GearIcon, ChevronRightIcon, CameraIcon, PencilIcon } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
@@ -38,7 +38,7 @@ export default function ProfilePage() {
 
   if (account.loading) {
     return (
-      <div className="shell-page shell-page--narrow" id="main-content">
+      <div className="shell-page shell-page--narrow">
         <p className="shell-page__subtitle">Loading your profile…</p>
       </div>
     );
@@ -50,11 +50,11 @@ export default function ProfilePage() {
   const location = [profile?.city, profile?.country_code].filter(Boolean).join(", ");
 
   return (
-    <div className="shell-page shell-page--narrow" id="main-content">
+    <div className="shell-page shell-page--narrow">
       <div className="profile-hero">
         <div className="profile-hero__avatar">
           {account.avatarUrl ? (
-            <img src={account.avatarUrl} alt="" />
+            <img src={account.avatarUrl} width="72" height="72" alt="" />
           ) : (
             <span className="profile-hero__avatar-initial">{account.initial}</span>
           )}
@@ -67,7 +67,7 @@ export default function ProfilePage() {
           {location ? <p className="profile-hero__meta">{location}</p> : null}
           {verified ? (
             <p className="profile-hero__badge profile-hero__badge--verified">
-              <ShieldCheckIcon /> RealMe verified
+              <ShieldCheckIcon /> Contact verified
             </p>
           ) : (
             <button
@@ -114,8 +114,8 @@ export default function ProfilePage() {
             <ShieldCheckIcon />
           </span>
           <span className="shell-row__body">
-            <p className="shell-row__title">RealMe verification</p>
-            <p className="shell-row__hint">Confirm your email or phone to build trust</p>
+            <p className="shell-row__title">Contact verification</p>
+            <p className="shell-row__hint">Confirm your email or phone</p>
           </span>
           <span className={`shell-row__status ${verified ? "shell-row__status--verified" : "shell-row__status--pending"}`}>
             {verified ? "Verified" : "Pending"}
@@ -125,16 +125,6 @@ export default function ProfilePage() {
 
       <div className="profile-section">
         <p className="profile-section__title">Account</p>
-        <Link to="/upgrade" className="shell-row">
-          <span className="shell-row__icon">
-            <SparkleIcon />
-          </span>
-          <span className="shell-row__body">
-            <p className="shell-row__title">Upgrade to DateZA Plus</p>
-            <p className="shell-row__hint">More profiles, more control</p>
-          </span>
-          <ChevronRightIcon className="shell-row__chevron" />
-        </Link>
         <Link to="/settings" className="shell-row">
           <span className="shell-row__icon">
             <GearIcon />

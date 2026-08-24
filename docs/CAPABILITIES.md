@@ -1,6 +1,6 @@
 # DateZA Frontend Capability Cockpit
 
-**Last verified against this repository:** 2026-08-23
+**Last verified against this repository:** 2026-08-24
 
 This table records evidence, not aspiration. Update it only when a ticket adds
 or invalidates the linked implementation and verification. Backend availability
@@ -24,12 +24,14 @@ shipped them. See "Known documentation drift" below.
 | Profile/onboarding | P0 | Implemented | `GET/PATCH /api/v1/profile`, configuration, preferences, photos, options, publication | `src/features/onboarding/onboarding.test.tsx` | Needs staging host; reload signs out (memory-only token) |
 | Safe profile media | P0 | Implemented | Direct-to-R2 upload intent, attach, signed retrieval, delete | `src/features/onboarding/onboarding.test.tsx` photo step | Needs staging R2; DateZA photos stay hidden until moderated; no published max count |
 | Post-signup contact verification (email/phone OTP) | P0 | Implemented | `POST/PATCH /api/v1/auth/verification` (D8N: implemented now, contact-only — not RealMe identity verification) | Manual QA; no automated test yet | Needs staging host |
-| Discovery (DateZA's browse surface) | P1 | Implemented | `GET /api/v1/find` — **not** `GET /api/v1/discovery`, which is deliberately unconfigured for the `dateza` brand per the openapi preamble | Manual QA; no automated test yet | Needs staging host |
-| Profile detail | P1 | Implemented, verification-gated in the UI | `GET /api/v1/profiles/{profile_id}` | Manual QA | D8N does not itself enforce contact-verification on this endpoint — see gap below |
-| Like/Pass | P1 | Implemented, verification-gated in the UI | `POST /api/v1/profiles/{profile_id}/likes`, `POST /api/v1/profiles/{profile_id}/pass` | Manual QA | D8N does not itself enforce contact-verification on either endpoint — see gap below |
-| Match | P1 | Not started (Like response surfaces `matched`/`match_id`; no match list/celebration UI yet) | `POST /api/v1/profiles/{id}/likes` mutual-match detection | None | Not releasable |
+| Discover | P1 | Route and honest unavailable state implemented; no profile feed is fabricated | Dedicated DateZA curated Discover contract and independent daily allowance are not implemented | Browser QA at 390/820/1366/1600 | Awaiting D8N capability |
+| Find | P1 | Implemented with explicit independent allowance copy | `GET /api/v1/find` — **not** `GET /api/v1/discovery`, which is deliberately unconfigured for the `dateza` brand | Browser QA at 390/820/1366/1600 | Needs staging host |
+| Profile detail | P1 | Implemented, verification-gated in the UI and API | `GET /api/v1/profiles/{profile_id}` through `InteractionController` | Manual QA | Needs staging host |
+| Like/Pass | P1 | Implemented, verification-gated in the UI and API | `POST /api/v1/profiles/{profile_id}/likes`, `POST /api/v1/profiles/{profile_id}/pass` through `InteractionController` | Manual QA | Needs staging host |
+| Match | P1 | Match list and start-chat action implemented; match celebration remains unbuilt | `GET /api/v1/matches`, mutual-match response, `POST /api/v1/matches/{id}/conversation` | Browser QA with controlled contract fixtures | Needs staging two-member proof |
 | Blocking/reporting | P0 | Not started | Cross-domain safety enforcement | None | Not releasable |
-| Match-gated text chat | P1 | Not started | Messaging, rate limits, block enforcement | None | Not releasable |
+| Match-gated text chat | P1 | Conversation list, history, selection, and bounded text send implemented | Conversation/message APIs; server rate limits and block enforcement; no read receipts or realtime | Browser QA with controlled populated fixtures | Needs staging two-member proof |
+| Product notifications | P1 | Inbox, unread count, individual read, and mark-all-read implemented | `GET/PATCH/POST /api/v1/notifications*`; current type set is limited to `dateza.welcome` | Browser QA with controlled unread fixture | Needs staging host |
 | Account closure | P0 | Not started | Closure, revocation, purge contract | None | Not releasable |
 | RealMe presentation | P1 | Not started | Exact verification assertion contract (distinct from the contact-verification shipped above) | None | Claim prohibited |
 | Trust standing | P1 | Not started | Privacy-safe standing contract | None | Claim prohibited |
@@ -41,22 +43,13 @@ needs evidence that matches the risk: static checks, build, browser and
 accessibility QA, plus automated tests when `docs/TESTING.md` says the risk
 warrants them. Implementation is not the same as release confidence.
 
-## Known backend gaps (confirmed against D8N source, 2026-08-23)
+## Previously recorded backend gaps resolved
 
-- **No identifier-change endpoint.** There is no D8N API to correct/change an
-  unverified email or phone after registration (searched the full
-  `openapi.yaml` path list and the Rails controllers — only
-  `POST/PATCH /api/v1/auth/verification` exist, and both operate on the
-  identifier already on file). The frontend verification UI does not offer a
-  "Change email"/"Change number" action because there is nowhere to send it.
-  Needed: an endpoint to update the current user's unverified phone/email and
-  re-dispatch a verification code to the new value.
-- **Like/Pass/profile-detail do not check contact verification server-side.**
-  `Api::V1::LikesController`, `Api::V1::ProfilePassesController`, and
-  `Api::V1::ProfilesController#show` only call `authenticate_user!` (plus
-  eligibility/rate-limit checks) — none check `IdentityIdentifier` verification
-  state. The frontend gates these interactions in the UI, but an unverified
-  user calling the API directly is not currently blocked by D8N.
+Re-verification against D8N source on 2026-08-24 found that login-email change
+now has request/confirmation endpoints, and profile detail, Like, Pass, Matches,
+Conversations, and Messages inherit `Api::V1::InteractionController`, which
+enforces contact verification. Older cockpit notes claiming otherwise were
+removed rather than carried forward as release blockers.
 
 ## Known documentation drift (fixed 2026-08-23)
 

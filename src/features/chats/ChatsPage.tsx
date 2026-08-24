@@ -1,43 +1,32 @@
-import { useEffect } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { listConversations, listMessages, sendMessage } from "../../lib/api/social.ts";
+import type { Conversation, Message } from "../../lib/api/socialTypes.ts";
 import { ChatIcon } from "../shell/icons.tsx";
+import { useOwnAccount } from "../shell/useOwnAccount.ts";
 
-/**
- * DateZA has no messaging backend yet (no conversations/messages endpoints
- * exist in lib/api). This holds the route, the nav destination, and the
- * list+detail layout shape so wiring in real conversations later is a data
- * change, not a redesign — it never fabricates conversations.
- */
+function timeLabel(value: string): string { const date = new Date(value); return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date); }
+
 export default function ChatsPage() {
-  useEffect(() => {
-    document.title = "Chats — DateZA";
-    return () => {
-      document.title = "DateZA — Meet someone who chooses you.";
-    };
-  }, []);
-
-  return (
-    <div className="shell-page" id="main-content">
-      <div className="shell-page__header">
-        <p className="shell-page__eyebrow">Conversations</p>
-        <h1 className="shell-page__title">Chats</h1>
-        <p className="shell-page__subtitle">Message the people you've matched with.</p>
-      </div>
-
-      <div className="chats-layout">
-        <div className="chats-list">
-          <div className="shell-empty shell-empty--in-list">
-            <ChatIcon className="shell-empty__icon" />
-            <p className="shell-empty__title">No conversations yet</p>
-            <p className="shell-empty__body">
-              When you match with someone, you can start chatting here. Head to Discover or Find to make your
-              first match.
-            </p>
-          </div>
-        </div>
-        <div className="chats-detail">
-          <p className="shell-page__subtitle">Select a conversation to start chatting.</p>
-        </div>
-      </div>
-    </div>
-  );
+  const account = useOwnAccount(); const [params, setParams] = useSearchParams();
+  const [conversations, setConversations] = useState<Conversation[]>([]); const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true); const [loadedConversationId, setLoadedConversationId] = useState<string>(); const [messageErrorId, setMessageErrorId] = useState<string>(); const [error, setError] = useState(false);
+  const [draft, setDraft] = useState(""); const [sending, setSending] = useState(false); const [sendError, setSendError] = useState(false);
+  const selectedId = params.get("conversation"); const selected = useMemo(() => conversations.find((item) => item.id === selectedId), [conversations, selectedId]);
+  const load = useCallback(() => { void listConversations().then((result) => setConversations(result.conversations)).catch(() => setError(true)).finally(() => setLoading(false)); }, []);
+  function retry() { setLoading(true); setError(false); load(); }
+  useEffect(() => { document.title = "Chats — DateZA"; load(); return () => { document.title = "DateZA — Meet someone who chooses you."; }; }, [load]);
+  useEffect(() => { if (!selectedId) return; let cancelled = false; void listMessages(selectedId).then((result) => { if (!cancelled) { setMessages(result.messages); setMessageErrorId(undefined); setLoadedConversationId(selectedId); } }).catch(() => { if (!cancelled) { setMessages([]); setMessageErrorId(selectedId); setLoadedConversationId(selectedId); } }); return () => { cancelled = true; }; }, [selectedId]);
+  async function submit(event: FormEvent) { event.preventDefault(); const body = draft.trim(); if (!selected || !body || sending) return; setSending(true); setSendError(false); try { const message = await sendMessage(selected.id, body); setMessages((current) => [message, ...current]); setDraft(""); } catch { setSendError(true); } finally { setSending(false); } }
+  if (error) return <div className="shell-page"><div className="shell-empty"><ChatIcon className="shell-empty__icon" /><p className="shell-empty__title">Chats didn’t load</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div></div>;
+  return <div className="shell-page shell-page--chats">
+    <div className="shell-page__header"><p className="shell-page__eyebrow">Conversations</p><h1 className="shell-page__title">Chats</h1><p className="shell-page__subtitle">A good hello can change everything.</p></div>
+    <div className={`chats-layout${selected ? " chats-layout--selected" : ""}`}><section className="chats-list" aria-label="Conversations">
+      {loading ? <div className="shell-loading"><span />Loading chats…</div> : null}
+      {!loading && conversations.length === 0 ? <div className="shell-empty shell-empty--in-list"><ChatIcon className="shell-empty__icon" /><p className="shell-empty__title">No conversations yet</p><p className="shell-empty__body">Your chats will appear after you match and start talking.</p><Link className="shell-primary-action" to="/find">Explore Find</Link></div> : null}
+      {conversations.map((conversation) => { const name = conversation.profile.display_name || "DateZA member"; const photo = conversation.profile.photos[0]; return <button type="button" key={conversation.id} className={`conversation-row${selectedId === conversation.id ? " conversation-row--active" : ""}`} onClick={() => setParams({ conversation: conversation.id })}>{photo ? <img src={photo.url} width="56" height="56" alt="" /> : <span className="conversation-row__initial">{name[0]?.toUpperCase()}</span>}<span className="conversation-row__copy"><strong>{name}</strong><span>{conversation.last_message?.body || "Start the conversation"}</span></span>{conversation.last_message ? <time dateTime={conversation.last_message.created_at}>{timeLabel(conversation.last_message.created_at)}</time> : null}</button>; })}
+    </section><section className="chats-detail" aria-label={selected ? `Chat with ${selected.profile.display_name || "member"}` : "Selected conversation"}>
+      {!selected ? <div className="chats-detail__empty"><ChatIcon /><p>Choose a conversation to start chatting.</p></div> : <><header className="chat-header"><button type="button" aria-label="Back to conversations" onClick={() => setParams({})}>←</button><div><strong>{selected.profile.display_name || "DateZA member"}</strong><span>{selected.status === "active" ? "Matched on DateZA" : "Conversation closed"}</span></div><Link to={`/profile/${selected.profile.id}`}>View profile</Link></header><div className="message-list" aria-live="polite">{loadedConversationId !== selectedId ? <div className="shell-loading"><span />Loading messages…</div> : null}{messageErrorId === selectedId ? <div className="chat-first-message"><ChatIcon /><strong>Messages didn’t load</strong><span>Check your connection, then return to your chats and try again.</span><button className="shell-text-action" type="button" onClick={() => setParams({})}>Back to chats</button></div> : null}{loadedConversationId === selectedId && messageErrorId !== selectedId && messages.length === 0 ? <div className="chat-first-message"><ChatIcon /><strong>Start with something genuine</strong><span>Ask about something that caught your eye.</span></div> : null}{loadedConversationId === selectedId && messageErrorId !== selectedId ? messages.map((message) => { const own = message.sender_id === account.profile?.id; return <div key={message.id} className={`message-bubble${own ? " message-bubble--own" : ""}`}><p>{message.body}</p><time dateTime={message.created_at}>{timeLabel(message.created_at)}</time></div>; }) : null}</div>{sendError ? <p className="chat-composer__error" role="alert">Your message wasn’t sent. Try again.</p> : null}<form className="chat-composer" onSubmit={(event) => void submit(event)}><label className="sr-only" htmlFor="chat-message">Message</label><textarea id="chat-message" name="message" rows={1} maxLength={2000} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a message…" disabled={selected.status !== "active" || sending} /><button type="submit" disabled={!draft.trim() || sending || selected.status !== "active"}>{sending ? "Sending…" : "Send"}</button></form></>}
+    </section></div>
+  </div>;
 }

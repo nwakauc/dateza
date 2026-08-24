@@ -7,6 +7,7 @@ export type OwnAccount = {
   avatarUrl: string | null;
   displayName: string;
   initial: string;
+  unreadNotifications: number;
   refresh: () => void;
 };
 

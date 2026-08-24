@@ -119,7 +119,7 @@ export default function PhotosPage() {
   }
 
   return (
-    <div className="shell-page shell-page--narrow" id="main-content">
+    <div className="shell-page shell-page--narrow">
       <Link className="onboard-back-top" to="/profile">
         ← Back to profile
       </Link>

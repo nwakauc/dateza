@@ -1,8 +1,8 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
-import { SparkleIcon } from "./icons.tsx";
-import { isProfileAreaPath, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
+import { BellIcon, ChevronRightIcon, GearIcon, ShieldIcon, UserIcon } from "./icons.tsx";
+import { PRIMARY_NAV_ITEMS } from "./navConfig.ts";
 import type { OwnAccount } from "./OwnAccountContext.ts";
 import { useBadgeCounts } from "./useBadgeCounts.ts";
 
@@ -14,7 +14,6 @@ export function TopNav({ account }: Props) {
   const counts = useBadgeCounts();
   const { verification } = useSession();
   const verified = canInteract(verification);
-  const { pathname } = useLocation();
 
   return (
     <header className="shell-topnav">
@@ -39,10 +38,7 @@ export function TopNav({ account }: Props) {
               <NavLink
                 key={item.key}
                 to={item.to}
-                className={({ isActive }) => {
-                  const active = isActive || (item.key === "profile" && isProfileAreaPath(pathname));
-                  return `shell-primary-nav__link${active ? " shell-primary-nav__link--active" : ""}`;
-                }}
+                className={({ isActive }) => `shell-primary-nav__link${isActive ? " shell-primary-nav__link--active" : ""}`}
               >
                 <Icon className="shell-primary-nav__icon" />
                 <span>{item.label}</span>
@@ -53,18 +49,29 @@ export function TopNav({ account }: Props) {
         </nav>
 
         <div className="shell-topnav__actions">
-          <Link to="/upgrade" className="shell-upgrade-pill">
-            <SparkleIcon className="shell-upgrade-pill__icon" />
-            Upgrade
+          <Link to="/notifications" className="shell-icon-link" aria-label="Notifications">
+            <BellIcon />
+            {account.unreadNotifications > 0 ? (
+              <span className="shell-icon-link__badge" aria-label={`${account.unreadNotifications} unread notifications`}>
+                {account.unreadNotifications > 9 ? "9+" : account.unreadNotifications}
+              </span>
+            ) : null}
           </Link>
-          <Link to="/profile" className="shell-avatar" aria-label="Your profile">
-            {account.avatarUrl ? (
-              <img src={account.avatarUrl} alt="" />
-            ) : (
-              <span className="shell-avatar__initial">{account.initial}</span>
-            )}
-            {!verified ? <span className="shell-avatar__dot" aria-label="Verification needed" /> : null}
-          </Link>
+          <details className="shell-account-menu">
+            <summary aria-label="Open account menu">
+              <span className="shell-avatar" aria-hidden="true">
+                {account.avatarUrl ? <img src={account.avatarUrl} width="38" height="38" alt="" /> : <span className="shell-avatar__initial">{account.initial}</span>}
+                {!verified ? <span className="shell-avatar__dot" /> : null}
+              </span>
+              <span className="shell-account-menu__name">{account.displayName || "My account"}</span>
+              <ChevronRightIcon className="shell-account-menu__chevron" />
+            </summary>
+            <div className="shell-account-menu__panel">
+              <Link to="/profile"><UserIcon /><span>Profile</span></Link>
+              <Link to="/settings"><GearIcon /><span>Settings</span></Link>
+              <Link to="/safety"><ShieldIcon /><span>Safety &amp; support</span></Link>
+            </div>
+          </details>
         </div>
       </div>
     </header>

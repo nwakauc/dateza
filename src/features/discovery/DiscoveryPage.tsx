@@ -18,13 +18,12 @@ export default function DiscoveryPage() {
   }, []);
 
   return (
-    <div className="shell-page" id="main-content">
+    <div className="shell-page">
       <div className="shell-page__header">
         <p className="shell-page__eyebrow">Today's picks</p>
         <h1 className="shell-page__title">Your curated selection</h1>
         <p className="shell-page__subtitle">
-          Discover brings you up to 10 profiles a day, chosen for you based on compatibility, preferences, and
-          trust — separate from Find's daily allowance.
+          A separate daily selection shaped around you — not the same profiles or allowance as Find.
         </p>
       </div>
 
@@ -32,8 +31,8 @@ export default function DiscoveryPage() {
         <CompassIcon className="shell-empty__icon" />
         <p className="shell-empty__title">Your daily picks are coming soon</p>
         <p className="shell-empty__body">
-          We're building a smarter set of matches chosen specifically for you — based on compatibility,
-          preferences, and trust.
+          Your curated daily selection is still being prepared. Until it is ready, Find stays open for exploring
+          at your own pace.
         </p>
         <Link className="auth-screen__text-link" to="/find">
           Browse Find in the meantime →

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
+import { BellIcon } from "./icons.tsx";
 import type { OwnAccount } from "./OwnAccountContext.ts";
 
 type Props = {
@@ -26,14 +27,16 @@ export function MobileHeader({ account }: Props) {
           Date<span>ZA</span>
         </span>
       </Link>
-      <Link to="/profile" className="shell-avatar shell-avatar--sm" aria-label="Your profile">
-        {account.avatarUrl ? (
-          <img src={account.avatarUrl} alt="" />
-        ) : (
-          <span className="shell-avatar__initial">{account.initial}</span>
-        )}
-        {!verified ? <span className="shell-avatar__dot" aria-label="Verification needed" /> : null}
-      </Link>
+      <div className="shell-mobile-header__actions">
+        <Link to="/notifications" className="shell-icon-link" aria-label="Notifications">
+          <BellIcon />
+          {account.unreadNotifications > 0 ? <span className="shell-icon-link__badge">{account.unreadNotifications > 9 ? "9+" : account.unreadNotifications}</span> : null}
+        </Link>
+        <Link to="/profile" className="shell-avatar shell-avatar--sm" aria-label="Your profile">
+          {account.avatarUrl ? <img src={account.avatarUrl} width="32" height="32" alt="" /> : <span className="shell-avatar__initial">{account.initial}</span>}
+          {!verified ? <span className="shell-avatar__dot" aria-label="Verification needed" /> : null}
+        </Link>
+      </div>
     </header>
   );
 }

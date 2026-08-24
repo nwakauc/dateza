@@ -62,7 +62,7 @@ export function UserIcon({ className }: IconProps) {
   );
 }
 
-/** RealMe / trust indicator. */
+/** Confirmed contact indicator; never implies RealMe identity verification. */
 export function ShieldCheckIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -81,11 +81,11 @@ export function ShieldIcon({ className }: IconProps) {
   );
 }
 
-/** Upgrade / premium — a restrained sparkle, not a literal crown. */
-export function SparkleIcon({ className }: IconProps) {
+export function BellIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.5l1.9 5.9 5.9 1.9-5.9 1.9L12 18.1l-1.9-5.9L4.2 10.3l5.9-1.9z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5.5 17.5h13l-1.7-2.2V10a4.8 4.8 0 0 0-9.6 0v5.3z" />
+      <path d="M10 20h4" />
     </svg>
   );
 }

@@ -1,9 +1,7 @@
 /**
- * DateZA has no "likes received" or "unread messages" endpoints yet (see
- * src/features/likes/LikesPage.tsx and src/features/chats/ChatsPage.tsx —
- * both are honest placeholders until those backend contracts exist). The
- * nav is already wired to render real counts the moment this returns them;
- * until then it stays at zero rather than guessing.
+ * D8N exposes Matches and Conversations, but not likes-received counts or
+ * conversation read state. Keep those two primary-nav badges at zero rather
+ * than deriving misleading counts from different concepts.
  */
 export function useBadgeCounts(): { likes: number; chats: number } {
   return { likes: 0, chats: 0 };

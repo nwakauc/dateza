@@ -52,14 +52,14 @@ export default function EditProfilePage() {
 
   if (account.loading) {
     return (
-      <div className="shell-page shell-page--narrow" id="main-content">
+      <div className="shell-page shell-page--narrow">
         <p className="shell-page__subtitle">Loading your profile…</p>
       </div>
     );
   }
 
   return (
-    <div className="shell-page shell-page--narrow" id="main-content">
+    <div className="shell-page shell-page--narrow">
       <Link className="onboard-back-top" to="/profile">
         ← Back to profile
       </Link>

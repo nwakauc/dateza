@@ -61,7 +61,7 @@ function parseOptions(value: unknown): Record<string, string[]> {
   return options;
 }
 
-function parsePublicProfile(value: unknown): PublicProfile {
+export function parsePublicProfile(value: unknown): PublicProfile {
   if (!isRecord(value) || typeof value.id !== "string") {
     throw new ApiError(502, undefined, "invalid_profile_response");
   }

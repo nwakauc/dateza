@@ -11,12 +11,12 @@ import ProfileDetailPage from "../features/find/ProfileDetailPage.tsx";
 import LikesPage from "../features/likes/LikesPage.tsx";
 import MemberHomePage from "../features/member/MemberHomePage.tsx";
 import OnboardingPage from "../features/onboarding/OnboardingPage.tsx";
+import NotificationsPage from "../features/notifications/NotificationsPage.tsx";
 import EditProfilePage from "../features/profile/EditProfilePage.tsx";
 import PhotosPage from "../features/profile/PhotosPage.tsx";
 import ProfilePage from "../features/profile/ProfilePage.tsx";
 import SafetyPage from "../features/profile/SafetyPage.tsx";
 import SettingsPage from "../features/profile/SettingsPage.tsx";
-import UpgradePage from "../features/profile/UpgradePage.tsx";
 import { ProtectedRoute } from "../features/session/ProtectedRoute.tsx";
 import AppShell from "../features/shell/AppShell.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
@@ -83,8 +83,8 @@ export default function AppRoutes() {
         }
       />
 
-      {/* Authenticated product shell: Discover, Find, Likes, Chats, Profile
-          and their secondary destinations all share the same persistent
+      {/* Authenticated product shell: four primary dating destinations plus
+          profile, notifications, settings, and safety share the persistent
           top nav / bottom tab bar. */}
       <Route
         element={
@@ -100,13 +100,13 @@ export default function AppRoutes() {
         <Route path="/find" element={<FindPage />} />
         <Route path="/likes" element={<LikesPage />} />
         <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<EditProfilePage />} />
         <Route path="/profile/photos" element={<PhotosPage />} />
         <Route path="/profile/:id" element={<ProfileDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/safety" element={<SafetyPage />} />
-        <Route path="/upgrade" element={<UpgradePage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

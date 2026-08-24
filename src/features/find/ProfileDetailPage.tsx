@@ -53,11 +53,11 @@ export default function ProfileDetailPage() {
   // profile detail content here, regardless of how this route was reached.
   if (!verified) {
     return (
-      <main className="auth-screen" id="main-content">
+      <div className="auth-screen">
         <div className="auth-screen__panel">
           <VerificationFlow onDone={() => navigate("/find", { replace: true })} />
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -72,7 +72,7 @@ export default function ProfileDetailPage() {
   const location = [profile.city, profile.country_code].filter(Boolean).join(", ");
 
   return (
-    <div className="shell-page" id="main-content">
+    <div className="shell-page">
       <Link className="onboard-back-top" to="/find">
         ← Back to Find
       </Link>

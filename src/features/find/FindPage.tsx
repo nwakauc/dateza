@@ -128,7 +128,7 @@ export default function FindPage() {
   const resetTime = allowance ? formatResetTime(allowance.resets_at) : undefined;
 
   return (
-    <div className="shell-page" id="main-content">
+    <div className="shell-page">
       <div className="shell-page__header">
         <p className="shell-page__eyebrow">Active browsing</p>
         <h1 className="shell-page__title">Find</h1>
@@ -142,7 +142,7 @@ export default function FindPage() {
       ) : null}
 
       {allowance && !exhausted && allowance.remaining > 0 ? (
-        <p className="feed-allowance">{allowance.remaining} left today</p>
+        <p className="feed-allowance">{allowance.remaining} Find {allowance.remaining === 1 ? "profile" : "profiles"} remaining today</p>
       ) : null}
 
       {profiles.length > 0 ? (
