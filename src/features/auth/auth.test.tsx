@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -226,56 +226,42 @@ describe("authentication flows", () => {
           }),
         );
       }
-      if (url.endsWith("/api/v1/find")) {
-        return Promise.resolve(
-          jsonResponse(200, {
-            profiles: [],
-            next_cursor: null,
-            allowance: { limit: 10, used: 0, remaining: 10, exhausted: false, resets_at: "2026-12-02T00:00:00+02:00" },
-          }),
-        );
-      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
     renderApp("/home");
 
-    await screen.findByText(/no new profiles/i);
+    await screen.findByRole("heading", { name: /your curated selection/i });
     await user.click(screen.getAllByRole("link", { name: "Profile" })[0]);
     await user.click(await screen.findByRole("button", { name: /sign out/i }));
 
     await waitFor(() => {
       expect(getBearerToken()).toBeUndefined();
     });
-    expect(screen.queryByText(/no new profiles/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /your curated selection/i })).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();
   });
 
-  it("authenticates after registration issues a bearer session", async () => {
+  it("routes straight into onboarding after registration, with no verification modal", async () => {
     const user = userEvent.setup();
-    let identifierVerified = false;
+    const verificationCalls: string[] = [];
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
       if (url.endsWith("/api/v1/me")) {
         if (getBearerToken()) {
-          return Promise.resolve(jsonResponse(200, identifierVerified ? {
-            ...meBody,
-            identifier: { ...meBody.identifier, verified: true },
-            verification_required: false,
-            verification: { code_dispatched: false, resend_available_in: 0 },
-          } : meBody));
+          return Promise.resolve(jsonResponse(200, meBody));
         }
         return Promise.resolve(jsonResponse(401, { error: "unauthorized" }));
       }
       if (url.endsWith("/api/v1/auth/password/register") && method === "POST") {
         return Promise.resolve(jsonResponse(201, credentialBody));
       }
-      if (url.endsWith("/api/v1/auth/verification") && method === "PATCH") {
-        identifierVerified = true;
-        return Promise.resolve(jsonResponse(200, { identifier: { kind: "email", verified: true } }));
+      if (url.endsWith("/api/v1/auth/verification")) {
+        verificationCalls.push(method);
+        return Promise.resolve(jsonResponse(202, { message: "sent", resend_available_in: 60 }));
       }
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(
@@ -298,19 +284,14 @@ describe("authentication flows", () => {
     await user.type(screen.getByLabelText(/confirm password/i), "secret1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
-    expect(await screen.findByRole("dialog", { name: /verify your email/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /enter your code/i })).toBeInTheDocument();
-    expect(document.querySelector("a[href='/discover'][aria-current='page']")).not.toBeNull();
+    // Onboarding, not Discover, right after registration — and no OTP modal
+    // anywhere inside it, even though the registration challenge is already
+    // dispatched (credentialBody.verification.code_dispatched === true).
+    expect(await screen.findByRole("heading", { name: /let's start with you/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(getBearerToken()).toBe("opaque-session-token");
-
-    fireEvent.change(screen.getByLabelText(/verification code, digit 1/i), { target: { value: "123456" } });
-    await user.click(screen.getByRole("button", { name: /verify email/i }));
-    expect(await screen.findByRole("heading", { name: /email verified/i })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    }, { timeout: 2_000 });
-    expect(screen.getByRole("heading", { name: /let people see who you are/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /complete your profile/i })).toHaveAttribute("href", "/onboarding");
+    // The registration challenge must be preserved, not reissued.
+    expect(verificationCalls).toEqual([]);
   });
 
   it("keeps password recovery anti-enumeration copy on a successful request", async () => {

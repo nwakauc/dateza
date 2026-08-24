@@ -24,15 +24,17 @@ export const PROFILE_SCREEN_ORDER: readonly ProfileScreen[] = [
 
 export function memberDestination(
   status: ProfileOnboardingStatus,
-): "/find" | "/home" | "/onboarding" {
+): "/discover" | "/home" | "/onboarding" {
   if (status.state === "profile_suspended") {
     return "/home";
   }
   if (status.state === "complete") {
-    // Find is the only browsing surface with a working backend today —
-    // Discovery (curated recommendations) has no backend yet, so a
-    // completed member lands on Find, not the Discovery placeholder.
-    return "/find";
+    // FE-01 (2026-08-24): registration → onboarding → Discover → verification
+    // is the intended new-member journey, so a completed member lands on
+    // Discover. Discover itself still has no curated-picks backend and shows
+    // an honest "coming soon" placeholder with a link into Find — that
+    // separation is unchanged, only the post-onboarding landing page moved.
+    return "/discover";
   }
   return "/onboarding";
 }

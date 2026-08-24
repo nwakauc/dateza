@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { listNotifications } from "../../lib/api/notifications.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getCurrentProfile } from "../../lib/api/profile.ts";
 import type { OwnerProfile, ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
+import { memberDestination } from "../onboarding/destination.ts";
 import { useSession } from "../session/useSession.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationBanner } from "../verification/VerificationBanner.tsx";
@@ -33,22 +34,23 @@ export default function AppShell() {
   const [loading, setLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [version, setVersion] = useState(0);
-  const initialPromptKey = verification.status === "known" && !verification.verified
-    ? `${verification.kind}:${verification.maskedDestination}`
-    : null;
-  const promptedVerification = useRef<string | null>(initialPromptKey);
-  const [verificationOpen, setVerificationOpen] = useState(initialPromptKey !== null);
+  const promptedVerification = useRef<string | null>(null);
+  const [verificationOpen, setVerificationOpen] = useState(false);
 
   const refresh = useCallback(() => setVersion((current) => current + 1), []);
   const closeVerification = useCallback(() => setVerificationOpen(false), []);
 
+  // Verification must never outrank incomplete onboarding: only prompt once
+  // onboarding is confirmed complete, so the OTP modal can't appear while a
+  // member is mid-onboarding or before we've learned their onboarding state.
   useEffect(() => {
+    if (onboarding?.state !== "complete") return;
     if (verification.status !== "known" || verification.verified) return;
     const key = `${verification.kind}:${verification.maskedDestination}`;
     if (promptedVerification.current === key) return;
     promptedVerification.current = key;
     setVerificationOpen(true);
-  }, [verification]);
+  }, [verification, onboarding]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +75,18 @@ export default function AppShell() {
       cancelled = true;
     };
   }, [version]);
+
+  // Onboarding must be complete before any app-shell destination (Discover,
+  // Find, Likes, Chats, ...) mounts — this is the single guard for that
+  // precedence, so individual pages don't each need their own redirect.
+  // `onboarding` starts null while loading or on a failed fetch; in both
+  // cases fall through and render as before rather than blocking the shell.
+  if (onboarding) {
+    const destination = memberDestination(onboarding);
+    if (destination !== "/discover") {
+      return <Navigate to={destination} replace />;
+    }
+  }
 
   const displayName = profile?.display_name ?? "";
   const account: OwnAccount = {

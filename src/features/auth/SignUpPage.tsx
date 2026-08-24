@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerWithPassword } from "../../lib/api/auth.ts";
+import { memberDestination } from "../onboarding/destination.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
 import { PasswordField } from "./PasswordField.tsx";
 import { signUpErrorMessage } from "./authErrors.ts";
@@ -42,7 +43,10 @@ export default function SignUpPage() {
       const trimmedIdentifier = identifier.trim();
       const session = await registerWithPassword(trimmedIdentifier, password);
       await establishSession(session);
-      navigate("/discover", { replace: true });
+      // Onboarding must always come before Discover and verification for a
+      // new member — reuse the same precedence the rest of the app uses
+      // rather than hardcoding a destination here.
+      navigate(memberDestination(session.onboarding), { replace: true });
     } catch (caught) {
       setError(signUpErrorMessage(caught));
       setPending(false);

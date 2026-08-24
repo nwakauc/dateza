@@ -29,7 +29,7 @@ describe("onboarding destination", () => {
     ).toBe("/onboarding");
   });
 
-  it("sends a completed member straight to Find", () => {
+  it("sends a completed member straight to Discover", () => {
     expect(
       memberDestination(
         status({
@@ -39,7 +39,7 @@ describe("onboarding destination", () => {
           profile_published: true,
         }),
       ),
-    ).toBe("/find");
+    ).toBe("/discover");
   });
 
   it("keeps a suspended member out of onboarding and Find", () => {

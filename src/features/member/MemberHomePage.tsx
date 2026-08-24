@@ -58,7 +58,7 @@ export default function MemberHomePage() {
   }
 
   const destination = memberDestination(onboarding);
-  if (destination === "/onboarding" || destination === "/find") {
+  if (destination === "/onboarding" || destination === "/discover") {
     return <Navigate to={destination} replace />;
   }
 
