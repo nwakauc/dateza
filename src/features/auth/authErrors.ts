@@ -64,8 +64,19 @@ export function recoveryRequestErrorMessage(error: unknown): string {
 }
 
 export function recoveryVerifyErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && (error.status === 401 || error.code === "invalid_code")) {
-    return "That recovery code did not work. Request a new one if it has expired.";
+  if (error instanceof ApiError) {
+    if (error.code === "verification_code_expired") {
+      return "That recovery code has expired. Request a new one to continue.";
+    }
+    if (error.code === "verification_code_used") {
+      return "That recovery code has already been used. Start password recovery again.";
+    }
+    if (error.code === "verification_attempts_exhausted") {
+      return "That recovery code is no longer available. Request a new one to continue.";
+    }
+    if (error.status === 401 || error.code === "invalid_code") {
+      return "That recovery code isn't right. Check the code and try again.";
+    }
   }
   return unexpectedAuthMessage(error);
 }

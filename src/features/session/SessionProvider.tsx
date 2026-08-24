@@ -21,15 +21,30 @@ function failureState(error: unknown): SessionState {
   return { status: "unavailable", reason: "network" };
 }
 
-async function loadSession(): Promise<SessionState> {
+type LoadedSession = {
+  session: SessionState;
+  verification: VerificationState;
+};
+
+async function loadSession(): Promise<LoadedSession> {
   try {
     const user = await getCurrentIdentity();
-    return { status: "authenticated", user };
+    const verification: VerificationState = user.identifier && user.verification
+      ? {
+          status: "known",
+          kind: user.identifier.kind,
+          verified: user.identifier.verified,
+          maskedDestination: user.identifier.masked_destination,
+          codeDispatched: user.verification.code_dispatched,
+          resendAvailableIn: user.verification.resend_available_in,
+        }
+      : { status: "unknown" };
+    return { session: { status: "authenticated", user }, verification };
   } catch (error) {
     if (error instanceof ApiError && error.isUnauthorized) {
-      return { status: "unauthenticated" };
+      return { session: { status: "unauthenticated" }, verification: { status: "unknown" } };
     }
-    return failureState(error);
+    return { session: failureState(error), verification: { status: "unknown" } };
   }
 }
 
@@ -39,7 +54,8 @@ export function SessionProvider({ children }: Props) {
 
   const refreshSession = useCallback(async () => {
     const next = await loadSession();
-    setSession(next);
+    setSession(next.session);
+    setVerification(next.verification);
   }, []);
 
   useEffect(() => {
@@ -52,7 +68,8 @@ export function SessionProvider({ children }: Props) {
 
     void loadSession().then((next) => {
       if (!cancelled) {
-        setSession(next);
+        setSession(next.session);
+        setVerification(next.verification);
       }
     });
 

@@ -1,11 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFindProfiles, likeProfile, passProfile } from "../../lib/api/find.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { FindAllowance, FindProfile } from "../../lib/api/findTypes.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { Modal } from "../verification/Modal.tsx";
-import { VerificationBanner } from "../verification/VerificationBanner.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { ProfileCard } from "./ProfileCard.tsx";
@@ -37,8 +36,7 @@ function formatResetTime(resetsAt: string): string | undefined {
 
 export default function FindPage() {
   const navigate = useNavigate();
-  const { verified, verification, pendingReason, requireVerified, openPrompt, dismiss } = useVerificationGate();
-  const modalTitleId = useId();
+  const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
   const [profiles, setProfiles] = useState<FindProfile[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -137,10 +135,6 @@ export default function FindPage() {
         </p>
       </div>
 
-      {!verified && verification.status === "known" ? (
-        <VerificationBanner kind={verification.kind} onVerify={() => openPrompt("profile")} />
-      ) : null}
-
       {allowance && !exhausted && allowance.remaining > 0 ? (
         <p className="feed-allowance">{allowance.remaining} Find {allowance.remaining === 1 ? "profile" : "profiles"} remaining today</p>
       ) : null}
@@ -181,7 +175,7 @@ export default function FindPage() {
       ) : null}
 
       {pendingReason ? (
-        <Modal titleId={modalTitleId} onClose={dismiss}>
+        <Modal ariaLabel="Verify your account" onClose={dismiss}>
           <VerificationFlow onDone={dismiss} />
         </Modal>
       ) : null}

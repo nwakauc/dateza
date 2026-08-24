@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
@@ -27,7 +27,6 @@ export default function ProfilePage() {
   const account = useOwnAccount();
   const { verification, pendingReason, openPrompt, dismiss } = useVerificationGate();
   const { signOut, pending: signingOut } = useSignOut();
-  const modalTitleId = useId();
 
   useEffect(() => {
     document.title = "Profile — DateZA";
@@ -152,7 +151,7 @@ export default function ProfilePage() {
       </div>
 
       {pendingReason ? (
-        <Modal titleId={modalTitleId} onClose={dismiss}>
+        <Modal ariaLabel="Verify your account" onClose={dismiss}>
           <VerificationFlow onDone={dismiss} />
         </Modal>
       ) : null}

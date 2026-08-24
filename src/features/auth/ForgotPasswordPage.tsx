@@ -1,22 +1,23 @@
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   requestPasswordRecovery,
   verifyPasswordRecovery,
 } from "../../lib/api/auth.ts";
+import { ApiError } from "../../lib/api/errors.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
 import {
   recoveryRequestErrorMessage,
   recoveryVerifyErrorMessage,
 } from "./authErrors.ts";
 import type { ResetPasswordLocationState } from "./resetPasswordState.ts";
+import { OtpInput, type OtpInputHandle } from "../verification/OtpInput.tsx";
 
 const NEUTRAL_FALLBACK =
   "If an eligible account exists, recovery instructions have been sent.";
 
 export default function ForgotPasswordPage() {
   const identifierId = useId();
-  const codeId = useId();
   const statusId = useId();
   const navigate = useNavigate();
   const [step, setStep] = useState<"request" | "verify">("request");
@@ -25,6 +26,7 @@ export default function ForgotPasswordPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
+  const otpRef = useRef<OtpInputHandle>(null);
 
   useEffect(() => {
     document.title = "Forgot password — DateZA";
@@ -66,6 +68,26 @@ export default function ForgotPasswordPage() {
       navigate("/reset-password", { replace: true, state });
     } catch (caught) {
       setError(recoveryVerifyErrorMessage(caught));
+      if (caught instanceof ApiError && caught.code === "verification_code_expired") {
+        setCode("");
+        window.requestAnimationFrame(() => otpRef.current?.focusFirst());
+      }
+      setPending(false);
+    }
+  }
+
+  async function resendRecoveryCode() {
+    if (pending) return;
+    setPending(true);
+    setError(undefined);
+    try {
+      const result = await requestPasswordRecovery(identifier.trim());
+      setNotice(result.message || NEUTRAL_FALLBACK);
+      setCode("");
+      window.requestAnimationFrame(() => otpRef.current?.focusFirst());
+    } catch (caught) {
+      setError(recoveryRequestErrorMessage(caught));
+    } finally {
       setPending(false);
     }
   }
@@ -115,25 +137,24 @@ export default function ForgotPasswordPage() {
               {error}
             </p>
           ) : null}
-          <div className="auth-field">
-            <label htmlFor={codeId}>Recovery code</label>
-            <input
-              id={codeId}
-              name="code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-              disabled={pending}
-              required
-              spellCheck={false}
-            />
-          </div>
-          <button className="auth-form__submit" type="submit" disabled={pending}>
+          <OtpInput
+            ref={otpRef}
+            value={code}
+            onChange={setCode}
+            disabled={pending}
+            label="Recovery code"
+            describedBy={error || notice ? statusId : undefined}
+          />
+          <button className="auth-form__submit" type="submit" disabled={pending || code.length !== 6}>
             {pending ? "Checking…" : "Continue"}
+          </button>
+          <button
+            className="verify-prompt__secondary"
+            type="button"
+            onClick={() => void resendRecoveryCode()}
+            disabled={pending}
+          >
+            Request a new code
           </button>
         </form>
       )}

@@ -21,6 +21,20 @@ export type MeResponse = {
     id: number;
     expires_at: string;
   };
+  identifier: SessionIdentifierVerification | null;
+  verification_required: boolean;
+  verification: VerificationDispatchState | null;
+};
+
+export type SessionIdentifierVerification = {
+  kind: IdentifierKind;
+  verified: boolean;
+  masked_destination: string;
+};
+
+export type VerificationDispatchState = {
+  code_dispatched: boolean;
+  resend_available_in: number;
 };
 
 export type ErrorBody = {
@@ -43,11 +57,7 @@ export type PasswordAuthSessionResponse = {
   expires_at: string;
   user_id: number;
   brand: BrandSummary;
-  identifier: {
-    kind: IdentifierKind;
-    /** False until D8N separately proves control of the phone or email. */
-    verified: boolean;
-  };
+  identifier: SessionIdentifierVerification;
   /**
    * True whenever the session's identifier is still unverified. On register
    * the server has asynchronously dispatched a verification code to
@@ -57,6 +67,7 @@ export type PasswordAuthSessionResponse = {
    */
   verification_required: boolean;
   verification_channel: IdentifierKind | null;
+  verification: VerificationDispatchState;
   onboarding: ProfileOnboardingStatus;
 };
 
@@ -71,4 +82,9 @@ export type IdentifierVerificationResponse = {
     kind: IdentifierKind;
     verified: true;
   };
+};
+
+export type VerificationDeliveryResponse = {
+  message: string;
+  resend_available_in: number;
 };

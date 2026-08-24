@@ -41,8 +41,8 @@ export default function SignUpPage() {
     try {
       const trimmedIdentifier = identifier.trim();
       const session = await registerWithPassword(trimmedIdentifier, password);
-      await establishSession(session, trimmedIdentifier);
-      navigate("/home", { replace: true });
+      await establishSession(session);
+      navigate("/discover", { replace: true });
     } catch (caught) {
       setError(signUpErrorMessage(caught));
       setPending(false);

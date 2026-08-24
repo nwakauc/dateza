@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { listNotifications } from "../../lib/api/notifications.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getCurrentProfile } from "../../lib/api/profile.ts";
-import type { OwnerProfile } from "../../lib/api/profileTypes.ts";
+import type { OwnerProfile, ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
+import { useSession } from "../session/useSession.ts";
+import { Modal } from "../verification/Modal.tsx";
+import { VerificationBanner } from "../verification/VerificationBanner.tsx";
+import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { BottomTabBar } from "./BottomTabBar.tsx";
 import { MobileHeader } from "./MobileHeader.tsx";
 import { OwnAccountContext, type OwnAccount } from "./OwnAccountContext.ts";
@@ -22,20 +26,39 @@ function initialFor(name: string): string {
  * instead of each re-fetching.
  */
 export default function AppShell() {
+  const { verification } = useSession();
   const [profile, setProfile] = useState<OwnerProfile | null>(null);
+  const [onboarding, setOnboarding] = useState<ProfileOnboardingStatus | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [version, setVersion] = useState(0);
+  const initialPromptKey = verification.status === "known" && !verification.verified
+    ? `${verification.kind}:${verification.maskedDestination}`
+    : null;
+  const promptedVerification = useRef<string | null>(initialPromptKey);
+  const [verificationOpen, setVerificationOpen] = useState(initialPromptKey !== null);
 
   const refresh = useCallback(() => setVersion((current) => current + 1), []);
+  const closeVerification = useCallback(() => setVerificationOpen(false), []);
+
+  useEffect(() => {
+    if (verification.status !== "known" || verification.verified) return;
+    const key = `${verification.kind}:${verification.maskedDestination}`;
+    if (promptedVerification.current === key) return;
+    promptedVerification.current = key;
+    setVerificationOpen(true);
+  }, [verification]);
 
   useEffect(() => {
     let cancelled = false;
     Promise.allSettled([getCurrentProfile(), listOwnerPhotos(), listNotifications()])
       .then(([profileResult, photosResult, notificationsResult]) => {
         if (cancelled) return;
-        if (profileResult.status === "fulfilled") setProfile(profileResult.value.profile);
+        if (profileResult.status === "fulfilled") {
+          setProfile(profileResult.value.profile);
+          setOnboarding(profileResult.value.onboarding);
+        }
         if (photosResult.status === "fulfilled") {
           const withImage = photosResult.value.find((photo) => photo.image !== null);
           setAvatarUrl(withImage?.image?.url ?? null);
@@ -55,6 +78,7 @@ export default function AppShell() {
   const account: OwnAccount = {
     loading,
     profile,
+    onboarding,
     avatarUrl,
     displayName,
     initial: initialFor(displayName),
@@ -69,10 +93,18 @@ export default function AppShell() {
         <TopNav account={account} />
         <MobileHeader account={account} />
         <main className="shell-content" id="main-content">
+          {verification.status === "known" && !verification.verified && !verificationOpen ? (
+            <VerificationBanner kind={verification.kind} onVerify={() => setVerificationOpen(true)} />
+          ) : null}
           <Outlet />
         </main>
         <BottomTabBar />
       </div>
+      {verificationOpen && verification.status === "known" ? (
+        <Modal ariaLabel={`Verify your ${verification.kind}`} onClose={closeVerification}>
+          <VerificationFlow onDone={closeVerification} />
+        </Modal>
+      ) : null}
     </OwnAccountContext.Provider>
   );
 }

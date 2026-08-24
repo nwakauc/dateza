@@ -42,7 +42,7 @@ export default function SignInPage() {
     try {
       const trimmedIdentifier = identifier.trim();
       const session = await loginWithPassword(trimmedIdentifier, password);
-      await establishSession(session, trimmedIdentifier);
+      await establishSession(session);
       navigate("/home", { replace: true });
     } catch (caught) {
       setError(signInErrorMessage(caught));

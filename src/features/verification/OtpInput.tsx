@@ -1,4 +1,4 @@
-import { useId, useRef, type ClipboardEvent, type KeyboardEvent } from "react";
+import { forwardRef, useId, useImperativeHandle, useRef, type KeyboardEvent } from "react";
 
 const LENGTH = 6;
 
@@ -10,11 +10,18 @@ type Props = {
   label: string;
 };
 
+export type OtpInputHandle = {
+  focusFirst: () => void;
+};
+
 function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-export function OtpInput({ value, onChange, disabled = false, describedBy, label }: Props) {
+export const OtpInput = forwardRef<OtpInputHandle, Props>(function OtpInput(
+  { value, onChange, disabled = false, describedBy, label },
+  ref,
+) {
   const groupId = useId();
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const digits = Array.from({ length: LENGTH }, (_, index) => value[index] ?? "");
@@ -28,6 +35,8 @@ export function OtpInput({ value, onChange, disabled = false, describedBy, label
   function focusIndex(index: number) {
     inputsRef.current[Math.max(0, Math.min(LENGTH - 1, index))]?.focus();
   }
+
+  useImperativeHandle(ref, () => ({ focusFirst: () => inputsRef.current[0]?.focus() }), []);
 
   function handleChange(index: number, raw: string) {
     const incoming = onlyDigits(raw);
@@ -67,21 +76,6 @@ export function OtpInput({ value, onChange, disabled = false, describedBy, label
     }
   }
 
-  function handlePaste(index: number, event: ClipboardEvent<HTMLInputElement>) {
-    const pasted = onlyDigits(event.clipboardData.getData("text"));
-    if (pasted.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    const next = value.split("");
-    for (let offset = 0; offset < pasted.length && index + offset < LENGTH; offset += 1) {
-      next[index + offset] = pasted[offset];
-    }
-    const filled = next.join("").slice(0, LENGTH);
-    onChange(filled);
-    focusIndex(Math.min(index + pasted.length, LENGTH - 1));
-  }
-
   return (
     <div className="otp-input" role="group" aria-labelledby={groupId} aria-describedby={describedBy}>
       <span id={groupId} className="onboard-sr-only">
@@ -93,7 +87,9 @@ export function OtpInput({ value, onChange, disabled = false, describedBy, label
           ref={(el) => {
             inputsRef.current[index] = el;
           }}
+          data-autofocus={index === 0 ? "true" : undefined}
           className="otp-input__box"
+          name={`verification_code_digit_${index + 1}`}
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
@@ -102,11 +98,12 @@ export function OtpInput({ value, onChange, disabled = false, describedBy, label
           value={digit}
           onChange={(event) => handleChange(index, event.target.value)}
           onKeyDown={(event) => handleKeyDown(index, event)}
-          onPaste={(event) => handlePaste(index, event)}
+          onFocus={(event) => event.currentTarget.select()}
           disabled={disabled}
+          spellCheck={false}
           aria-label={`${label}, digit ${index + 1} of ${LENGTH}`}
         />
       ))}
     </div>
   );
-}
+});

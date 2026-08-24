@@ -8,6 +8,7 @@ import type {
   PasswordAuthRequest,
   PasswordAuthSessionResponse,
   PasswordResetAuthorization,
+  VerificationDeliveryResponse,
 } from "./types.ts";
 
 const PUBLIC_AUTH: { attachBearer: false; invalidateOnUnauthorized: false } = {
@@ -34,10 +35,30 @@ function parseIdentifierKind(value: unknown): IdentifierKind {
 }
 
 function parseIdentifier(value: unknown): PasswordAuthSessionResponse["identifier"] {
-  if (!isRecord(value) || typeof value.verified !== "boolean") {
+  if (!isRecord(value) || typeof value.verified !== "boolean" || typeof value.masked_destination !== "string") {
     throw new ApiError(502, undefined, "invalid_auth_response");
   }
-  return { kind: parseIdentifierKind(value.kind), verified: value.verified };
+  return {
+    kind: parseIdentifierKind(value.kind),
+    verified: value.verified,
+    masked_destination: value.masked_destination,
+  };
+}
+
+function parseVerificationDispatch(value: unknown): PasswordAuthSessionResponse["verification"] {
+  if (
+    !isRecord(value) ||
+    typeof value.code_dispatched !== "boolean" ||
+    typeof value.resend_available_in !== "number" ||
+    !Number.isInteger(value.resend_available_in) ||
+    value.resend_available_in < 0
+  ) {
+    throw new ApiError(502, undefined, "invalid_auth_response");
+  }
+  return {
+    code_dispatched: value.code_dispatched,
+    resend_available_in: value.resend_available_in,
+  };
 }
 
 function parseSessionResponse(data: unknown): PasswordAuthSessionResponse {
@@ -65,6 +86,7 @@ function parseSessionResponse(data: unknown): PasswordAuthSessionResponse {
     verification_required: data.verification_required,
     verification_channel:
       data.verification_channel === null ? null : parseIdentifierKind(data.verification_channel),
+    verification: parseVerificationDispatch(data.verification),
     onboarding: parseOnboardingStatus(data.onboarding),
   };
 }
@@ -81,6 +103,19 @@ function parseMessage(data: unknown): MessageResponse {
     throw new ApiError(502, undefined, "invalid_message_response");
   }
   return { message: data.message };
+}
+
+function parseVerificationDelivery(data: unknown): VerificationDeliveryResponse {
+  if (
+    !isRecord(data) ||
+    typeof data.message !== "string" ||
+    typeof data.resend_available_in !== "number" ||
+    !Number.isInteger(data.resend_available_in) ||
+    data.resend_available_in < 0
+  ) {
+    throw new ApiError(502, undefined, "invalid_verification_delivery_response");
+  }
+  return { message: data.message, resend_available_in: data.resend_available_in };
 }
 
 function jsonInit(method: string, body: unknown): RequestInit {
@@ -176,11 +211,11 @@ export function resetPasswordWithRecovery(
 
 /** POST /api/v1/auth/verification — sends a fresh code to the current user's
  * own unverified identifier. Requires a bearer session. */
-export function requestIdentifierVerification(kind: IdentifierKind): Promise<MessageResponse> {
+export function requestIdentifierVerification(kind: IdentifierKind): Promise<VerificationDeliveryResponse> {
   return apiRequest(
     "/api/v1/auth/verification",
     jsonInit("POST", { kind }),
-  ).then(parseMessage);
+  ).then(parseVerificationDelivery);
 }
 
 /**

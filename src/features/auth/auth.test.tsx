@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +9,9 @@ const meBody = {
   user_id: 42,
   brand: { slug: "dateza", name: "DateZA" },
   session: { id: 7, expires_at: "2026-12-01T00:00:00Z" },
+  identifier: { kind: "email", verified: false, masked_destination: "a••@example.com" },
+  verification_required: true,
+  verification: { code_dispatched: true, resend_available_in: 42 },
 };
 
 const credentialBody = {
@@ -17,9 +20,10 @@ const credentialBody = {
   expires_at: "2026-12-01T00:00:00Z",
   user_id: 42,
   brand: { slug: "dateza", name: "DateZA" },
-  identifier: { kind: "email", verified: false },
+  identifier: { kind: "email", verified: false, masked_destination: "a••@example.com" },
   verification_required: true,
   verification_channel: "email",
+  verification: { code_dispatched: true, resend_available_in: 42 },
   onboarding: {
     state: "profile_required",
     next_step: "profile",
@@ -158,9 +162,7 @@ describe("authentication flows", () => {
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: /let's start with you/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /let's start with you/i })).toBeInTheDocument();
     });
     expect(getBearerToken()).toBe("opaque-session-token");
   });
@@ -253,17 +255,27 @@ describe("authentication flows", () => {
 
   it("authenticates after registration issues a bearer session", async () => {
     const user = userEvent.setup();
+    let identifierVerified = false;
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
       if (url.endsWith("/api/v1/me")) {
         if (getBearerToken()) {
-          return Promise.resolve(jsonResponse(200, meBody));
+          return Promise.resolve(jsonResponse(200, identifierVerified ? {
+            ...meBody,
+            identifier: { ...meBody.identifier, verified: true },
+            verification_required: false,
+            verification: { code_dispatched: false, resend_available_in: 0 },
+          } : meBody));
         }
         return Promise.resolve(jsonResponse(401, { error: "unauthorized" }));
       }
       if (url.endsWith("/api/v1/auth/password/register") && method === "POST") {
         return Promise.resolve(jsonResponse(201, credentialBody));
+      }
+      if (url.endsWith("/api/v1/auth/verification") && method === "PATCH") {
+        identifierVerified = true;
+        return Promise.resolve(jsonResponse(200, { identifier: { kind: "email", verified: true } }));
       }
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(
@@ -286,12 +298,19 @@ describe("authentication flows", () => {
     await user.type(screen.getByLabelText(/confirm password/i), "secret1");
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: /let's start with you/i }),
-      ).toBeInTheDocument();
-    });
+    expect(await screen.findByRole("dialog", { name: /verify your email/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /enter your code/i })).toBeInTheDocument();
+    expect(document.querySelector("a[href='/discover'][aria-current='page']")).not.toBeNull();
     expect(getBearerToken()).toBe("opaque-session-token");
+
+    fireEvent.change(screen.getByLabelText(/verification code, digit 1/i), { target: { value: "123456" } });
+    await user.click(screen.getByRole("button", { name: /verify email/i }));
+    expect(await screen.findByRole("heading", { name: /email verified/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    }, { timeout: 2_000 });
+    expect(screen.getByRole("heading", { name: /let people see who you are/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /complete your profile/i })).toHaveAttribute("href", "/onboarding");
   });
 
   it("keeps password recovery anti-enumeration copy on a successful request", async () => {
@@ -348,8 +367,8 @@ describe("authentication flows", () => {
     await screen.findByRole("heading", { name: /reset your password/i });
     await user.type(screen.getByLabelText(/phone or email/i), "ada@example.com");
     await user.click(screen.getByRole("button", { name: /send recovery instructions/i }));
-    await screen.findByLabelText(/recovery code/i);
-    await user.type(screen.getByLabelText(/recovery code/i), "123456");
+    const firstDigit = await screen.findByLabelText(/recovery code, digit 1/i);
+    await user.type(firstDigit, "123456");
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     await screen.findByRole("heading", { name: /choose a new password/i });

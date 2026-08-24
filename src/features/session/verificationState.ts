@@ -1,11 +1,8 @@
 import type { IdentifierKind } from "../../lib/api/types.ts";
 
 /**
- * D8N never echoes a user's raw email/phone back to the client (register,
- * login, and /api/v1/me all omit it) and the bearer session is memory-only
- * (ADR-0002), so this state only ever reflects what happened earlier in the
- * *current* tab: a register/login response, or a later verification result.
- * There is no server endpoint to independently "look up" verification state.
+ * D8N owns verification lifecycle and returns only a masked destination plus
+ * resend timing. The bearer itself remains memory-only under ADR-0002.
  */
 export type VerificationState =
   | { status: "unknown" }
@@ -13,9 +10,9 @@ export type VerificationState =
       status: "known";
       kind: IdentifierKind;
       verified: boolean;
-      /** The exact string the member typed at sign-in/sign-up, kept only for
-       * masked display (e.g. "u••••@gmail.com"). Never sent anywhere. */
-      rawIdentifier: string;
+      maskedDestination: string;
+      codeDispatched: boolean;
+      resendAvailableIn: number;
     };
 
 /** Single source of truth for whether the member may Like, view full profile

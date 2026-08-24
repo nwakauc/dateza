@@ -11,6 +11,9 @@ const meBody = {
   user_id: 42,
   brand: { slug: "dateza", name: "DateZA" },
   session: { id: 7, expires_at: "2026-12-01T00:00:00Z" },
+  identifier: { kind: "email", verified: true, masked_destination: "a••@example.com" },
+  verification_required: false,
+  verification: { code_dispatched: false, resend_available_in: 0 },
 };
 
 function jsonResponse(status: number, body: unknown): Response {

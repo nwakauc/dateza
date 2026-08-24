@@ -5,20 +5,22 @@ import { useSession } from "../session/useSession.ts";
 
 /**
  * D8N's register/login response already carries verification state
- * (`identifier`, `verification_required`) that `GET /api/v1/me` never
- * returns, so it's captured here rather than re-derived later.
+ * (`identifier`, `verification_required`, and dispatch timing). Capture the
+ * response immediately, then reconcile it with the authenticated `/me` state.
  */
 export function useEstablishSession() {
   const { refreshSession, setVerification } = useSession();
 
   return useCallback(
-    async (authSession: PasswordAuthSessionResponse, rawIdentifier: string) => {
+    async (authSession: PasswordAuthSessionResponse) => {
       setBearerToken(authSession.token);
       setVerification({
         status: "known",
         kind: authSession.identifier.kind,
         verified: authSession.identifier.verified,
-        rawIdentifier,
+        maskedDestination: authSession.identifier.masked_destination,
+        codeDispatched: authSession.verification.code_dispatched,
+        resendAvailableIn: authSession.verification.resend_available_in,
       });
       await refreshSession();
     },
