@@ -239,7 +239,8 @@ describe("authentication flows", () => {
     renderApp("/home");
 
     await screen.findByText(/no new profiles/i);
-    await user.click(screen.getByRole("button", { name: /sign out/i }));
+    await user.click(screen.getAllByRole("link", { name: "Profile" })[0]);
+    await user.click(await screen.findByRole("button", { name: /sign out/i }));
 
     await waitFor(() => {
       expect(getBearerToken()).toBeUndefined();

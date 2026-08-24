@@ -72,7 +72,7 @@ export default function ProfileDetailPage() {
   const location = [profile.city, profile.country_code].filter(Boolean).join(", ");
 
   return (
-    <main className="discover-screen" id="main-content">
+    <div className="shell-page" id="main-content">
       <Link className="onboard-back-top" to="/find">
         ← Back to Find
       </Link>
@@ -111,6 +111,6 @@ export default function ProfileDetailPage() {
           </button>
         </div>
       </article>
-    </main>
+    </div>
   );
 }

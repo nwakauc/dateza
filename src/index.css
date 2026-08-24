@@ -1484,74 +1484,6 @@ main.public-status a.public-status__home:hover {
 
 /* Discovery */
 
-.discover-screen {
-  box-sizing: border-box;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 16px 16px calc(32px + env(safe-area-inset-bottom, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background:
-    radial-gradient(1200px 480px at 90% -10%, rgba(232, 55, 90, 0.1), transparent 55%),
-    #fffaf8;
-  font-family: Outfit, sans-serif;
-  color: #1c1720;
-}
-
-.discover-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px 16px;
-}
-
-.discover-signout {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(28, 23, 32, 0.15);
-  border-radius: 999px;
-  background: #fff;
-  color: #1c1720;
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.discover-signout:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.feed-tabs {
-  display: inline-flex;
-  gap: 2px;
-  margin: 0 auto 20px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(28, 23, 32, 0.06);
-  width: max-content;
-}
-
-.feed-tabs__link {
-  min-height: 34px;
-  padding: 0 18px;
-  display: flex;
-  align-items: center;
-  border-radius: 999px;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #5f5566;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.feed-tabs__link--active {
-  background: #fff;
-  color: #1c1720;
-  box-shadow: 0 4px 12px rgba(28, 23, 32, 0.1);
-}
-
 .feed-allowance {
   max-width: 1100px;
   margin: -8px auto 16px;
@@ -1984,4 +1916,728 @@ main.public-status a.public-status__home:hover {
   .onboard-photos {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+/* ==========================================================================
+   Authenticated app shell — top nav (desktop) + bottom tab bar (mobile)
+   wrapping Discover, Find, Likes, Chats, Profile and their secondary pages.
+   ========================================================================== */
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 480px at 90% -10%, rgba(232, 55, 90, 0.1), transparent 55%),
+    #fffaf8;
+}
+
+.shell > main {
+  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20px 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-family: Outfit, sans-serif;
+  color: #1c1720;
+}
+
+@media (min-width: 768px) {
+  .shell > main {
+    padding: 32px 32px 56px;
+  }
+}
+
+@media (max-width: 767px) {
+  .shell > main,
+  .shell .public-status {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.shell-page--narrow {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.shell-page__header {
+  max-width: 1100px;
+  margin: 0 auto 20px;
+}
+
+.shell-page--narrow .shell-page__header {
+  max-width: none;
+  margin: 0 0 20px;
+}
+
+.shell-page__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c22447;
+}
+
+.shell-page__title {
+  margin: 0 0 6px;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.shell-page__subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #5f5566;
+  max-width: 46ch;
+}
+
+.shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1c1720;
+  text-decoration: none;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  flex-shrink: 0;
+}
+
+.shell-brand span span {
+  color: #e8375a;
+}
+
+/* Top nav — desktop and up */
+
+.shell-topnav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .shell-topnav {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(28, 23, 32, 0.08);
+  }
+}
+
+.shell-topnav__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.shell-primary-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shell-primary-nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #5f5566;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.shell-primary-nav__link:hover {
+  background: #f5f1f2;
+  color: #1c1720;
+}
+
+.shell-primary-nav__link--active {
+  background: #fdeef1;
+  color: #c22447;
+}
+
+.shell-primary-nav__icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+.shell-topnav__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.shell-upgrade-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #fff6e9;
+  color: #a3660a;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.shell-upgrade-pill:hover {
+  background: #ffedcf;
+  color: #a3660a;
+}
+
+.shell-upgrade-pill__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.shell-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: visible;
+  background: #f3e9ec;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.shell-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.shell-avatar__initial {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #f3e9ec, #ede3f5);
+  color: #a01d3d;
+  font-weight: 800;
+  font-size: 0.9375rem;
+}
+
+.shell-avatar--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.shell-avatar__dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e8375a;
+  border: 2px solid #fff;
+}
+
+.shell-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e8375a;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Mobile header — brand + avatar only; primary nav lives in the tab bar */
+
+.shell-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 250, 248, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(28, 23, 32, 0.06);
+}
+
+.shell-brand--compact {
+  font-size: 1rem;
+}
+
+@media (min-width: 768px) {
+  .shell-mobile-header {
+    display: none;
+  }
+}
+
+/* Bottom tab bar — mobile and up to the desktop breakpoint */
+
+.shell-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(28, 23, 32, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 768px) {
+  .shell-tabbar {
+    display: none;
+  }
+}
+
+.shell-tabbar__link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 58px;
+  padding: 8px 4px 6px;
+  color: #9a8f98;
+  text-decoration: none;
+}
+
+.shell-tabbar__link--active {
+  color: #c22447;
+}
+
+.shell-tabbar__icon-wrap {
+  position: relative;
+  display: flex;
+}
+
+.shell-tabbar__icon {
+  width: 23px;
+  height: 23px;
+}
+
+.shell-tabbar__avatar {
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 0 0 1.5px rgba(28, 23, 32, 0.12);
+}
+
+.shell-tabbar__link--active .shell-tabbar__avatar {
+  box-shadow: 0 0 0 2px #c22447;
+}
+
+.shell-badge--tab {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.625rem;
+  border: 2px solid #fff;
+}
+
+.shell-tabbar__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* Shared "row" list item — used on Profile, Settings, Safety pages */
+
+.shell-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid rgba(28, 23, 32, 0.08);
+  background: none;
+  color: #1c1720;
+  text-decoration: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shell-row:last-child {
+  border-bottom: 0;
+}
+
+.shell-row--static {
+  cursor: default;
+}
+
+.shell-row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #f5f1f2;
+  color: #5f5566;
+  flex-shrink: 0;
+}
+
+.shell-row__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shell-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell-row__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.shell-row__hint {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: #5f5566;
+}
+
+.shell-row__chevron {
+  width: 16px;
+  height: 16px;
+  color: #9a8f98;
+  flex-shrink: 0;
+}
+
+.shell-row__status {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.shell-row__status--verified {
+  background: #eef8f2;
+  color: #1c5c3c;
+}
+
+.shell-row__status--pending {
+  background: #fdeef1;
+  color: #a01d3d;
+}
+
+/* Generic "coming soon" / empty surface, echoing .feed-pending but usable
+   outside the Discover/Find grid context (Likes, Chats, Settings, Safety). */
+
+.shell-empty {
+  max-width: 420px;
+  margin: 10vh auto 0;
+  text-align: center;
+  color: #1c1720;
+}
+
+.shell-page--narrow .shell-empty {
+  margin-top: 15vh;
+}
+
+.shell-empty__icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 14px;
+  color: #e8a9b8;
+}
+
+.shell-empty__title {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.shell-empty__body {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #5f5566;
+}
+
+/* Likes — "Likes you" / "Matches" segmented switch, mirrors .feed-tabs */
+
+.likes-tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0 auto 20px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(28, 23, 32, 0.06);
+  width: max-content;
+}
+
+.likes-tabs__button {
+  min-height: 34px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #5f5566;
+  cursor: pointer;
+}
+
+.likes-tabs__button--active {
+  background: #fff;
+  color: #1c1720;
+  box-shadow: 0 4px 12px rgba(28, 23, 32, 0.1);
+}
+
+/* Chats — conversation list + detail pane on desktop, list-first on mobile */
+
+.chats-layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  min-height: 60vh;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(28, 23, 32, 0.08);
+}
+
+.chats-list {
+  width: 100%;
+  border-right: 1px solid rgba(28, 23, 32, 0.08);
+}
+
+@media (min-width: 900px) {
+  .chats-list {
+    width: 340px;
+    flex-shrink: 0;
+  }
+}
+
+.chats-detail {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}
+
+@media (min-width: 900px) {
+  .chats-detail {
+    display: flex;
+  }
+}
+
+.shell-empty--in-list {
+  margin-top: 15vh;
+  padding: 0 20px;
+}
+
+/* Profile hub */
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.profile-hero__avatar {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: visible;
+  background: #f3e9ec;
+  flex-shrink: 0;
+}
+
+.profile-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-hero__avatar-initial {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #f3e9ec, #ede3f5);
+  color: #a01d3d;
+  font-weight: 800;
+  font-size: 1.75rem;
+}
+
+.profile-hero__name {
+  margin: 0 0 4px;
+  font-size: 1.375rem;
+  font-weight: 800;
+}
+
+.profile-hero__meta {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #5f5566;
+}
+
+.profile-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.profile-hero__badge--verified {
+  color: #1c5c3c;
+}
+
+.profile-hero__badge--pending {
+  color: #a01d3d;
+}
+
+.profile-hero__badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.profile-hero__badge--button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.profile-section {
+  margin: 0 0 24px;
+}
+
+.profile-section__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #5f5566;
+}
+
+.profile-section__title {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9a8f98;
+}
+
+.profile-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-photos-grid__item {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #f3e9ec, #ede3f5);
+}
+
+.profile-photos-grid__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-photos-grid__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 12, 15, 0.55);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.profile-photos-grid__remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.profile-photos-grid__empty {
+  aspect-ratio: 3 / 4;
+  border-radius: 14px;
+  border: 1.5px dashed rgba(28, 23, 32, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  color: #9a8f98;
+  font-size: 1.5rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.profile-photos-grid__empty:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

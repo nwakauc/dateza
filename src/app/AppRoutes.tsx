@@ -1,15 +1,24 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage.tsx";
 import { GuestRoute } from "../features/auth/GuestRoute.tsx";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage.tsx";
 import SignInPage from "../features/auth/SignInPage.tsx";
 import SignUpPage from "../features/auth/SignUpPage.tsx";
+import ChatsPage from "../features/chats/ChatsPage.tsx";
 import DiscoveryPage from "../features/discovery/DiscoveryPage.tsx";
 import FindPage from "../features/find/FindPage.tsx";
 import ProfileDetailPage from "../features/find/ProfileDetailPage.tsx";
+import LikesPage from "../features/likes/LikesPage.tsx";
 import MemberHomePage from "../features/member/MemberHomePage.tsx";
 import OnboardingPage from "../features/onboarding/OnboardingPage.tsx";
+import EditProfilePage from "../features/profile/EditProfilePage.tsx";
+import PhotosPage from "../features/profile/PhotosPage.tsx";
+import ProfilePage from "../features/profile/ProfilePage.tsx";
+import SafetyPage from "../features/profile/SafetyPage.tsx";
+import SettingsPage from "../features/profile/SettingsPage.tsx";
+import UpgradePage from "../features/profile/UpgradePage.tsx";
 import { ProtectedRoute } from "../features/session/ProtectedRoute.tsx";
+import AppShell from "../features/shell/AppShell.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
 
@@ -58,30 +67,6 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/discovery"
-        element={
-          <ProtectedRoute>
-            <DiscoveryPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/find"
-        element={
-          <ProtectedRoute>
-            <FindPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile/:id"
-        element={
-          <ProtectedRoute>
-            <ProfileDetailPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/home"
         element={
           <ProtectedRoute>
@@ -97,6 +82,33 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      {/* Authenticated product shell: Discover, Find, Likes, Chats, Profile
+          and their secondary destinations all share the same persistent
+          top nav / bottom tab bar. */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/discover" element={<DiscoveryPage />} />
+        {/* Old path kept working — nothing outside this file should link
+            here anymore, but a bookmarked/shared URL still lands safely. */}
+        <Route path="/discovery" element={<Navigate to="/discover" replace />} />
+        <Route path="/find" element={<FindPage />} />
+        <Route path="/likes" element={<LikesPage />} />
+        <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/edit" element={<EditProfilePage />} />
+        <Route path="/profile/photos" element={<PhotosPage />} />
+        <Route path="/profile/:id" element={<ProfileDetailPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/safety" element={<SafetyPage />} />
+        <Route path="/upgrade" element={<UpgradePage />} />
+      </Route>
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

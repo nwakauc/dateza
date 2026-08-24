@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { getFindProfiles, likeProfile, passProfile } from "../../lib/api/find.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { FindAllowance, FindProfile } from "../../lib/api/findTypes.ts";
-import { useSignOut } from "../auth/useSignOut.ts";
-import { FeedHeader } from "../feed/FeedHeader.tsx";
-import { FeedTabs } from "../feed/FeedTabs.tsx";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationBanner } from "../verification/VerificationBanner.tsx";
@@ -40,7 +37,6 @@ function formatResetTime(resetsAt: string): string | undefined {
 
 export default function FindPage() {
   const navigate = useNavigate();
-  const { signOut, pending: signingOut } = useSignOut();
   const { verified, verification, pendingReason, requireVerified, openPrompt, dismiss } = useVerificationGate();
   const modalTitleId = useId();
 
@@ -132,9 +128,14 @@ export default function FindPage() {
   const resetTime = allowance ? formatResetTime(allowance.resets_at) : undefined;
 
   return (
-    <main className="discover-screen" id="main-content">
-      <FeedHeader onSignOut={() => void signOut()} signingOut={signingOut} />
-      <FeedTabs />
+    <div className="shell-page" id="main-content">
+      <div className="shell-page__header">
+        <p className="shell-page__eyebrow">Active browsing</p>
+        <h1 className="shell-page__title">Find</h1>
+        <p className="shell-page__subtitle">
+          Browse and search for people yourself — up to 10 free profiles a day, separate from Discover.
+        </p>
+      </div>
 
       {!verified && verification.status === "known" ? (
         <VerificationBanner kind={verification.kind} onVerify={() => openPrompt("profile")} />
@@ -184,6 +185,6 @@ export default function FindPage() {
           <VerificationFlow onDone={dismiss} />
         </Modal>
       ) : null}
-    </main>
+    </div>
   );
 }

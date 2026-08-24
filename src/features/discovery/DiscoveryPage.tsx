@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSignOut } from "../auth/useSignOut.ts";
-import { FeedHeader } from "../feed/FeedHeader.tsx";
-import { FeedTabs } from "../feed/FeedTabs.tsx";
+import { CompassIcon } from "../shell/icons.tsx";
 
 /**
  * Discovery is DateZA's curated, recommendation-led surface (10/day) — a
@@ -12,23 +10,28 @@ import { FeedTabs } from "../feed/FeedTabs.tsx";
  * curated feed ships.
  */
 export default function DiscoveryPage() {
-  const { signOut, pending: signingOut } = useSignOut();
-
   useEffect(() => {
-    document.title = "Discovery — DateZA";
+    document.title = "Discover — DateZA";
     return () => {
       document.title = "DateZA — Meet someone who chooses you.";
     };
   }, []);
 
   return (
-    <main className="discover-screen" id="main-content">
-      <FeedHeader onSignOut={() => void signOut()} signingOut={signingOut} />
-      <FeedTabs />
+    <div className="shell-page" id="main-content">
+      <div className="shell-page__header">
+        <p className="shell-page__eyebrow">Today's picks</p>
+        <h1 className="shell-page__title">Your curated selection</h1>
+        <p className="shell-page__subtitle">
+          Discover brings you up to 10 profiles a day, chosen for you based on compatibility, preferences, and
+          trust — separate from Find's daily allowance.
+        </p>
+      </div>
 
-      <div className="feed-pending">
-        <p className="feed-pending__title">Your daily picks are coming soon</p>
-        <p className="feed-pending__body">
+      <div className="shell-empty">
+        <CompassIcon className="shell-empty__icon" />
+        <p className="shell-empty__title">Your daily picks are coming soon</p>
+        <p className="shell-empty__body">
           We're building a smarter set of matches chosen specifically for you — based on compatibility,
           preferences, and trust.
         </p>
@@ -36,6 +39,6 @@ export default function DiscoveryPage() {
           Browse Find in the meantime →
         </Link>
       </div>
-    </main>
+    </div>
   );
 }
