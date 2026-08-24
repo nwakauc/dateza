@@ -203,12 +203,21 @@ describe("onboarding routing and progression", () => {
           jsonResponse(200, { profile: { id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", brand: meBody.brand, status: "active", visibility: "visible", options: {} }, onboarding: completeOnboarding }),
         );
       }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profiles: [],
+            next_cursor: null,
+            selection: { allocation_date: "2026-08-24", daily_limit: 10, count: 0, finalized: true, refreshes_at: "2026-08-25T00:00:00+02:00" },
+          }),
+        );
+      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
     renderApp("/onboarding");
 
-    expect(await screen.findByRole("heading", { name: /your curated selection/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /let's start with you/i }),
     ).not.toBeInTheDocument();

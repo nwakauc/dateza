@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getProfileDetail, likeProfile } from "../../lib/api/find.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
@@ -14,10 +14,24 @@ function detailErrorMessage(error: unknown): string {
   return "We could not load this profile. Try again.";
 }
 
+// Profile detail is shared by Find and Discovery. The caller marks which
+// surface it came from via router state so the back link/verification
+// redirect return the member where they started; absent state preserves
+// the original Find-only behavior for any other caller (e.g. Likes).
+function originSurface(state: unknown): "discover" | "find" {
+  return typeof state === "object" && state !== null && (state as { from?: unknown }).from === "discover"
+    ? "discover"
+    : "find";
+}
+
 export default function ProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const { verified } = useVerificationGate();
+  const from = originSurface(routerLocation.state);
+  const backTo = from === "discover" ? "/discover" : "/find";
+  const backLabel = from === "discover" ? "← Back to Discover" : "← Back to Find";
   const [profile, setProfile] = useState<ProfileDetail | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -55,7 +69,7 @@ export default function ProfileDetailPage() {
     return (
       <div className="auth-screen">
         <div className="auth-screen__panel">
-          <VerificationFlow onDone={() => navigate("/find", { replace: true })} />
+          <VerificationFlow onDone={() => navigate(backTo, { replace: true })} />
         </div>
       </div>
     );
@@ -73,8 +87,8 @@ export default function ProfileDetailPage() {
 
   return (
     <div className="shell-page">
-      <Link className="onboard-back-top" to="/find">
-        ← Back to Find
+      <Link className="onboard-back-top" to={backTo}>
+        {backLabel}
       </Link>
       <article className="profile-detail">
         <div className="profile-detail__photos">

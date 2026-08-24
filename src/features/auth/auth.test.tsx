@@ -226,19 +226,28 @@ describe("authentication flows", () => {
           }),
         );
       }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profiles: [],
+            next_cursor: null,
+            selection: { allocation_date: "2026-08-24", daily_limit: 10, count: 0, finalized: true, refreshes_at: "2026-08-25T00:00:00+02:00" },
+          }),
+        );
+      }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
     renderApp("/home");
 
-    await screen.findByRole("heading", { name: /your curated selection/i });
+    await screen.findByRole("heading", { name: /picked for you today/i });
     await user.click(screen.getAllByRole("link", { name: "Profile" })[0]);
     await user.click(await screen.findByRole("button", { name: /sign out/i }));
 
     await waitFor(() => {
       expect(getBearerToken()).toBeUndefined();
     });
-    expect(screen.queryByRole("heading", { name: /your curated selection/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /picked for you today/i })).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();

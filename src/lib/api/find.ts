@@ -109,7 +109,8 @@ const COMPATIBILITY_REASONS = new Set<string>([
   "compatible_diet",
 ]);
 
-function parseCompatibility(value: unknown): DatezaCompatibility {
+/** Exported for reuse by other candidate-profile surfaces (e.g. Discovery) that share this contract. */
+export function parseCompatibility(value: unknown): DatezaCompatibility {
   if (
     !isRecord(value) ||
     typeof value.score !== "number" ||
