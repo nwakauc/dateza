@@ -1,5 +1,6 @@
 import type { DiscoveryProfile } from "../../lib/api/discoveryTypes.ts";
 import { CloseIcon, HeartIcon, ShieldCheckIcon } from "../shell/icons.tsx";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { describeCompatibilityReasons } from "./compatibilityCopy.ts";
 
 type InteractionState = "idle" | "liked" | "matched" | "passed";
@@ -52,7 +53,7 @@ export function DiscoveryCard({ profile, interaction, onOpen, onLike, onPass, pe
           {profile.verified ? (
             <p className="discovery-card__verified">
               <ShieldCheckIcon className="discovery-card__verified-icon" />
-              Verified contact
+              {VERIFIED_CONTACT_LABEL}
             </p>
           ) : null}
         </div>

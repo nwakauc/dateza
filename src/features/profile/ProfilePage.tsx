@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
 import { ShieldCheckIcon, ShieldIcon, GearIcon, ChevronRightIcon, CameraIcon, PencilIcon } from "../shell/icons.tsx";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
@@ -66,7 +67,7 @@ export default function ProfilePage() {
           {location ? <p className="profile-hero__meta">{location}</p> : null}
           {verified ? (
             <p className="profile-hero__badge profile-hero__badge--verified">
-              <ShieldCheckIcon /> Contact verified
+              <ShieldCheckIcon /> {VERIFIED_CONTACT_LABEL}
             </p>
           ) : (
             <button

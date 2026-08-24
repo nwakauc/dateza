@@ -1,4 +1,5 @@
 import type { FindProfile } from "../../lib/api/findTypes.ts";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 
 type InteractionState = "idle" | "liked" | "matched" | "passed";
 
@@ -37,7 +38,7 @@ export function ProfileCard({ profile, interaction, onOpen, onLike, onPass, pend
             <div className="discover-card__badges">
               {profile.verified ? (
                 <span className="discover-card__badge discover-card__badge--verified">
-                  <ShieldIcon /> RealMe
+                  <ShieldIcon /> {VERIFIED_CONTACT_LABEL}
                 </span>
               ) : null}
               {profile.compatibility ? (

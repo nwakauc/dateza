@@ -4,6 +4,7 @@ import { getProfileDetail, likeProfile } from "../../lib/api/find.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 
@@ -103,7 +104,7 @@ export default function ProfileDetailPage() {
             {profile.display_name ?? "DateZA member"}
             {profile.age ? `, ${profile.age}` : ""}
           </h1>
-          {profile.verified ? <p className="profile-detail__badge">Verified</p> : null}
+          {profile.verified ? <p className="profile-detail__badge">{VERIFIED_CONTACT_LABEL}</p> : null}
           {location ? <p className="profile-detail__location">{location}</p> : null}
           {profile.bio ? <p className="auth-screen__intro">{profile.bio}</p> : null}
           {profile.prompts.map((prompt) => (
