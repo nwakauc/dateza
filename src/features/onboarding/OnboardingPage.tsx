@@ -55,6 +55,10 @@ const PROFILE_SCREEN_COPY: Record<ProfileScreen, { title: string; intro: string 
     title: "Where are you based?",
     intro: "We show your city and country, never an exact pin.",
   },
+  location: {
+    title: "Where are you dating from?",
+    intro: "Your location helps us show you people within the distance you choose.",
+  },
   about: {
     title: "Tell us a little about yourself",
     intro: "A few honest sentences beat a perfect bio.",
@@ -96,7 +100,7 @@ function valuesFromProfile(
 type ProfileValuesByScreen = Record<ProfileScreen, Record<string, string>>;
 
 function emptyProfileValues(): ProfileValuesByScreen {
-  return { identity: {}, basics: {}, where: {}, about: {}, lifestyle: {} };
+  return { identity: {}, basics: {}, where: {}, location: {}, about: {}, lifestyle: {} };
 }
 
 export default function OnboardingPage() {
@@ -122,6 +126,7 @@ export default function OnboardingPage() {
       identity: valuesFromProfile(nextProfile, PROFILE_SCREEN_KEYS.identity),
       basics: valuesFromProfile(nextProfile, PROFILE_SCREEN_KEYS.basics),
       where: valuesFromProfile(nextProfile, PROFILE_SCREEN_KEYS.where),
+      location: {},
       about: valuesFromProfile(nextProfile, PROFILE_SCREEN_KEYS.about),
       lifestyle: valuesFromProfile(nextProfile, PROFILE_SCREEN_KEYS.lifestyle),
     });
@@ -185,6 +190,7 @@ export default function OnboardingPage() {
       identity: [],
       basics: [],
       where: [],
+      location: [],
       about: [],
       lifestyle: [],
     };
@@ -350,7 +356,7 @@ export default function OnboardingPage() {
     });
   }
 
-  async function reconcilePhotos() {
+  async function reconcileProfile() {
     const result = await getCurrentProfile();
     applyProfile(result.profile, result.onboarding);
   }
@@ -386,20 +392,29 @@ export default function OnboardingPage() {
   if (step === "profile") {
     const screenIndex = PROFILE_SCREEN_ORDER.indexOf(profileScreen);
     const copy = PROFILE_SCREEN_COPY[profileScreen];
+    const onBack =
+      screenIndex > 0
+        ? () => {
+            setProfileScreen(PROFILE_SCREEN_ORDER[screenIndex - 1]);
+            setError(undefined);
+          }
+        : undefined;
+
+    if (profileScreen === "location" && profileId) {
+      return (
+        <OnboardingShell title={copy.title} intro={copy.intro} percent={percent} backDisabled={pending} onBack={onBack}>
+          <LocationStep profileId={profileId} onSuccess={() => void reconcileProfile()} />
+        </OnboardingShell>
+      );
+    }
+
     return (
       <OnboardingShell
         title={copy.title}
         intro={copy.intro}
         percent={percent}
         backDisabled={pending}
-        onBack={
-          screenIndex > 0
-            ? () => {
-                setProfileScreen(PROFILE_SCREEN_ORDER[screenIndex - 1]);
-                setError(undefined);
-              }
-            : undefined
-        }
+        onBack={onBack}
       >
         <SchemaFieldsForm
           fields={profileFieldsByScreen[profileScreen]}
@@ -452,7 +467,7 @@ export default function OnboardingPage() {
         <PhotosStep
           collection={configuration.collections.find((item) => item.key === "photos")}
           onboarding={onboarding}
-          onReconcile={reconcilePhotos}
+          onReconcile={reconcileProfile}
           onContinue={() => {
             setHoldPhotos(false);
             setError(undefined);

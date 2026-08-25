@@ -203,4 +203,100 @@ describe("LocationStep", () => {
     expect(await screen.findByText(/couldn't confirm your location/i)).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
   });
+
+  it("does not call the geocoder until the member opts into manual entry", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(jsonResponse(404, { error: "not_found" })));
+
+    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/suburb or area/i)).not.toBeInTheDocument();
+  });
+
+  it("lets a member who can't share their location find and save a typed suburb instead", async () => {
+    const user = userEvent.setup();
+    const onSuccess = vi.fn();
+    setBearerToken("opaque-session-token");
+    let requestBody: Record<string, unknown> | undefined;
+    let geocodeCredentials: RequestCredentials | undefined;
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      if (url.includes("nominatim.openstreetmap.org")) {
+        geocodeCredentials = init?.credentials;
+        return Promise.resolve(
+          jsonResponse(200, [
+            { lat: "-26.1076", lon: "28.0567", display_name: "Sandton, Johannesburg, Gauteng, South Africa" },
+            { lat: "-33.9581", lon: "18.4232", display_name: "Sandton Road, Cape Town, Western Cape, South Africa" },
+          ]),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/location") && (init?.method ?? "GET") === "PUT") {
+        requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: { configured: true, accuracy_meters: 3000, source: "manual", captured_at: "2026-08-25T02:05:01Z" },
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    await user.click(screen.getByRole("button", { name: /enter your suburb instead/i }));
+    await user.type(screen.getByLabelText(/suburb or area/i), "Sandton");
+    await user.click(screen.getByRole("button", { name: /^find$/i }));
+
+    const johannesburgMatch = await screen.findByRole("button", { name: /sandton, johannesburg/i });
+    expect(screen.getByRole("button", { name: /sandton road, cape town/i })).toBeInTheDocument();
+    expect(geocodeCredentials).not.toBe("include");
+    await user.click(johannesburgMatch);
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(requestBody).toEqual({
+      latitude: -26.1076,
+      longitude: 28.0567,
+      accuracy_meters: 3000,
+      captured_at: expect.any(String),
+    });
+    expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
+  });
+
+  it("tells the member when no suburb matched, instead of silently failing", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.includes("nominatim.openstreetmap.org")) {
+        return Promise.resolve(jsonResponse(200, []));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /enter your suburb instead/i }));
+    await user.type(screen.getByLabelText(/suburb or area/i), "Zzzznotarealplace");
+    await user.click(screen.getByRole("button", { name: /^find$/i }));
+
+    expect(await screen.findByText(/couldn't find that/i)).toBeInTheDocument();
+  });
+
+  it("shows a search-specific error when the geocoder itself fails, distinct from the save error", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.includes("nominatim.openstreetmap.org")) {
+        return Promise.resolve(new Response("", { status: 503 }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /enter your suburb instead/i }));
+    await user.type(screen.getByLabelText(/suburb or area/i), "Sandton");
+    await user.click(screen.getByRole("button", { name: /^find$/i }));
+
+    expect(await screen.findByText(/couldn't search right now/i)).toBeInTheDocument();
+  });
 });

@@ -1077,6 +1077,78 @@ main.public-status a.public-status__home:hover {
   cursor: not-allowed;
 }
 
+.onboard-manual-location__toggle {
+  margin-top: 4px;
+  padding: 6px 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.onboard-manual-location {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4dbe0;
+}
+
+.onboard-manual-location__submit {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid #e4dbe0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1c1720;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.onboard-manual-location__submit:hover:not(:disabled),
+.onboard-manual-location__submit:focus-visible {
+  border-color: #e8375a;
+  color: #e8375a;
+}
+
+.onboard-manual-location__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.onboard-suburb-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboard-suburb-results__item {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e4dbe0;
+  border-radius: 12px;
+  background: #fff;
+  color: #1c1720;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.onboard-suburb-results__item:hover:not(:disabled),
+.onboard-suburb-results__item:focus-visible {
+  border-color: #e8375a;
+  background: #fdf1f3;
+}
+
+.onboard-suburb-results__item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .onboard-fieldset {
   margin: 0;
   padding: 12px 14px 8px;

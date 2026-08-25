@@ -9,15 +9,23 @@ import type { ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 const IDENTITY_KEYS = ["first_name", "last_name"] as const;
 const BASICS_KEYS = ["display_name", "birthdate", "gender"] as const;
 const WHERE_KEYS = ["country_code", "city"] as const;
+/** Not a profile field D8N accepts via PATCH /profile — this is the same
+ * top-level "location" key completion.missing uses for a still-unset
+ * ProfileLocation (see LocationStep.tsx, which saves it via its own
+ * PUT /profile/location). Mapping it into a screen here just lets it reuse
+ * the same "resume at the first still-missing screen" logic as every other
+ * profile screen. */
+const LOCATION_KEYS = ["location"] as const;
 const ABOUT_KEYS = ["bio"] as const;
 const LIFESTYLE_KEYS = ["smoking", "drinking"] as const;
 
-export type ProfileScreen = "identity" | "basics" | "where" | "about" | "lifestyle";
+export type ProfileScreen = "identity" | "basics" | "where" | "location" | "about" | "lifestyle";
 
 export const PROFILE_SCREEN_ORDER: readonly ProfileScreen[] = [
   "identity",
   "basics",
   "where",
+  "location",
   "about",
   "lifestyle",
 ];
@@ -54,6 +62,7 @@ export const PROFILE_SCREEN_KEYS: Record<ProfileScreen, readonly string[]> = {
   identity: IDENTITY_KEYS,
   basics: BASICS_KEYS,
   where: WHERE_KEYS,
+  location: LOCATION_KEYS,
   about: ABOUT_KEYS,
   lifestyle: LIFESTYLE_KEYS,
 };

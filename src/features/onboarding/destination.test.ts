@@ -51,6 +51,7 @@ describe("onboarding destination", () => {
   it("uses missing keys from the server to choose the profile screen", () => {
     expect(profileScreenForMissing(["display_name", "bio"])).toBe("basics");
     expect(profileScreenForMissing(["city", "bio"])).toBe("where");
+    expect(profileScreenForMissing(["location", "bio"])).toBe("location");
     expect(profileScreenForMissing(["bio"])).toBe("about");
     expect(profileScreenForMissing(["smoking"])).toBe("lifestyle");
     expect(profileScreenForMissing([])).toBe("lifestyle");
