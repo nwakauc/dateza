@@ -16,3 +16,16 @@ export function buildOptionLabelLookup(configuration: ProfileConfiguration | und
   }
   return (groupKey, code) => byGroup.get(groupKey)?.get(code);
 }
+
+/**
+ * Same idea as `buildOptionLabelLookup`, but for single-value profile fields
+ * (`smoking`, `drinking`, `fitness`, `body_type`, ...) whose server-side
+ * options live in `configuration.profile_fields`, not `option_groups`.
+ */
+export function buildProfileFieldLabelLookup(configuration: ProfileConfiguration | undefined): OptionLabelLookup {
+  const byField = new Map<string, Map<string, string>>();
+  for (const field of configuration?.profile_fields ?? []) {
+    byField.set(field.key, new Map(field.options.map((option) => [option.code, option.label])));
+  }
+  return (fieldKey, code) => byField.get(fieldKey)?.get(code);
+}

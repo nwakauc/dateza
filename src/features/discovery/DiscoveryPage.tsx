@@ -2,15 +2,23 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getDiscoveryProfiles } from "../../lib/api/discovery.ts";
 import { likeProfile, passProfile } from "../../lib/api/find.ts";
+import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { DiscoveryProfile, DiscoverySelection } from "../../lib/api/discoveryTypes.ts";
+import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { CompassIcon } from "../shell/icons.tsx";
+import { MatchModal } from "../shell/MatchModal.tsx";
+import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { buildOptionLabelLookup } from "../find/optionLabels.ts";
 import { DiscoveryCard } from "./DiscoveryCard.tsx";
+import { DiscoverValueStrip } from "./DiscoverValueStrip.tsx";
+import { ProfileCompletionPanel } from "./ProfileCompletionPanel.tsx";
 
 type Interaction = "idle" | "liked" | "matched" | "passed";
+type ActiveMatch = { profile: DiscoveryProfile; matchId: string | null };
 
 /**
  * Discovery is DateZA's curated, recommendation-led surface (10/day) — a

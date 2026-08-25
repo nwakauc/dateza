@@ -1,9 +1,12 @@
 import type { DiscoveryProfile } from "../../lib/api/discoveryTypes.ts";
 import { CloseIcon, HeartIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
+import type { OptionLabelLookup } from "../find/optionLabels.ts";
 import { describeCompatibilityReasons } from "./compatibilityCopy.ts";
 
 type InteractionState = "idle" | "liked" | "matched" | "passed";
+
+const noOptionLabel: OptionLabelLookup = () => undefined;
 
 type Props = {
   profile: DiscoveryProfile;
@@ -12,18 +15,28 @@ type Props = {
   onLike: () => void;
   onPass: () => void;
   pending: boolean;
+  /** Optional so existing callers/tests that don't need chips keep working. */
+  optionLabel?: OptionLabelLookup;
 };
 
 // At most two reasons on the card itself — enough to be persuasive without
 // turning into a list. The full set is available on the profile detail page.
 const MAX_REASONS_SHOWN = 2;
+const MAX_TRAITS_SHOWN = 2;
 
-export function DiscoveryCard({ profile, interaction, onOpen, onLike, onPass, pending }: Props) {
+export function DiscoveryCard({ profile, interaction, onOpen, onLike, onPass, pending, optionLabel = noOptionLabel }: Props) {
   const photo = profile.photos[0];
   const location = [profile.city, profile.country_code].filter(Boolean).join(", ");
   const reasons = profile.compatibility
     ? describeCompatibilityReasons(profile.compatibility.reasons).slice(0, MAX_REASONS_SHOWN)
     : [];
+  const relationshipCode = profile.options.relationship_intent?.[0];
+  const traits = [
+    relationshipCode ? optionLabel("relationship_intent", relationshipCode) : undefined,
+    ...(profile.options.interests ?? []).map((code) => optionLabel("interests", code)),
+  ]
+    .filter((label): label is string => Boolean(label))
+    .slice(0, MAX_TRAITS_SHOWN);
 
   return (
     <article className="discovery-card">
@@ -50,16 +63,30 @@ export function DiscoveryCard({ profile, interaction, onOpen, onLike, onPass, pe
             {profile.age ? <span className="discovery-card__age">{profile.age}</span> : null}
           </div>
           {location ? <p className="discovery-card__location">{location}</p> : null}
-          {profile.verified ? (
-            <p className="discovery-card__verified">
-              <ShieldCheckIcon className="discovery-card__verified-icon" />
-              {VERIFIED_CONTACT_LABEL}
-            </p>
+          {profile.verified || traits.length > 0 ? (
+            <div className="discovery-card__badges">
+              {profile.verified ? (
+                <span className="discovery-card__verified">
+                  <ShieldCheckIcon className="discovery-card__verified-icon" />
+                  {VERIFIED_CONTACT_LABEL}
+                </span>
+              ) : null}
+              {traits.map((trait) => (
+                <span className="discovery-card__trait" key={trait}>
+                  {trait}
+                </span>
+              ))}
+            </div>
           ) : null}
         </div>
       </button>
 
-      {reasons.length > 0 ? <p className="discovery-card__reasons">{reasons.join(" · ")}</p> : null}
+      {reasons.length > 0 ? (
+        <p className="discovery-card__reasons">
+          <span className="discovery-card__reasons-dot" aria-hidden="true" />
+          {reasons.join(" · ")}
+        </p>
+      ) : null}
 
       <div className="discovery-card__actions">
         {interaction === "matched" ? (
