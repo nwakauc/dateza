@@ -33,6 +33,10 @@ function parseVerification(value: unknown): VerificationDispatchState | null {
   return { code_dispatched: value.code_dispatched, resend_available_in: value.resend_available_in };
 }
 
+function parseAuthenticationMode(value: unknown): "cookie" | "bearer" | undefined {
+  return value === "cookie" || value === "bearer" ? value : undefined;
+}
+
 function parseMeResponse(data: unknown): MeResponse {
   if (!isRecord(data)) {
     throw new ApiError(502, undefined, "invalid_me_response");
@@ -56,7 +60,12 @@ function parseMeResponse(data: unknown): MeResponse {
   return {
     user_id: data.user_id,
     brand: { slug: brand.slug, name: brand.name },
-    session: { id: session.id, expires_at: session.expires_at },
+    session: {
+      id: session.id,
+      expires_at: session.expires_at,
+      authentication_mode: parseAuthenticationMode(session.authentication_mode),
+      csrf_token: typeof session.csrf_token === "string" ? session.csrf_token : undefined,
+    },
     identifier: parseIdentifier(data.identifier),
     verification_required: data.verification_required,
     verification: parseVerification(data.verification),

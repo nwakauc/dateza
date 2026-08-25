@@ -6,6 +6,7 @@ import SignInPage from "../features/auth/SignInPage.tsx";
 import SignUpPage from "../features/auth/SignUpPage.tsx";
 import ChatsPage from "../features/chats/ChatsPage.tsx";
 import DiscoveryPage from "../features/discovery/DiscoveryPage.tsx";
+import { RequireLocation } from "../features/discovery/RequireLocation.tsx";
 import FindPage from "../features/find/FindPage.tsx";
 import ProfileDetailPage from "../features/find/ProfileDetailPage.tsx";
 import LikesPage from "../features/likes/LikesPage.tsx";
@@ -93,7 +94,14 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/discover" element={<DiscoveryPage />} />
+        <Route
+          path="/discover"
+          element={
+            <RequireLocation>
+              <DiscoveryPage />
+            </RequireLocation>
+          }
+        />
         {/* Old path kept working — nothing outside this file should link
             here anymore, but a bookmarked/shared URL still lands safely. */}
         <Route path="/discovery" element={<Navigate to="/discover" replace />} />

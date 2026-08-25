@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
 import { SessionProvider } from "./SessionProvider.tsx";
 import { useSession } from "./useSession.ts";
-import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { getCsrfToken } from "../../lib/api/csrfStore.ts";
+import { getBearerToken, setBearerToken } from "../../lib/api/tokenStore.ts";
 
 const meBody = {
   user_id: 42,
@@ -14,6 +15,16 @@ const meBody = {
   identifier: { kind: "email", verified: true, masked_destination: "a••@example.com" },
   verification_required: false,
   verification: { code_dispatched: false, resend_available_in: 0 },
+};
+
+const cookieMeBody = {
+  ...meBody,
+  session: {
+    id: 7,
+    expires_at: "2026-12-01T00:00:00Z",
+    authentication_mode: "cookie",
+    csrf_token: "csrf-xyz",
+  },
 };
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -150,5 +161,29 @@ describe("session bootstrap and protected routes", () => {
       screen.queryByRole("heading", { name: /member area/i }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("status:unavailable")).toBeInTheDocument();
+  });
+
+  it("bootstraps via the cookie alone — no bearer token in memory — and captures the CSRF token", async () => {
+    // This is the refresh scenario the D8N browser-session integration
+    // fixes: a fresh page load has no bearer token in memory at all, only
+    // whatever HttpOnly cookie the browser is holding. `/me` must still be
+    // able to authenticate (credentials included) and hand back a CSRF
+    // token for subsequent unsafe requests.
+    expect(getBearerToken()).toBeUndefined();
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, cookieMeBody));
+
+    renderMemberRoute();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /member area/i }),
+      ).toBeInTheDocument();
+    });
+
+    const init = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(init?.credentials).toBe("include");
+    const headers = new Headers(init?.headers);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(getCsrfToken()).toBe("csrf-xyz");
   });
 });

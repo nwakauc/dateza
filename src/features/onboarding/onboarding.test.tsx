@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
+import type { ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 
 const meBody = {
   user_id: 42,
@@ -188,6 +190,7 @@ describe("onboarding routing and progression", () => {
 
   it("does not trap a completed member in onboarding", async () => {
     setBearerToken("opaque-session-token");
+    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
       if (url.endsWith("/api/v1/me")) {
@@ -711,5 +714,169 @@ describe("onboarding photo step", () => {
     await waitFor(() => {
       expect(intentCalls).toBe(1);
     });
+  });
+});
+
+const publicationOnboarding = {
+  state: "ready_to_publish",
+  next_step: "publication",
+  profile_exists: true,
+  profile_complete: true,
+  profile_published: false,
+  completion: { complete: true, percent: 100, missing: [] },
+} satisfies ProfileOnboardingStatus;
+
+const ownerProfileForPublication = {
+  id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  brand: meBody.brand,
+  status: "draft",
+  visibility: "hidden",
+  options: {},
+};
+
+function stubGeolocation(geolocation: Partial<Geolocation> | undefined) {
+  Object.defineProperty(navigator, "geolocation", { value: geolocation, configurable: true });
+}
+
+function successfulPosition(): GeolocationPosition {
+  return {
+    coords: {
+      latitude: -33.9249,
+      longitude: 18.4241,
+      accuracy: 25,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+      toJSON: () => ({}),
+    },
+    timestamp: Date.parse("2026-08-25T02:05:01Z"),
+    toJSON: () => ({}),
+  };
+}
+
+describe("onboarding location step", () => {
+  afterEach(() => {
+    stubGeolocation(undefined);
+  });
+
+  it("shows the location step before publishing, and blocks publish while permission is denied", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let publishCalls = 0;
+    stubGeolocation({
+      getCurrentPosition: (_success, error) => {
+        (error as PositionErrorCallback)({
+          code: 1,
+          PERMISSION_DENIED: 1,
+          POSITION_UNAVAILABLE: 2,
+          TIMEOUT: 3,
+          message: "denied",
+        } as GeolocationPositionError);
+      },
+    });
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(jsonResponse(200, { configuration, onboarding: publicationOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/publication")) {
+        publishCalls += 1;
+        return Promise.resolve(jsonResponse(200, {}));
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfileForPublication, onboarding: publicationOnboarding }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/onboarding");
+
+    await screen.findByRole("heading", { name: /where are you dating from/i });
+    expect(screen.queryByRole("button", { name: /publish profile/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /use my current location/i }));
+
+    expect(await screen.findByText(/dateza needs your location/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
+    expect(publishCalls).toBe(0);
+  });
+
+  it("persists location before publishing, in that order, then reaches Discover", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const callOrder: string[] = [];
+    let onboarding: ProfileOnboardingStatus = publicationOnboarding;
+    stubGeolocation({
+      getCurrentPosition: (success) => {
+        (success as PositionCallback)(successfulPosition());
+      },
+    });
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      const method = init?.method ?? "GET";
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(jsonResponse(200, { configuration, onboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/location") && method === "PUT") {
+        callOrder.push("location");
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: { configured: true, accuracy_meters: 25, source: "device", captured_at: "2026-08-25T02:05:01Z" },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/publication") && method === "POST") {
+        callOrder.push("publication");
+        onboarding = { ...publicationOnboarding, state: "complete", next_step: null, profile_published: true };
+        return Promise.resolve(jsonResponse(200, {}));
+      }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profiles: [],
+            next_cursor: null,
+            selection: { allocation_date: "2026-08-24", daily_limit: 10, count: 0, finalized: true, refreshes_at: "2026-08-25T00:00:00+02:00" },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfileForPublication, onboarding }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/onboarding");
+
+    await screen.findByRole("heading", { name: /where are you dating from/i });
+    await user.click(screen.getByRole("button", { name: /use my current location/i }));
+
+    await screen.findByRole("heading", { name: /ready when you are/i });
+    await user.click(screen.getByRole("button", { name: /publish profile/i }));
+
+    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(callOrder).toEqual(["location", "publication"]);
+  });
+
+  it("resumes directly at publish when this device already confirmed location for this profile", async () => {
+    setBearerToken("opaque-session-token");
+    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(jsonResponse(200, { configuration, onboarding: publicationOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfileForPublication, onboarding: publicationOnboarding }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/onboarding");
+
+    expect(await screen.findByRole("heading", { name: /ready when you are/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /where are you dating from/i })).not.toBeInTheDocument();
   });
 });

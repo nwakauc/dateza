@@ -10,6 +10,8 @@ import type {
   OwnerProfile,
   ProfileConfiguration,
   ProfileConfigurationResponse,
+  ProfileLocationStatus,
+  ProfileLocationUpdateBody,
   ProfileOnboardingStatus,
   ProfilePreferences,
   ProfileUpdateBody,
@@ -348,4 +350,31 @@ export function replaceProfileOptions(selections: Record<string, string[]>): Pro
 
 export function publishCurrentProfile(): Promise<void> {
   return apiRequest("/api/v1/profile/publication", { method: "POST" }).then(() => undefined);
+}
+
+function parseLocationStatus(value: unknown): ProfileLocationStatus {
+  if (!isRecord(value) || typeof value.configured !== "boolean") {
+    throw new ApiError(502, undefined, "invalid_location_response");
+  }
+  return {
+    configured: value.configured,
+    accuracy_meters: asNumberOrNull(value.accuracy_meters),
+    source: asStringOrNull(value.source),
+    captured_at: asStringOrNull(value.captured_at),
+  };
+}
+
+/**
+ * PUT /api/v1/profile/location — persists the member's precise device
+ * location for distance-based matching. D8N never echoes coordinates back
+ * (confirmed against staging 2026-08-25); the response only confirms
+ * whether a usable fix is now on file.
+ */
+export function updateProfileLocation(body: ProfileLocationUpdateBody): Promise<ProfileLocationStatus> {
+  return apiRequest("/api/v1/profile/location", jsonInit("PUT", body)).then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_location_response");
+    }
+    return parseLocationStatus(data.location);
+  });
 }

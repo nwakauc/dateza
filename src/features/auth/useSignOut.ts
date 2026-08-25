@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { revokeCurrentSession } from "../../lib/api/auth.ts";
+import { setCsrfToken } from "../../lib/api/csrfStore.ts";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { useSession } from "../session/useSession.ts";
 
@@ -21,6 +22,7 @@ export function useSignOut() {
       // session to expire; the user asked to leave this browser session.
     } finally {
       setBearerToken(undefined);
+      setCsrfToken(undefined);
       setVerification({ status: "unknown" });
       await refreshSession();
       setPending(false);

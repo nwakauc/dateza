@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { getBearerToken, setBearerToken } from "../../lib/api/tokenStore.ts";
+import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 const meBody = {
   user_id: 42,
@@ -200,6 +201,7 @@ describe("authentication flows", () => {
   it("clears local credential and session on logout", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
+    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
@@ -301,6 +303,53 @@ describe("authentication flows", () => {
     expect(getBearerToken()).toBe("opaque-session-token");
     // The registration challenge must be preserved, not reissued.
     expect(verificationCalls).toEqual([]);
+  });
+
+  it("registers in browser session mode: no bearer token is ever stored, /me authenticates via the cookie alone", async () => {
+    const user = userEvent.setup();
+    let registerBody: unknown;
+    let cookieEstablished = false;
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      const method = init?.method ?? "GET";
+      if (url.endsWith("/api/v1/me")) {
+        // No bearer-token gate here — a browser-mode session authenticates
+        // purely off the (simulated) cookie the register response set.
+        return cookieEstablished
+          ? Promise.resolve(jsonResponse(200, meBody))
+          : Promise.resolve(jsonResponse(401, { error: "unauthorized" }));
+      }
+      if (url.endsWith("/api/v1/auth/password/register") && method === "POST") {
+        registerBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+        cookieEstablished = true;
+        return Promise.resolve(
+          jsonResponse(201, { ...credentialBody, token: null, token_type: null, expires_at: null }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, { configuration, onboarding: incompleteOnboarding }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, { profile: null, onboarding: incompleteOnboarding }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/sign-up");
+
+    await screen.findByRole("heading", { name: /join dateza/i });
+    await user.type(screen.getByLabelText(/email address/i), "ada@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "secret1");
+    await user.type(screen.getByLabelText(/confirm password/i), "secret1");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByRole("heading", { name: /let's start with you/i })).toBeInTheDocument();
+    expect(registerBody).toMatchObject({ session_mode: "browser" });
+    expect(getBearerToken()).toBeUndefined();
   });
 
   it("keeps password recovery anti-enumeration copy on a successful request", async () => {

@@ -125,6 +125,17 @@ export function CloseIcon({ className }: IconProps) {
   );
 }
 
+/** Circled "i" — opens the full profile from a summary card. */
+export function InfoIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.2" />
+      <circle cx="12" cy="8.3" r="0.15" fill="currentColor" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 export function PencilIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -1,8 +1,13 @@
 import { readAppConfig } from "../config.ts";
 import { ApiError } from "./errors.ts";
+import { getCsrfToken, setCsrfToken } from "./csrfStore.ts";
 import { getBearerToken, setBearerToken } from "./tokenStore.ts";
 
 const REQUEST_TIMEOUT_MS = 15_000;
+
+/** Methods that mutate state — D8N's cookie sessions require the CSRF
+ * header on these; GET/HEAD/OPTIONS never carry it. */
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 type UnauthorizedListener = () => void;
 
@@ -77,9 +82,20 @@ export async function apiRequest(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  // D8N's browser session is an HttpOnly cookie, invisible to JS — this is
+  // what actually authenticates the request. `credentials: "include"` is
+  // required on every request (including register/login, which establish
+  // the cookie) or the browser never sends/receives it. Sending this
+  // alongside a bearer Authorization header is harmless: D8N picks either.
+  const method = (init.method ?? "GET").toUpperCase();
+  const csrfToken = getCsrfToken();
+  if (csrfToken && UNSAFE_METHODS.has(method)) {
+    headers.set("X-CSRF-Token", csrfToken);
+  }
+
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
-    credentials: "omit",
+    credentials: "include",
     headers,
     signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
@@ -97,6 +113,7 @@ export async function apiRequest(
   if (response.status === 401) {
     if (invalidateOnUnauthorized) {
       setBearerToken(undefined);
+      setCsrfToken(undefined);
       unauthorizedListener?.();
     }
     const code = parseErrorCode(parsed);

@@ -17,6 +17,7 @@ import type {
   ProfileConfiguration,
   ProfileOnboardingStatus,
 } from "../../lib/api/profileTypes.ts";
+import { hasConfirmedLocation } from "../../lib/locationConfirmationStore.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import {
   HIDDEN_OPTIONS_GROUP_KEYS,
@@ -31,6 +32,7 @@ import {
   type OptionsScreen,
   type ProfileScreen,
 } from "./destination.ts";
+import { LocationStep } from "./LocationStep.tsx";
 import { OnboardingShell } from "./OnboardingShell.tsx";
 import { onboardingErrorMessage } from "./onboardingErrors.ts";
 import { OptionsForm } from "./OptionsForm.tsx";
@@ -111,6 +113,8 @@ export default function OnboardingPage() {
   const [optionSelections, setOptionSelections] = useState<Record<string, string[]>>({});
   const [optionsScreen, setOptionsScreen] = useState<OptionsScreen>("intent");
   const [holdPhotos, setHoldPhotos] = useState(false);
+  const [profileId, setProfileId] = useState<string | undefined>();
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
 
   const applyProfile = useCallback((nextProfile: OwnerProfile | null, nextOnboarding: ProfileOnboardingStatus) => {
     setOnboarding(nextOnboarding);
@@ -124,6 +128,12 @@ export default function OnboardingPage() {
     setProfileScreen(profileScreenForMissing(nextOnboarding.completion.missing));
     setOptionSelections(nextProfile?.options ?? {});
     setOptionsScreen(optionsScreenForMissing(nextOnboarding.completion.missing));
+    setProfileId(nextProfile?.id);
+    // D8N doesn't expose whether ProfileLocation is configured (see
+    // locationConfirmationStore.ts), so a refresh mid-"publication" step
+    // resumes from this device's own local record of having already
+    // granted it, rather than asking again every time.
+    setLocationConfirmed(nextProfile ? hasConfirmedLocation(nextProfile.id) : false);
   }, []);
 
   useEffect(() => {
@@ -485,6 +495,21 @@ export default function OnboardingPage() {
   }
 
   if (step === "publication") {
+    // D8N has no "location" step of its own and never blocks publication on
+    // it (confirmed against staging 2026-08-25), so DateZA inserts this
+    // screen client-side, ahead of publishing, rather than relying on the
+    // server's step sequencing.
+    if (!locationConfirmed && profileId) {
+      return (
+        <OnboardingShell
+          title="Where are you dating from?"
+          intro="Your location helps us show you people within the distance you choose."
+          percent={percent}
+        >
+          <LocationStep profileId={profileId} onSuccess={() => setLocationConfirmed(true)} />
+        </OnboardingShell>
+      );
+    }
     return (
       <OnboardingShell
         title="Ready when you are"

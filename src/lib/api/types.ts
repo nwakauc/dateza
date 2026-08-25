@@ -20,6 +20,15 @@ export type MeResponse = {
   session: {
     id: number;
     expires_at: string;
+    /** Present when this session was authenticated via the D8N browser
+     * (HttpOnly cookie) contract rather than a bearer token. */
+    authentication_mode?: "cookie" | "bearer";
+    /**
+     * Issued alongside `authentication_mode: "cookie"`. Send back as
+     * `X-CSRF-Token` on unsafe requests — see csrfStore.ts. Not present for
+     * bearer sessions, which don't need it.
+     */
+    csrf_token?: string;
   };
   identifier: SessionIdentifierVerification | null;
   verification_required: boolean;
@@ -49,12 +58,21 @@ export type PasswordAuthRequest = {
   identifier: string;
   password: string;
   device_name?: string;
+  /** DateZA web always requests the persistent, HttpOnly-cookie session —
+   * see the D8N browser-session contract. Browser-mode responses omit the
+   * bearer token entirely (see `token` below). */
+  session_mode?: "browser";
 };
 
 export type PasswordAuthSessionResponse = {
-  token: string;
-  token_type: "Bearer";
-  expires_at: string;
+  /**
+   * `null` in `session_mode: "browser"` responses — the session lives in an
+   * HttpOnly cookie the server set on this same response, not in this body.
+   * Present only for bearer-mode callers (tests, other clients).
+   */
+  token: string | null;
+  token_type: "Bearer" | null;
+  expires_at: string | null;
   user_id: number;
   brand: BrandSummary;
   identifier: SessionIdentifierVerification;

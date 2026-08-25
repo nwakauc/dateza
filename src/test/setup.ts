@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
+import { setCsrfToken } from "../lib/api/csrfStore.ts";
 import { setBearerToken } from "../lib/api/tokenStore.ts";
 import { setUnauthorizedListener } from "../lib/api/client.ts";
 
@@ -13,7 +14,9 @@ function unauthorizedResponse(): Response {
 
 beforeEach(() => {
   setBearerToken(undefined);
+  setCsrfToken(undefined);
   setUnauthorizedListener(undefined);
+  window.localStorage.clear();
   if (typeof URL.createObjectURL !== "function") {
     URL.createObjectURL = () => "blob:dateza-test";
   }
@@ -30,6 +33,8 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   setBearerToken(undefined);
+  setCsrfToken(undefined);
   setUnauthorizedListener(undefined);
+  window.localStorage.clear();
   document.title = "DateZA — Meet someone who chooses you.";
 });

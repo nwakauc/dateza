@@ -65,21 +65,28 @@ function parseSessionResponse(data: unknown): PasswordAuthSessionResponse {
   if (!isRecord(data)) {
     throw new ApiError(502, undefined, "invalid_auth_response");
   }
+
+  // `session_mode: "browser"` responses omit the bearer token — the
+  // HttpOnly cookie set on this same response is the credential instead.
+  // Only validate the token trio when a token was actually sent.
+  const hasToken = data.token !== null && data.token !== undefined;
   if (
-    typeof data.token !== "string" ||
-    data.token === "" ||
-    data.token_type !== "Bearer" ||
-    typeof data.expires_at !== "string" ||
-    typeof data.user_id !== "number" ||
-    typeof data.verification_required !== "boolean"
+    hasToken &&
+    (typeof data.token !== "string" ||
+      data.token === "" ||
+      data.token_type !== "Bearer" ||
+      typeof data.expires_at !== "string")
   ) {
+    throw new ApiError(502, undefined, "invalid_auth_response");
+  }
+  if (typeof data.user_id !== "number" || typeof data.verification_required !== "boolean") {
     throw new ApiError(502, undefined, "invalid_auth_response");
   }
 
   return {
-    token: data.token,
-    token_type: "Bearer",
-    expires_at: data.expires_at,
+    token: hasToken ? (data.token as string) : null,
+    token_type: hasToken ? "Bearer" : null,
+    expires_at: hasToken ? (data.expires_at as string) : null,
     user_id: data.user_id,
     brand: parseBrand(data.brand),
     identifier: parseIdentifier(data.identifier),
@@ -136,6 +143,7 @@ export function registerWithPassword(
     identifier,
     password,
     device_name: DEVICE_NAME,
+    session_mode: "browser",
   };
   return apiRequest(
     "/api/v1/auth/password/register",
@@ -152,6 +160,7 @@ export function loginWithPassword(
     identifier,
     password,
     device_name: DEVICE_NAME,
+    session_mode: "browser",
   };
   return apiRequest(
     "/api/v1/auth/password/login",

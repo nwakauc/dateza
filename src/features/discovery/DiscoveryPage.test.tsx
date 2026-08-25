@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 /**
  * FE-02: Discover's real `/api/v1/discovery` integration. Discover and Find
@@ -118,6 +119,14 @@ function renderApp(path = "/discover") {
 }
 
 describe("Discover (FE-02)", () => {
+  // These tests are about Discover's own request/rendering behaviour, not
+  // the location guard (covered separately in RequireLocation.test.tsx) —
+  // seed the device as already having confirmed location so it doesn't
+  // intercept every test here.
+  beforeEach(() => {
+    markLocationConfirmed(ownerProfile.id);
+  });
+
   it("requests GET /api/v1/discovery and never requests /api/v1/find", async () => {
     setBearerToken("opaque-session-token");
     let discoveryCalls = 0;

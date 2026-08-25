@@ -126,3 +126,22 @@ export type ProfileUpdateBody = {
   smoking?: string;
   drinking?: string;
 };
+
+export type ProfileLocationUpdateBody = {
+  latitude: number;
+  longitude: number;
+  accuracy_meters: number;
+  captured_at: string;
+};
+
+/**
+ * Confirmed against DateZA staging `PUT /api/v1/profile/location`
+ * (2026-08-25): the response never echoes coordinates back, only whether
+ * D8N accepted and stored a usable fix.
+ */
+export type ProfileLocationStatus = {
+  configured: boolean;
+  accuracy_meters: number | null;
+  source: string | null;
+  captured_at: string | null;
+};

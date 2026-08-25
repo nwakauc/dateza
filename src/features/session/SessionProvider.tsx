@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
 import { setUnauthorizedListener } from "../../lib/api/client.ts";
+import { setCsrfToken } from "../../lib/api/csrfStore.ts";
 import { getCurrentIdentity } from "../../lib/api/me.ts";
 import { ConfigError } from "../../lib/config.ts";
 import { SessionContext } from "./SessionContext.ts";
@@ -29,6 +30,13 @@ type LoadedSession = {
 async function loadSession(): Promise<LoadedSession> {
   try {
     const user = await getCurrentIdentity();
+    // A fresh /me bootstrap (e.g. after a hard refresh) is the only place
+    // that supplies a current CSRF token for a cookie session — capture it
+    // here so every subsequent unsafe request has it, without pages having
+    // to know this is happening.
+    if (user.session.authentication_mode === "cookie") {
+      setCsrfToken(user.session.csrf_token);
+    }
     const verification: VerificationState = user.identifier && user.verification
       ? {
           status: "known",

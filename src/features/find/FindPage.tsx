@@ -1,15 +1,37 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getFindProfiles, likeProfile, passProfile } from "../../lib/api/find.ts";
+import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { FindAllowance, FindProfile } from "../../lib/api/findTypes.ts";
-import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
+import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
+import { SearchIcon } from "../shell/icons.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
-import { ProfileCard } from "./ProfileCard.tsx";
+import { FindActions } from "./FindActions.tsx";
+import { FindSwipeStack } from "./FindSwipeStack.tsx";
+import { buildOptionLabelLookup } from "./optionLabels.ts";
 
-type Interaction = "idle" | "liked" | "matched" | "passed";
+/**
+ * Find is DateZA's sequential, one-profile-at-a-time swipe surface — the
+ * deliberate opposite of Discover's curated grid (see DiscoveryPage.tsx).
+ * A Like/Pass isn't sent to D8N the instant it's tapped: it parks the card
+ * to one side for UNDO_WINDOW_MS first. D8N has no undo/rewind endpoint
+ * (`POST .../likes` and `POST .../pass` are both documented as producing a
+ * 409 `InteractionConflict` if you try to reverse a decision by calling the
+ * other one — confirmed against the verified openapi.yaml contract), so a
+ * genuine "I meant to do the opposite" only works before the request is
+ * ever sent. This also keeps Like's match result honest: matched status is
+ * only known once the real request resolves, so a match is never revealed
+ * later than the moment the card would otherwise have advanced.
+ */
+
+type Action = "liked" | "passed";
+type Phase = "active" | "committing" | "submitting" | "exit-left" | "exit-right";
+
+const UNDO_WINDOW_MS = 2200;
+const EXIT_TRANSITION_MS = 300;
 
 function findErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -38,14 +60,38 @@ export default function FindPage() {
   const navigate = useNavigate();
   const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
-  const [profiles, setProfiles] = useState<FindProfile[]>([]);
+  const [active, setActive] = useState<FindProfile | undefined>();
+  const [queue, setQueue] = useState<FindProfile[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [allowance, setAllowance] = useState<FindAllowance | undefined>();
+  const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [interactions, setInteractions] = useState<Record<string, Interaction>>({});
-  const [busyProfileId, setBusyProfileId] = useState<string | undefined>();
+  const [seenAny, setSeenAny] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [advanceCount, setAdvanceCount] = useState(0);
+
+  const [phase, setPhase] = useState<Phase>("active");
+  const [pendingAction, setPendingAction] = useState<Action | undefined>();
+  const [actionError, setActionError] = useState<string | undefined>();
+  const [matchedProfile, setMatchedProfile] = useState<FindProfile | undefined>();
+
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const queueRef = useRef(queue);
+  const nextCursorRef = useRef(nextCursor);
+  const loadingMoreRef = useRef(loadingMore);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
 
   useEffect(() => {
     document.title = "Find — DateZA";
@@ -53,9 +99,11 @@ export default function FindPage() {
     getFindProfiles()
       .then((result) => {
         if (cancelled) return;
-        setProfiles(result.profiles);
+        setActive(result.profiles[0]);
+        setQueue(result.profiles.slice(1));
         setNextCursor(result.next_cursor);
         setAllowance(result.allowance);
+        setSeenAny(result.profiles.length > 0);
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(findErrorMessage(caught));
@@ -63,122 +111,261 @@ export default function FindPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    // Best-effort: powers human-readable relationship-intent/interest chips
+    // on the swipe card (see optionLabels.ts). Find still renders fully
+    // without it — those chips just stay hidden rather than showing raw
+    // option codes.
+    getProfileConfiguration()
+      .then((result) => {
+        if (!cancelled) setConfiguration(result.configuration);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
       document.title = "DateZA — Meet someone who chooses you.";
     };
-  }, []);
+  }, [attempt]);
 
-  async function loadMore() {
-    if (!nextCursor || loadingMore) {
+  useEffect(
+    () => () => {
+      clearTimeout(undoTimer.current);
+      clearTimeout(exitTimer.current);
+    },
+    [],
+  );
+
+  function retry() {
+    setLoading(true);
+    setError(undefined);
+    setAttempt((current) => current + 1);
+  }
+
+  async function fetchMore() {
+    if (loadingMoreRef.current || !nextCursorRef.current) {
       return;
     }
     setLoadingMore(true);
     try {
-      const result = await getFindProfiles({ cursor: nextCursor });
-      setProfiles((current) => [...current, ...result.profiles]);
+      const result = await getFindProfiles({ cursor: nextCursorRef.current });
+      setQueue((current) => [...current, ...result.profiles]);
       setNextCursor(result.next_cursor);
       setAllowance(result.allowance);
-    } catch (caught) {
-      setError(findErrorMessage(caught));
+      if (result.profiles.length > 0) setSeenAny(true);
+      return result.profiles;
+    } catch {
+      // Silent: this is a background top-up, not the member's current
+      // request. If the queue actually runs dry, advance() below surfaces
+      // an honest "load more" retry instead.
+      return [];
     } finally {
       setLoadingMore(false);
     }
   }
 
+  function advance() {
+    setPhase("active");
+    setPendingAction(undefined);
+    setActionError(undefined);
+    setMatchedProfile(undefined);
+    setActive(queueRef.current[0]);
+    setQueue((current) => current.slice(1));
+    setAdvanceCount((current) => current + 1);
+    if (queueRef.current.length <= 2 && nextCursorRef.current) {
+      void fetchMore();
+    }
+  }
+
   function openProfile(profileId: string) {
-    requireVerified("profile", () => navigate(`/profile/${profileId}`));
+    requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "find" } }));
   }
 
-  function like(profileId: string) {
-    requireVerified("like", () => {
-      setBusyProfileId(profileId);
-      likeProfile(profileId)
-        .then((result) => {
-          setInteractions((current) => ({ ...current, [profileId]: result.matched ? "matched" : "liked" }));
-        })
-        .catch(() => undefined)
-        .finally(() => setBusyProfileId(undefined));
+  function requestAction(action: Action) {
+    if (!active || phase !== "active" || matchedProfile) {
+      return;
+    }
+    requireVerified(action === "liked" ? "like" : "pass", () => {
+      setPhase("committing");
+      setPendingAction(action);
+      setActionError(undefined);
+      undoTimer.current = setTimeout(() => void commit(action), UNDO_WINDOW_MS);
     });
   }
 
-  function pass(profileId: string) {
-    requireVerified("pass", () => {
-      setBusyProfileId(profileId);
-      passProfile(profileId)
-        .then(() => {
-          setInteractions((current) => ({ ...current, [profileId]: "passed" }));
-        })
-        .catch(() => undefined)
-        .finally(() => setBusyProfileId(undefined));
-    });
+  async function commit(action: Action) {
+    if (!active) return;
+    setPhase("submitting");
+    try {
+      if (action === "liked") {
+        const result = await likeProfile(active.id);
+        if (result.matched) {
+          setMatchedProfile(active);
+          setPhase("active");
+          setPendingAction(undefined);
+          return;
+        }
+      } else {
+        await passProfile(active.id);
+      }
+      setPhase(action === "liked" ? "exit-right" : "exit-left");
+      exitTimer.current = setTimeout(advance, EXIT_TRANSITION_MS);
+    } catch (caught) {
+      setPhase("active");
+      setPendingAction(undefined);
+      setActionError(
+        caught instanceof ApiError && caught.status === 429
+          ? "Too many requests. Wait a moment and try again."
+          : `We couldn't save that. Try again.`,
+      );
+    }
+  }
+
+  function undo() {
+    clearTimeout(undoTimer.current);
+    setPhase("active");
+    setPendingAction(undefined);
+  }
+
+  function continueAfterMatch() {
+    setMatchedProfile(undefined);
+    advance();
   }
 
   if (loading) {
-    return <SessionStatusPage title="Loading Find…" body="Finding people near you." busy />;
+    return (
+      <div className="shell-page">
+        <div className="shell-page__header">
+          <h1 className="shell-page__title">Find</h1>
+          <p className="shell-page__subtitle">Meet someone new.</p>
+        </div>
+        <div className="find-stack find-stack--skeleton" aria-hidden="true">
+          <div className="find-stack__peek find-card-skeleton" />
+          <div className="find-stack__active find-card-skeleton" />
+        </div>
+      </div>
+    );
   }
 
-  if (error && profiles.length === 0) {
-    return <SessionStatusPage title="We could not load Find" body={error} />;
+  if (error && !active) {
+    return (
+      <div className="shell-page">
+        <div className="shell-page__header">
+          <h1 className="shell-page__title">Find</h1>
+        </div>
+        <div className="shell-empty">
+          <SearchIcon className="shell-empty__icon" />
+          <p className="shell-empty__title">We couldn't load Find</p>
+          <p className="shell-empty__body">{error}</p>
+          <button className="shell-primary-action" type="button" onClick={retry}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  const exhausted = allowance?.exhausted === true && !nextCursor;
+  const exhausted = !active && allowance?.exhausted === true;
   const resetTime = allowance ? formatResetTime(allowance.resets_at) : undefined;
+  const verificationModal = pendingReason ? (
+    <Modal ariaLabel="Verify your account" onClose={dismiss}>
+      <VerificationFlow onDone={dismiss} />
+    </Modal>
+  ) : null;
+
+  if (!active) {
+    return (
+      <div className="shell-page">
+        <div className="shell-page__header">
+          <h1 className="shell-page__title">Find</h1>
+        </div>
+        <div className="shell-empty">
+          <SearchIcon className="shell-empty__icon" />
+          {exhausted ? (
+            <>
+              <p className="shell-empty__title">That's everyone for today</p>
+              <p className="shell-empty__body">
+                {resetTime
+                  ? `You've seen today's Find profiles. Come back after ${resetTime} for more.`
+                  : "You've seen today's Find profiles. Come back tomorrow for more."}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="shell-empty__title">No one new right now</p>
+              <p className="shell-empty__body">
+                {seenAny ? "That's everyone nearby for the moment. Check back soon." : "Check back soon for new people to meet."}
+              </p>
+            </>
+          )}
+          <Link className="shell-primary-action" to="/discover">
+            See today's Discover picks
+          </Link>
+        </div>
+        {verificationModal}
+      </div>
+    );
+  }
+
+  const interaction = matchedProfile
+    ? "matched"
+    : pendingAction === "liked"
+      ? "liked"
+      : pendingAction === "passed"
+        ? "passed"
+        : "idle";
+  const optionLabel = buildOptionLabelLookup(configuration);
+  const actionsDisabled = phase !== "active" || Boolean(matchedProfile);
 
   return (
     <div className="shell-page">
       <div className="shell-page__header">
-        <p className="shell-page__eyebrow">Active browsing</p>
         <h1 className="shell-page__title">Find</h1>
-        <p className="shell-page__subtitle">
-          Browse and search for people yourself — up to 10 free profiles a day, separate from Discover.
-        </p>
+        <p className="shell-page__subtitle">Meet someone new.</p>
       </div>
 
       {allowance && !exhausted && allowance.remaining > 0 ? (
-        <p className="feed-allowance">{allowance.remaining} Find {allowance.remaining === 1 ? "profile" : "profiles"} remaining today</p>
+        <p className="feed-allowance">{allowance.remaining} left today</p>
       ) : null}
 
-      {profiles.length > 0 ? (
-        <div className="discover-grid">
-          {profiles.map((profile) => (
-            <ProfileCard
-              key={profile.id}
-              profile={profile}
-              interaction={interactions[profile.id] ?? "idle"}
-              pending={busyProfileId === profile.id}
-              onOpen={() => openProfile(profile.id)}
-              onLike={() => like(profile.id)}
-              onPass={() => pass(profile.id)}
-            />
-          ))}
-        </div>
+      <FindSwipeStack
+        key={active.id}
+        profile={active}
+        peekProfiles={queue}
+        interaction={interaction}
+        optionLabel={optionLabel}
+        committingAction={phase === "committing" ? pendingAction : undefined}
+        exiting={phase === "exit-left" ? "left" : phase === "exit-right" ? "right" : undefined}
+        dragEnabled={phase === "active" && !matchedProfile}
+        autoFocus={advanceCount > 0}
+        onOpenDetail={() => openProfile(active.id)}
+        onLike={() => requestAction("liked")}
+        onPass={() => requestAction("passed")}
+        onUndo={phase === "committing" ? undo : undefined}
+      />
+
+      <FindActions
+        disabled={actionsDisabled}
+        passLabel={interaction === "passed" ? "Passed" : "Pass"}
+        likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
+        onPass={() => requestAction("passed")}
+        onLike={() => requestAction("liked")}
+      />
+
+      {actionError ? (
+        <p className="find-action-error" role="alert">
+          {actionError}
+        </p>
       ) : null}
 
-      {exhausted ? (
-        <div className="feed-end">
-          <p className="feed-end__title">That's today's Find</p>
-          <p className="feed-end__body">
-            {resetTime
-              ? `Come back after ${resetTime} for more people to explore.`
-              : "Come back later for more people to explore."}
-          </p>
-        </div>
-      ) : profiles.length === 0 ? (
-        <p className="discover-empty">No new profiles right now. Check back soon.</p>
-      ) : nextCursor ? (
-        <div className="discover-load-more">
-          <button className="verify-prompt__secondary" type="button" onClick={() => void loadMore()} disabled={loadingMore}>
-            {loadingMore ? "Loading…" : "Show more"}
+      {matchedProfile ? (
+        <div className="find-match">
+          <p className="find-match__title">You matched with {matchedProfile.display_name ?? "them"}!</p>
+          <button className="shell-primary-action" type="button" onClick={continueAfterMatch}>
+            Continue browsing
           </button>
         </div>
       ) : null}
 
-      {pendingReason ? (
-        <Modal ariaLabel="Verify your account" onClose={dismiss}>
-          <VerificationFlow onDone={dismiss} />
-        </Modal>
-      ) : null}
+      {verificationModal}
     </div>
   );
 }

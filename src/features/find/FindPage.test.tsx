@@ -1,0 +1,558 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import App from "../../App.tsx";
+import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
+
+/**
+ * FE-05: Find is a rich, sequential swipe experience — the deliberate
+ * opposite of Discover's curated grid (see DiscoveryPage.test.tsx). A
+ * Like/Pass is parked for a short undo grace window before the real
+ * request is sent (D8N has no undo/rewind endpoint — see FindPage.tsx),
+ * so several tests below advance past that window with a real `waitFor`
+ * timeout rather than faking timers, to stay honest about what actually
+ * fires the network request.
+ */
+
+const ownerProfile = {
+  id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  brand: { slug: "dateza", name: "DateZA" },
+  status: "active",
+  visibility: "visible",
+  options: {},
+};
+
+const completeOnboarding = {
+  state: "complete",
+  next_step: null,
+  profile_exists: true,
+  profile_complete: true,
+  profile_published: true,
+  completion: { complete: true, percent: 100, missing: [] },
+};
+
+const emptyConfiguration = {
+  configuration: { identity_fields: [], profile_fields: [], preference_fields: [], collections: [], option_groups: [] },
+  onboarding: completeOnboarding,
+};
+
+function meBody(overrides: Record<string, unknown> = {}) {
+  return {
+    user_id: 42,
+    brand: { slug: "dateza", name: "DateZA" },
+    session: { id: 7, expires_at: "2026-12-01T00:00:00Z" },
+    identifier: { kind: "email", verified: true, masked_destination: "a••@example.com" },
+    verification_required: false,
+    verification: { code_dispatched: false, resend_available_in: 0 },
+    ...overrides,
+  };
+}
+
+function findProfile(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "p1",
+    display_name: "Maya",
+    age: 27,
+    bio: "Marketing manager who loves hikes.",
+    gender: "female",
+    pronouns: null,
+    country_code: "ZA",
+    city: "Cape Town",
+    occupation: null,
+    job_title: null,
+    school_or_institution: null,
+    looking_for_text: null,
+    height_cm: null,
+    body_type: null,
+    languages_spoken: [],
+    smoking: null,
+    drinking: null,
+    fitness: null,
+    photos: [{ id: "ph1", position: 0, url: "https://example.test/maya.jpg", url_expires_in: 3600 }],
+    options: {},
+    verified: true,
+    online: false,
+    active_today: false,
+    new_here: false,
+    last_active_at: null,
+    distance_km: 3,
+    compatibility: null,
+    ...overrides,
+  };
+}
+
+function allowance(overrides: Record<string, unknown> = {}) {
+  return {
+    limit: 10,
+    used: 0,
+    remaining: 10,
+    exhausted: false,
+    resets_at: "2026-08-25T00:00:00+02:00",
+    ...overrides,
+  };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+function methodOf(init?: RequestInit): string {
+  return init?.method ?? "GET";
+}
+
+function renderApp(path = "/find") {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
+function baseHandler(profiles: unknown[], allowanceBody: unknown, extra?: (url: string, method: string) => Response | undefined) {
+  let discoveryCalls = 0;
+  const fetchImpl = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = requestUrl(input);
+    const method = methodOf(init);
+    if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+    if (url.endsWith("/api/v1/profile")) {
+      return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+    }
+    if (url.endsWith("/api/v1/profile/configuration")) {
+      return Promise.resolve(jsonResponse(200, emptyConfiguration));
+    }
+    if (url.endsWith("/api/v1/discovery")) {
+      discoveryCalls += 1;
+      return Promise.resolve(jsonResponse(404, { error: "matching_not_configured" }));
+    }
+    if (url.endsWith("/api/v1/find")) {
+      return Promise.resolve(jsonResponse(200, { profiles, next_cursor: null, allowance: allowanceBody }));
+    }
+    const extraResult = extra?.(url, method);
+    if (extraResult) return Promise.resolve(extraResult);
+    return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+  };
+  return { fetchImpl, discoveryCallCount: () => discoveryCalls };
+}
+
+function findStackCard(): HTMLElement {
+  const card = document.querySelector(".find-stack__active");
+  if (!card) throw new Error("expected .find-stack__active to be present");
+  return card as HTMLElement;
+}
+
+describe("Find (FE-05, rich swipe)", () => {
+  beforeEach(() => {
+    markLocationConfirmed(ownerProfile.id);
+  });
+
+  it("renders exactly one active, actionable profile — not a grid", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" }), findProfile({ id: "p2", display_name: "Aisha" })],
+      allowance(),
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+
+    expect(await screen.findByText("Maya")).toBeInTheDocument();
+    expect(screen.queryByText("Aisha")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^like$/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^pass$/i })).toHaveLength(1);
+    expect(document.querySelector(".discover-grid")).not.toBeInTheDocument();
+    expect(document.querySelector(".discovery-grid")).not.toBeInTheDocument();
+  });
+
+  it("does not simultaneously present the next candidate as actionable", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [
+        findProfile({ id: "p1", display_name: "Maya" }),
+        findProfile({ id: "p2", display_name: "Aisha" }),
+        findProfile({ id: "p3", display_name: "Zanele" }),
+      ],
+      allowance(),
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    // Up to two peeks render behind the active card, but purely as
+    // non-interactive, text-free photo silhouettes.
+    const peeks = document.querySelectorAll(".find-stack__peek");
+    expect(peeks.length).toBeGreaterThan(0);
+    for (const peek of peeks) {
+      expect(peek).toHaveAttribute("aria-hidden", "true");
+      expect(peek.textContent).toBe("");
+    }
+  });
+
+  it("shows a one-card skeleton while loading, not a grid of skeletons", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/configuration")) return Promise.resolve(jsonResponse(200, emptyConfiguration));
+      if (url.endsWith("/api/v1/find")) return new Promise(() => undefined);
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: "Find" })).toBeInTheDocument();
+    expect(document.querySelectorAll(".find-card-skeleton").length).toBeGreaterThan(0);
+    expect(document.querySelector(".discover-grid")).not.toBeInTheDocument();
+  });
+
+  it("navigates multiple photos on the active card without triggering Like/Pass", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let likeCalls = 0;
+    let passCalls = 0;
+    const { fetchImpl } = baseHandler(
+      [
+        findProfile({
+          id: "p1",
+          display_name: "Maya",
+          photos: [
+            { id: "ph1", position: 0, url: "https://example.test/1.jpg", url_expires_in: 3600 },
+            { id: "ph2", position: 1, url: "https://example.test/2.jpg", url_expires_in: 3600 },
+          ],
+        }),
+      ],
+      allowance(),
+      (url, method) => {
+        if (url.endsWith("/p1/likes") && method === "POST") {
+          likeCalls += 1;
+          return jsonResponse(200, { liked: true, matched: false, match_id: null, created: true });
+        }
+        if (url.endsWith("/p1/pass") && method === "POST") {
+          passCalls += 1;
+          return jsonResponse(200, { passed: true, created: true });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    expect(screen.getByText("Photo 1 of 2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /next photo/i }));
+    expect(screen.getByText("Photo 2 of 2")).toBeInTheDocument();
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(likeCalls).toBe(0);
+    expect(passCalls).toBe(0);
+    expect(screen.getByText("Maya")).toBeInTheDocument();
+  });
+
+  it("keyboard users can activate Pass and Like", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let passCalls = 0;
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.endsWith("/p1/pass") && method === "POST") {
+        passCalls += 1;
+        return jsonResponse(200, { passed: true, created: true });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    screen.getByRole("button", { name: /^pass$/i }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByRole("button", { name: /undo pass on maya/i })).toBeInTheDocument();
+    await waitFor(() => expect(passCalls).toBe(1), { timeout: 4000 });
+  }, 10000);
+
+  it("a small drag snaps back without triggering Like or Pass", async () => {
+    setBearerToken("opaque-session-token");
+    let likeCalls = 0;
+    let passCalls = 0;
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.endsWith("/p1/likes") && method === "POST") {
+        likeCalls += 1;
+        return jsonResponse(200, { liked: true, matched: false, match_id: null, created: true });
+      }
+      if (url.endsWith("/p1/pass") && method === "POST") {
+        passCalls += 1;
+        return jsonResponse(200, { passed: true, created: true });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    const card = findStackCard();
+
+    fireEvent.pointerDown(card, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(card, { clientX: 220, pointerId: 1 });
+    fireEvent.pointerUp(card, { clientX: 220, pointerId: 1 });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(likeCalls).toBe(0);
+    expect(passCalls).toBe(0);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("a committed rightward drag parks the card as Like, then commits after the undo window", async () => {
+    setBearerToken("opaque-session-token");
+    let likeCalls = 0;
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" }), findProfile({ id: "p2", display_name: "Aisha" })],
+      allowance(),
+      (url, method) => {
+        if (url.endsWith("/p1/likes") && method === "POST") {
+          likeCalls += 1;
+          return jsonResponse(200, { liked: true, matched: false, match_id: null, created: true });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    const card = findStackCard();
+
+    fireEvent.pointerDown(card, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(card, { clientX: 340, pointerId: 1 });
+    fireEvent.pointerUp(card, { clientX: 340, pointerId: 1 });
+
+    expect(likeCalls).toBe(0);
+    expect(await screen.findByRole("button", { name: /undo like on maya/i })).toBeInTheDocument();
+    await waitFor(() => expect(likeCalls).toBe(1), { timeout: 4000 });
+    expect(await screen.findByText("Aisha")).toBeInTheDocument();
+  }, 10000);
+
+  it("a committed leftward drag parks the card as Pass, then commits after the undo window", async () => {
+    setBearerToken("opaque-session-token");
+    let passCalls = 0;
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" }), findProfile({ id: "p2", display_name: "Aisha" })],
+      allowance(),
+      (url, method) => {
+        if (url.endsWith("/p1/pass") && method === "POST") {
+          passCalls += 1;
+          return jsonResponse(200, { passed: true, created: true });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    const card = findStackCard();
+
+    fireEvent.pointerDown(card, { clientX: 200, pointerId: 1 });
+    fireEvent.pointerMove(card, { clientX: 60, pointerId: 1 });
+    fireEvent.pointerUp(card, { clientX: 60, pointerId: 1 });
+
+    expect(passCalls).toBe(0);
+    expect(await screen.findByRole("button", { name: /undo pass on maya/i })).toBeInTheDocument();
+    await waitFor(() => expect(passCalls).toBe(1), { timeout: 4000 });
+    expect(await screen.findByText("Aisha")).toBeInTheDocument();
+  }, 10000);
+
+  it("Undo cancels the pending action before it is ever sent, restoring the active card", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let passCalls = 0;
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.endsWith("/p1/pass") && method === "POST") {
+        passCalls += 1;
+        return jsonResponse(200, { passed: true, created: true });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^pass$/i }));
+    await user.click(await screen.findByRole("button", { name: /undo pass on maya/i }));
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    expect(passCalls).toBe(0);
+    expect(screen.getByText("Maya")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^pass$/i })).not.toBeDisabled();
+  }, 10000);
+
+  it("a match keeps the profile visible and requires Continue instead of auto-advancing", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" }), findProfile({ id: "p2", display_name: "Aisha" })],
+      allowance(),
+      (url, method) => {
+        if (url.endsWith("/p1/likes") && method === "POST") {
+          return jsonResponse(200, { liked: true, matched: true, match_id: "m1", created: true });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+
+    expect(await screen.findByText(/you matched with maya/i, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByText("Maya")).toBeInTheDocument();
+    expect(screen.queryByText("Aisha")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /continue browsing/i }));
+    expect(await screen.findByText("Aisha")).toBeInTheDocument();
+  }, 10000);
+
+  it("a failed Like leaves the card active and recoverable", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.endsWith("/p1/likes") && method === "POST") {
+        return jsonResponse(500, { error: "server_error" });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+
+    expect(await screen.findByRole("alert", {}, { timeout: 4000 })).toHaveTextContent(/couldn't save/i);
+    expect(screen.getByText("Maya")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^like$/i })).not.toBeDisabled();
+  }, 10000);
+
+  it("opens profile detail from Find and Back to Find returns to Find, not Discover", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url) => {
+      if (url.endsWith("/api/v1/profiles/p1")) {
+        return jsonResponse(200, {
+          profile: {
+            ...findProfile({ id: "p1", display_name: "Maya" }),
+            hook_tonight_active: false,
+            hook_state: "unavailable",
+            prompts: [],
+            interests: [],
+          },
+        });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /open maya's full profile/i }));
+
+    expect(await screen.findByRole("link", { name: /back to find/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /back to discover/i })).not.toBeInTheDocument();
+  });
+
+  it("gates an unverified member's Like through the existing verification flow instead of calling the API", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let likeCalls = 0;
+    const fetchImpl = (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      const method = methodOf(init);
+      if (url.endsWith("/api/v1/me")) {
+        return Promise.resolve(
+          jsonResponse(
+            200,
+            meBody({
+              identifier: { kind: "email", verified: false, masked_destination: "a••@example.com" },
+              verification_required: true,
+            }),
+          ),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/configuration")) return Promise.resolve(jsonResponse(200, emptyConfiguration));
+      if (url.endsWith("/api/v1/find")) {
+        return Promise.resolve(
+          jsonResponse(200, { profiles: [findProfile({ id: "p1", display_name: "Maya" })], next_cursor: null, allowance: allowance() }),
+        );
+      }
+      if (url.endsWith("/p1/likes") && method === "POST") {
+        likeCalls += 1;
+        return Promise.resolve(jsonResponse(200, { liked: true, matched: false, match_id: null, created: true }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    };
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    expect(await screen.findByRole("dialog", { name: /verify your email/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /not now/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+
+    expect(await screen.findByRole("dialog", { name: /verify your account/i })).toBeInTheDocument();
+    expect(likeCalls).toBe(0);
+  });
+
+  it("shows an intentional exhausted state when the daily allowance is spent", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([], allowance({ remaining: 0, exhausted: true }));
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+
+    expect(await screen.findByText(/that's everyone for today/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /see today's discover picks/i })).toHaveAttribute("href", "/discover");
+  });
+
+  it("shows an intentional empty state, distinct from exhausted, when nothing is eligible", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([], allowance({ remaining: 10, exhausted: false }));
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+
+    expect(await screen.findByText(/no one new right now/i)).toBeInTheDocument();
+    expect(screen.queryByText(/that's everyone for today/i)).not.toBeInTheDocument();
+  });
+
+  it("never calls /api/v1/discovery", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl, discoveryCallCount } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance());
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    expect(discoveryCallCount()).toBe(0);
+  });
+});
