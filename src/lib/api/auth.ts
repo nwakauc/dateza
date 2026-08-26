@@ -266,7 +266,7 @@ export function resetPasswordWithRecovery(
 }
 
 /** POST /api/v1/auth/verification — sends a fresh code to the current user's
- * own unverified identifier. Requires a bearer session. */
+ * own unverified identifier. Requires an authenticated session. */
 export function requestIdentifierVerification(kind: IdentifierKind): Promise<VerificationDeliveryResponse> {
   return apiRequest(
     "/api/v1/auth/verification",
@@ -279,7 +279,7 @@ export function requestIdentifierVerification(kind: IdentifierKind): Promise<Ver
  * user's matching identifier verified.
  *
  * Per the D8N contract, a wrong/expired/consumed code returns 401 on this
- * endpoint — that is NOT the bearer session expiring, so `apiRequest`'s
+ * endpoint — that is NOT the member session expiring, so `apiRequest`'s
  * default "401 clears the session" behavior must be disabled here, or a
  * mistyped code would silently sign the member out.
  */

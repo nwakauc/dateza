@@ -1,4 +1,3 @@
-import { readAppConfig } from "../config.ts";
 import { ApiError } from "./errors.ts";
 import { getCsrfToken, setCsrfToken } from "./csrfStore.ts";
 import { getBearerToken, setBearerToken } from "./tokenStore.ts";
@@ -73,7 +72,6 @@ export async function apiRequest(
 ): Promise<unknown> {
   const attachBearer = options.attachBearer ?? true;
   const invalidateOnUnauthorized = options.invalidateOnUnauthorized ?? true;
-  const { apiUrl } = readAppConfig();
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
 
@@ -93,7 +91,10 @@ export async function apiRequest(
     headers.set("X-CSRF-Token", csrfToken);
   }
 
-  const response = await fetch(`${apiUrl}${path}`, {
+  // Browser API traffic is always same-origin. Vite proxies `/api` in local
+  // development and Vercel rewrites it in hosted environments, keeping the
+  // HttpOnly session cookie first-party across browsers.
+  const response = await fetch(path, {
     ...init,
     credentials: "include",
     headers,

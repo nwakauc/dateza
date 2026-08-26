@@ -18,11 +18,12 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 describe("apiRequest credentials and CSRF handling", () => {
-  it("always sends credentials: include, even for an unauthenticated GET", async () => {
+  it("keeps API traffic same-origin and includes credentials", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { ok: true }));
 
     await apiRequest("/api/v1/me");
 
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/v1/me");
     const init = vi.mocked(fetch).mock.calls[0]?.[1];
     expect(init?.credentials).toBe("include");
   });

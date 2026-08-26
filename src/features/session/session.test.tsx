@@ -113,9 +113,7 @@ describe("session bootstrap and protected routes", () => {
         screen.getByRole("heading", { name: /member area/i }),
       ).toBeInTheDocument();
     });
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
-      "https://dateza.test/api/v1/me",
-    );
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/v1/me");
     const headers = new Headers(vi.mocked(fetch).mock.calls[0]?.[1]?.headers);
     expect(headers.get("Authorization")).toBe("Bearer opaque-session-token");
   });

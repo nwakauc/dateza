@@ -2,7 +2,8 @@ import type { IdentifierKind } from "../../lib/api/types.ts";
 
 /**
  * D8N owns verification lifecycle and returns only a masked destination plus
- * resend timing. The bearer itself remains memory-only under ADR-0002.
+ * resend timing. Session credentials remain in D8N's HttpOnly cookie under
+ * ADR-0003.
  */
 export type VerificationState =
   | { status: "unknown" }

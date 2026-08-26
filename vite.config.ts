@@ -15,11 +15,9 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 5173,
       strictPort: true,
-      // D8N's browser-session cookie is `SameSite=None; Secure`. Proxying
-      // same-origin keeps the browser's whole request/response cycle on
-      // localhost:5173; changeOrigin rewrites the outgoing Host header to
-      // the upstream API host (required for D8N's host-based brand
-      // resolution). See src/lib/config.ts.
+      // Browser API traffic is always same-origin. This proxy mirrors the
+      // hosted Vercel rewrite; changeOrigin preserves D8N's upstream
+      // host-based brand resolution without exposing that host to browsers.
       //
       // Known gap (see docs/decisions — Safari registration redirect
       // investigation): `Secure` cookies require a genuine TLS connection
@@ -46,9 +44,6 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       setupFiles: "./src/test/setup.ts",
       restoreMocks: true,
-      env: {
-        VITE_D8N_API_URL: "https://dateza.test",
-      },
     },
   };
 });

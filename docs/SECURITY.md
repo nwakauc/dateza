@@ -1,7 +1,7 @@
 # DateZA Frontend Security and Privacy
 
 **Status:** Required review baseline  
-**Last reviewed:** 2026-08-22
+**Last reviewed:** 2026-08-26
 
 Dating software handles identity, relationship preferences, location, media,
 messages, and safety actions. Treat all member data as sensitive even when a
@@ -40,6 +40,9 @@ field may eventually be public on a profile.
 - Prefer secure, same-site, HTTP-only credential mechanisms defined by the auth
   architecture. Any browser-readable long-lived token storage requires an ADR
   and threat review.
+- Keep browser API traffic on same-origin `/api/*` gateways (ADR-0003). The
+  upstream session cookie must be host-only; never rewrite it onto a shared D8N
+  parent domain.
 - Do not put credentials, exact coordinates, message text, report content, or
   private IDs in URLs, telemetry, logs, or error reporting.
 - Use neutral unavailable responses when specificity could reveal a block,

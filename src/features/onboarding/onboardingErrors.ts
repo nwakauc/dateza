@@ -1,10 +1,6 @@
 import { ApiError } from "../../lib/api/errors.ts";
-import { ConfigError } from "../../lib/config.ts";
 
 export function onboardingErrorMessage(error: unknown): string {
-  if (error instanceof ConfigError) {
-    return "DateZA isn’t available in this environment right now.";
-  }
   if (error instanceof ApiError) {
     if (error.isUnauthorized) {
       return "Your session ended. Sign in again to continue.";

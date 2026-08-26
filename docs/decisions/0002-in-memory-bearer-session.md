@@ -1,6 +1,6 @@
 # ADR-0002: In-memory D8N bearer session on the DateZA client
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-0003
 **Date:** 2026-08-22  
 **Owners:** DateZA frontend  
 **Supersedes:** None

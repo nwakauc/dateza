@@ -1,5 +1,4 @@
 import { ApiError } from "../../lib/api/errors.ts";
-import { ConfigError } from "../../lib/config.ts";
 
 const GENERIC =
   "Something went wrong. Please try again in a moment.";
@@ -11,9 +10,6 @@ const METHOD_UNAVAILABLE =
   "This sign-in method is not available for DateZA right now.";
 
 export function unexpectedAuthMessage(error: unknown): string {
-  if (error instanceof ConfigError) {
-    return "DateZA is not configured to reach the API in this environment.";
-  }
   if (error instanceof ApiError) {
     if (error.status === 429 || error.code === "rate_limited") {
       return RATE_LIMITED;

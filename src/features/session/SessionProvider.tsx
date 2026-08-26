@@ -3,7 +3,6 @@ import { ApiError } from "../../lib/api/errors.ts";
 import { setUnauthorizedListener } from "../../lib/api/client.ts";
 import { setCsrfToken } from "../../lib/api/csrfStore.ts";
 import { getCurrentIdentity } from "../../lib/api/me.ts";
-import { ConfigError } from "../../lib/config.ts";
 import { SessionContext } from "./SessionContext.ts";
 import type { SessionState } from "./sessionState.ts";
 import type { VerificationState } from "./verificationState.ts";
@@ -13,9 +12,6 @@ type Props = {
 };
 
 function failureState(error: unknown): SessionState {
-  if (error instanceof ConfigError) {
-    return { status: "unavailable", reason: "config" };
-  }
   if (error instanceof ApiError) {
     return { status: "unavailable", reason: "server" };
   }

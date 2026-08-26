@@ -47,16 +47,17 @@ Client routing uses React Router with `BrowserRouter` (see
 `/sign-in`, `/forgot-password`, and `/reset-password`. Authenticated paths are
 `/onboarding` (incomplete D8N profile setup, including owner photo upload) and `/home` (published or
 suspended placeholder until Discovery exists). `/signed-in` still loads the
-home placeholder for old links. Session bootstrap uses `GET /api/v1/me` with an
-in-memory bearer token (see `docs/decisions/0002-in-memory-bearer-session.md`).
-The API origin is `VITE_D8N_API_URL`, read by `src/lib/config.ts` and consumed
-only by `src/lib/api/client.ts`. Vite embeds that value at build time; local
-dev uses `.env.development`
-(`https://dateza-staging-api.d8n.tech`) on `http://localhost:5173` so browser
-CORS matches the DateZA staging allowlist. Vercel Production and Preview must
-set the same `VITE_D8N_API_URL` and redeploy; `https://staging-api.d8n.tech` is
-HookUs, not DateZA. Do not call `http://dateza.test:3000` unless a local D8N
-process is the intended backend. Direct visits
+home placeholder for old links. Session bootstrap uses `GET /api/v1/me` with
+D8N's HttpOnly browser-session cookie and CSRF contract (see
+`docs/decisions/0003-same-origin-browser-session.md`).
+
+Browser code always calls same-origin `/api/*`. Local development uses
+`VITE_D8N_API_URL` only as Vite's server-side proxy target; Vercel rewrites the
+same paths to `https://dateza-staging-api.d8n.tech` before its SPA fallback.
+The browser never calls the D8N host directly. This keeps the session cookie
+first-party while preserving D8N's upstream host-based DateZA resolution.
+`https://staging-api.d8n.tech` is HookUs, not DateZA. Do not proxy to
+`http://dateza.test:3000` unless a local D8N process is intended. Direct visits
 to `/sign-up` and other client routes need the SPA rewrite in `vercel.json`.
 Onboarding progress is server-owned (`GET /api/v1/profile` and
 `GET /api/v1/profile/configuration`). There is still no remote-state library, authenticated application chrome, or

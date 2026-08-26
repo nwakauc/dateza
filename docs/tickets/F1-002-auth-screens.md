@@ -27,7 +27,9 @@ controller tests:
 - Recovery is a three-step signed-out flow with anti-enumeration `202` on
   request.
 
-DateZA ADR-0002 remains accepted: memory-only bearer storage.
+At delivery time DateZA ADR-0002 required memory-only bearer storage. ADR-0003
+has since superseded it with the verified HttpOnly browser-session contract and
+same-origin gateway.
 
 ## Invariants
 
