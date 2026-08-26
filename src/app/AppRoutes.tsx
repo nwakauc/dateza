@@ -20,12 +20,32 @@ import SettingsPage from "../features/profile/SettingsPage.tsx";
 import { ProtectedRoute } from "../features/session/ProtectedRoute.tsx";
 import AppShell from "../features/shell/AppShell.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
+import {
+  CareersPage,
+  CitiesPage,
+  DatingSafelyPage,
+  GetTheAppPage,
+  HelpPage,
+  HowItWorksPage,
+  LifestylePage,
+  PrivacyPage,
+  StoriesPage,
+} from "../pages/public/MarketingPages.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/dating-safely" element={<DatingSafelyPage />} />
+      <Route path="/stories" element={<StoriesPage />} />
+      <Route path="/lifestyle" element={<LifestylePage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/help" element={<HelpPage />} />
+      <Route path="/careers" element={<CareersPage />} />
+      <Route path="/cities" element={<CitiesPage />} />
+      <Route path="/get-the-app" element={<GetTheAppPage />} />
       <Route
         path="/sign-up"
         element={

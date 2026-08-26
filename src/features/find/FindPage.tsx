@@ -78,6 +78,7 @@ export default function FindPage() {
   const [detail, setDetail] = useState<ProfileDetail | undefined>();
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [configurationLoading, setConfigurationLoading] = useState(true);
+  const [configurationFailed, setConfigurationFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -118,8 +119,14 @@ export default function FindPage() {
 
   const loadConfiguration = useCallback(() => {
     getProfileConfiguration()
-      .then((result) => setConfiguration(result.configuration))
-      .catch(() => setConfiguration(undefined))
+      .then((result) => {
+        setConfiguration(result.configuration);
+        setConfigurationFailed(false);
+      })
+      .catch(() => {
+        setConfiguration(undefined);
+        setConfigurationFailed(true);
+      })
       .finally(() => setConfigurationLoading(false));
   }, []);
 
@@ -465,9 +472,9 @@ export default function FindPage() {
             onPass={() => requestAction("passed")}
             onLike={() => requestAction("liked")}
             onOpener={() => {
-              const chooser = document.querySelector<HTMLElement>(".opener-chooser");
-              chooser?.scrollIntoView({ block: "nearest" });
-              chooser?.querySelector<HTMLButtonElement>(".opener-chooser__send")?.focus();
+              const surface = document.getElementById("find-opener-surface");
+              surface?.scrollIntoView({ block: "nearest" });
+              surface?.querySelector<HTMLButtonElement>(".opener-chooser__send")?.focus();
             }}
           />
 
@@ -511,6 +518,7 @@ export default function FindPage() {
           openerState={active.opener_state}
           catalogue={configuration?.openers ?? []}
           catalogueLoading={configurationLoading}
+          catalogueFailed={configurationFailed}
           sentText={sentOpeners[active.id]}
           conversation={!matchedProfile && conversation?.profile.id === active.id ? conversation : undefined}
           online={active.online}
@@ -520,6 +528,7 @@ export default function FindPage() {
           onKeepFinding={continueAfterMatch}
           onRetryCatalogue={() => {
             setConfigurationLoading(true);
+            setConfigurationFailed(false);
             loadConfiguration();
           }}
           onOpenerSent={(text) => {

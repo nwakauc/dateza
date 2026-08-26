@@ -48,6 +48,7 @@ export default function ProfileDetailPage() {
   const [profile, setProfile] = useState<ProfileDetail | undefined>();
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [configurationLoading, setConfigurationLoading] = useState(true);
+  const [configurationFailed, setConfigurationFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -81,8 +82,14 @@ export default function ProfileDetailPage() {
 
   const loadConfiguration = useCallback(() => {
     getProfileConfiguration()
-      .then((result) => setConfiguration(result.configuration))
-      .catch(() => setConfiguration(undefined))
+      .then((result) => {
+        setConfiguration(result.configuration);
+        setConfigurationFailed(false);
+      })
+      .catch(() => {
+        setConfiguration(undefined);
+        setConfigurationFailed(true);
+      })
       .finally(() => setConfigurationLoading(false));
   }, []);
 
@@ -201,7 +208,7 @@ export default function ProfileDetailPage() {
         onLike={like}
         onPass={pass}
         onOpenOpener={() => {
-          document.querySelector<HTMLElement>(".opener-chooser")?.scrollIntoView({ block: "nearest" });
+          document.getElementById("find-opener-surface")?.scrollIntoView({ block: "nearest" });
         }}
         onPhotosExpired={() => {
           if (photoRetryRef.current) return;
@@ -223,6 +230,7 @@ export default function ProfileDetailPage() {
           online={profile.online}
           catalogue={configuration?.openers ?? []}
           catalogueLoading={configurationLoading}
+          catalogueFailed={configurationFailed}
           openerState={profile.opener_state}
           sentText={sentText}
           conversation={conversation?.profile.id === profile.id ? conversation : undefined}
@@ -232,6 +240,7 @@ export default function ProfileDetailPage() {
           }}
           onRetryCatalogue={() => {
             setConfigurationLoading(true);
+            setConfigurationFailed(false);
             loadConfiguration();
           }}
         />

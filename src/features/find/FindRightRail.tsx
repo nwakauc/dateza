@@ -16,6 +16,7 @@ type Props = {
   openerState: OpenerState | undefined;
   catalogue: ConfiguredOpener[];
   catalogueLoading?: boolean;
+  catalogueFailed?: boolean;
   sentText?: string;
   conversation?: Conversation;
   online?: boolean;
@@ -37,6 +38,7 @@ export function FindRightRail({
   openerState,
   catalogue,
   catalogueLoading,
+  catalogueFailed,
   sentText,
   conversation,
   online,
@@ -62,6 +64,7 @@ export function FindRightRail({
       online={online}
       catalogue={catalogue}
       catalogueLoading={catalogueLoading}
+      catalogueFailed={catalogueFailed}
       openerState={openerState}
       sentText={sentText}
       conversation={conversation}

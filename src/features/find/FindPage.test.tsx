@@ -694,6 +694,34 @@ describe("Find (FE-05, rich swipe)", () => {
     expect(screen.getByRole("button", { name: /view full profile/i })).toBeInTheDocument();
   });
 
+  it("does not offer a chooser when D8N has enabled opener_state but returned no catalogue", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url) => {
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return jsonResponse(200, {
+          configuration: {
+            identity_fields: [],
+            profile_fields: [],
+            preference_fields: [],
+            collections: [],
+            option_groups: [],
+            prompts: [],
+            openers: [],
+          },
+          onboarding: completeOnboarding,
+        });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    expect(await screen.findByText(/openers aren’t available yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^send opener$/i })).toBeEnabled();
+  });
+
   it("sends a curated opener and waits without advancing the deck", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");

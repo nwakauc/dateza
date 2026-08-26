@@ -44,7 +44,7 @@ export function OpenerChooser({ profileId, name, catalogue, disabled, onSent }: 
   }
 
   return (
-    <section className="find-rail-card opener-chooser" aria-label="Send opener">
+    <section id="find-opener-surface" className="find-rail-card opener-chooser" aria-label="Send opener">
       <h2 className="find-rail-card__title">Send {name} an opener</h2>
       <p className="find-rail-card__body">Choose something genuine to start the conversation.</p>
       <fieldset className="opener-chooser__list" disabled={busy || disabled}>

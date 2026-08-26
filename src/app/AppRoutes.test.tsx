@@ -19,6 +19,8 @@ describe("SPA routes", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /girls are waiting/i })).toHaveAttribute("href", "/sign-up");
+    expect(screen.getByRole("link", { name: /^how it works$/i })).toHaveAttribute("href", "/how-it-works");
   });
 
   it("keeps marketing hashes on the landing page", () => {
@@ -52,5 +54,21 @@ describe("SPA routes", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/how-it-works", /create a profile/i],
+    ["/dating-safely", /date like you have somewhere/i],
+    ["/stories", /the point is a real date/i],
+    ["/lifestyle", /dates that look like this country/i],
+    ["/privacy", /your dating life stays yours/i],
+    ["/help", /how to get going/i],
+    ["/careers", /building dateza/i],
+    ["/cities", /across sa/i],
+    ["/get-the-app", /ready in your browser/i],
+  ] as const)("renders the public %s page", (path, heading) => {
+    renderAt(path);
+    expect(screen.getByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /join dateza free/i })).toHaveAttribute("href", "/sign-up");
   });
 });

@@ -5,12 +5,15 @@ import { FindConversationPreview } from "../find/FindConversationPreview.tsx";
 import { OpenerChooser } from "./OpenerChooser.tsx";
 import { OpenerWaiting } from "./OpenerWaiting.tsx";
 
+const OPENER_SURFACE_ID = "find-opener-surface";
+
 type Props = {
   profileId: string;
   name: string;
   online?: boolean;
   catalogue: ConfiguredOpener[];
   catalogueLoading?: boolean;
+  catalogueFailed?: boolean;
   openerState: OpenerState | undefined;
   sentText?: string;
   conversation?: Conversation;
@@ -24,6 +27,7 @@ export function OpenerSurface({
   online,
   catalogue,
   catalogueLoading,
+  catalogueFailed,
   openerState,
   sentText,
   conversation,
@@ -52,16 +56,16 @@ export function OpenerSurface({
 
   if (catalogueLoading) {
     return (
-      <section className="find-rail-card" aria-busy="true" aria-label="Send opener">
+      <section id={OPENER_SURFACE_ID} className="find-rail-card" aria-busy="true" aria-label="Send opener">
         <h2 className="find-rail-card__title">Send {name} an opener</h2>
         <p className="find-rail-card__body">Loading opener lines…</p>
       </section>
     );
   }
 
-  if (catalogue.length === 0) {
+  if (catalogueFailed) {
     return (
-      <section className="find-rail-card" aria-label="Send opener">
+      <section id={OPENER_SURFACE_ID} className="find-rail-card" aria-label="Send opener">
         <h2 className="find-rail-card__title">Send {name} an opener</h2>
         <p className="find-rail-card__body">We couldn’t load opener lines. Try again.</p>
         {onRetryCatalogue ? (
@@ -69,6 +73,17 @@ export function OpenerSurface({
             Try again
           </button>
         ) : null}
+      </section>
+    );
+  }
+
+  if (catalogue.length === 0) {
+    return (
+      <section id={OPENER_SURFACE_ID} className="find-rail-card" aria-label="Send opener">
+        <h2 className="find-rail-card__title">Send {name} an opener</h2>
+        <p className="find-rail-card__body">
+          Openers aren’t available yet. You can still like or pass.
+        </p>
       </section>
     );
   }

@@ -6,6 +6,7 @@ import * as openerApi from "../../lib/api/opener.ts";
 import { OpenerChooser } from "../opener/OpenerChooser.tsx";
 import { IncomingOpener } from "../opener/IncomingOpener.tsx";
 import { OpenerWaiting } from "../opener/OpenerWaiting.tsx";
+import { OpenerSurface } from "../opener/OpenerSurface.tsx";
 import { MemoryRouter } from "react-router-dom";
 
 const catalogue = [
@@ -60,6 +61,43 @@ describe("D8N Opener", () => {
     expect(screen.getByText(/waiting for maya/i)).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("does not invent opener lines when D8N returns an empty catalogue", () => {
+    render(
+      <MemoryRouter>
+        <OpenerSurface
+          profileId="p1"
+          name="Maya"
+          catalogue={[]}
+          openerState="available"
+          onSent={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/openers aren’t available yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^send opener$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+  });
+
+  it("offers retry only when the catalogue request failed", () => {
+    const onRetry = vi.fn();
+    render(
+      <MemoryRouter>
+        <OpenerSurface
+          profileId="p1"
+          name="Maya"
+          catalogue={[]}
+          catalogueFailed
+          openerState="available"
+          onSent={() => undefined}
+          onRetryCatalogue={onRetry}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/couldn’t load opener lines/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("incoming opener can reply and decline, keeping typed reply on failure", async () => {
