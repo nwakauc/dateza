@@ -8,6 +8,9 @@ import type {
   CurrentProfileResponse,
   FieldOption,
   OwnerProfile,
+  ProfileCompletion,
+  ProfileCompletionSection,
+  ProfileCompletionSuggestion,
   ProfileConfiguration,
   ProfileConfigurationResponse,
   ProfileLocationStatus,
@@ -125,10 +128,52 @@ function parseOptionsMap(value: unknown): Record<string, string[]> {
   return selections;
 }
 
+function parseProfileCompletion(value: unknown): ProfileCompletion | null {
+  if (!isRecord(value) || typeof value.percent !== "number" || !Number.isFinite(value.percent)) {
+    return null;
+  }
+  const missing = Array.isArray(value.missing) ? value.missing.filter((item): item is string => typeof item === "string") : [];
+  const suggestions: ProfileCompletionSuggestion[] = Array.isArray(value.suggestions)
+    ? value.suggestions.flatMap((item) => {
+        if (!isRecord(item) || typeof item.key !== "string" || typeof item.label !== "string") {
+          return [];
+        }
+        return [{ key: item.key, label: item.label }];
+      })
+    : [];
+  const sections: Record<string, ProfileCompletionSection> = {};
+  if (isRecord(value.sections)) {
+    for (const [key, section] of Object.entries(value.sections)) {
+      if (isRecord(section) && typeof section.percent === "number" && typeof section.complete === "boolean") {
+        sections[key] = { percent: section.percent, complete: section.complete };
+      }
+    }
+  }
+  return {
+    percent: value.percent,
+    level: typeof value.level === "string" ? value.level : "",
+    missing,
+    suggestions,
+    sections,
+  };
+}
+
+function parseOwnerContactVerified(value: unknown): boolean | null {
+  if (!isRecord(value) || !isRecord(value.contact) || typeof value.contact.verified !== "boolean") {
+    return null;
+  }
+  return value.contact.verified;
+}
+
 function parseOwnerProfile(value: unknown): OwnerProfile {
   if (!isRecord(value) || typeof value.id !== "string") {
     throw new ApiError(502, undefined, "invalid_profile_response");
   }
+  const languages = Array.isArray(value.languages_spoken)
+    ? value.languages_spoken.filter((item): item is string => typeof item === "string")
+    : Array.isArray(value.languages)
+      ? value.languages.filter((item): item is string => typeof item === "string")
+      : [];
   return {
     id: value.id,
     brand: parseBrand(value.brand),
@@ -144,11 +189,18 @@ function parseOwnerProfile(value: unknown): OwnerProfile {
     city: asStringOrNull(value.city),
     occupation: asStringOrNull(value.occupation),
     job_title: asStringOrNull(value.job_title),
+    school_or_institution: asStringOrNull(value.school_or_institution),
+    looking_for_text: asStringOrNull(value.looking_for_text),
+    company_name: asStringOrNull(value.company_name),
     height_cm: asNumberOrNull(value.height_cm),
     smoking: asStringOrNull(value.smoking),
     drinking: asStringOrNull(value.drinking),
     fitness: asStringOrNull(value.fitness),
+    languages_spoken: languages,
     options: parseOptionsMap(value.options),
+    contact_verified: parseOwnerContactVerified(value.verification),
+    publication_completion: isRecord(value.publication_completion) ? parseCompletion(value.publication_completion) : null,
+    profile_completion: parseProfileCompletion(value.profile_completion),
   };
 }
 

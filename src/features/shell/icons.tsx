@@ -136,10 +136,39 @@ export function InfoIcon({ className }: IconProps) {
   );
 }
 
+/** Paper plane — "Send opener" affordance. Currently always disabled: the
+ * real backend has no endpoint to message a member before a mutual match
+ * (see SendOpenerButton.tsx). */
+export function PaperPlaneIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 3.5L3 10.5l6.5 2.5m11-9.5L14 20.5l-4.5-7.5m11-9.5L9.5 13" />
+    </svg>
+  );
+}
+
 export function PencilIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M16.5 3.5l4 4L8 20H4v-4z" />
+    </svg>
+  );
+}
+
+export function MapPinIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s6.5-5.4 6.5-11A6.5 6.5 0 0 0 5.5 10c0 5.6 6.5 11 6.5 11z" />
+      <circle cx="12" cy="10" r="2.2" />
+    </svg>
+  );
+}
+
+/** Bolt — daily allowance ("N picks left today") pill. */
+export function BoltIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+      <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
     </svg>
   );
 }

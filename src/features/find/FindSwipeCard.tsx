@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { FindProfile } from "../../lib/api/findTypes.ts";
 import { InfoIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
-import { describeCompatibilityReasons } from "../discovery/compatibilityCopy.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
 
 type InteractionState = "idle" | "liked" | "matched" | "passed";
@@ -15,7 +14,6 @@ type Props = {
 };
 
 const MAX_INTERESTS_SHOWN = 3;
-const MAX_COMPATIBILITY_REASONS_SHOWN = 2;
 const BIO_EXCERPT_MAX_CHARS = 110;
 
 function locationLine(profile: FindProfile): string | undefined {
@@ -44,9 +42,6 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
   }
 
   const location = locationLine(profile);
-  const reasons = profile.compatibility
-    ? describeCompatibilityReasons(profile.compatibility.reasons).slice(0, MAX_COMPATIBILITY_REASONS_SHOWN)
-    : [];
   const relationshipCode = profile.options.relationship_intent?.[0];
   const relationshipLabel = relationshipCode ? optionLabel("relationship_intent", relationshipCode) : undefined;
   const interestLabels = (profile.options.interests ?? [])
@@ -58,7 +53,13 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
 
   return (
     <article className="find-card" aria-label={`${name}${profile.age ? `, ${profile.age}` : ""}`}>
-      <div className="find-card__photo">
+      <div
+        className="find-card__photo"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("button")) return;
+          onOpenDetail();
+        }}
+      >
         {activePhoto ? (
           <img src={activePhoto.url} alt="" loading="lazy" />
         ) : (
@@ -100,8 +101,11 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
 
         <div className="find-card__scrim">
           <div className="find-card__headline">
-            <span className="find-card__name">{name}</span>
+            <button type="button" className="find-card__name" onClick={onOpenDetail}>
+              {name}
+            </button>
             {profile.age ? <span className="find-card__age">{profile.age}</span> : null}
+            {profile.verified ? <ShieldCheckIcon className="find-card__name-verified" aria-hidden="true" /> : null}
           </div>
           {location ? <p className="find-card__location">{location}</p> : null}
 
@@ -117,12 +121,16 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
               ) : null}
             </div>
           ) : null}
-          {reasons.length > 0 ? <p className="find-card__reasons">{reasons.join(" · ")}</p> : null}
 
           {relationshipLabel || interestLabels.length > 0 ? (
-            <p className="find-card__facts">
-              {[relationshipLabel, ...interestLabels].filter(Boolean).join(" · ")}
-            </p>
+            <div className="find-card__chips">
+              {relationshipLabel ? <span className="find-card__chip">{relationshipLabel}</span> : null}
+              {interestLabels.map((label) => (
+                <span className="find-card__chip" key={label}>
+                  {label}
+                </span>
+              ))}
+            </div>
           ) : null}
 
           {bio ? <p className="find-card__bio">"{bio}"</p> : null}

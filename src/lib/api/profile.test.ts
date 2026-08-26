@@ -173,6 +173,37 @@ describe("getCurrentProfile against real staging response shapes", () => {
     expect(result.profile?.occupation).toBeNull();
     expect(result.profile?.height_cm).toBeNull();
     expect(result.profile?.fitness).toBeNull();
+    expect(result.profile?.languages_spoken).toEqual([]);
+    expect(result.profile?.profile_completion).toBeNull();
+  });
+});
+
+describe("owner profile_completion parsing", () => {
+  it("reads richness from the backend and does not invent a percent", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        profile: {
+          ...realProfileAfterTwoPhotos.profile,
+          profile_completion: {
+            percent: 72,
+            level: "good",
+            missing: ["more_photos"],
+            suggestions: [{ key: "more_photos", label: "Add more photos" }],
+            sections: { photos: { percent: 67, complete: false } },
+          },
+        },
+        onboarding: realProfileAfterTwoPhotos.onboarding,
+      }),
+    );
+
+    const result = await getCurrentProfile();
+    expect(result.profile?.profile_completion).toEqual({
+      percent: 72,
+      level: "good",
+      missing: ["more_photos"],
+      suggestions: [{ key: "more_photos", label: "Add more photos" }],
+      sections: { photos: { percent: 67, complete: false } },
+    });
   });
 });
 

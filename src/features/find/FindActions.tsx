@@ -1,4 +1,5 @@
 import { CloseIcon, HeartIcon } from "../shell/icons.tsx";
+import { SendOpenerButton } from "../shell/SendOpenerButton.tsx";
 
 type Props = {
   disabled: boolean;
@@ -29,6 +30,7 @@ export function FindActions({ disabled, passLabel, likeLabel, onPass, onLike }: 
       >
         <HeartIcon className="find-actions__icon" />
       </button>
+      <SendOpenerButton className="find-actions__button" iconClassName="find-actions__icon" />
     </div>
   );
 }

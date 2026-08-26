@@ -20,6 +20,29 @@ export type Completion = {
   missing: string[];
 };
 
+export type ProfileCompletionSuggestion = {
+  key: string;
+  label: string;
+};
+
+export type ProfileCompletionSection = {
+  percent: number;
+  complete: boolean;
+};
+
+/**
+ * Post-onboarding richness score from GET /api/v1/profile.
+ * Distinct from `publication_completion` / onboarding `completion`, which
+ * gate publishing. Never invent a percent client-side.
+ */
+export type ProfileCompletion = {
+  percent: number;
+  level: string;
+  missing: string[];
+  suggestions: ProfileCompletionSuggestion[];
+  sections: Record<string, ProfileCompletionSection>;
+};
+
 export type ProfileOnboardingStatus = {
   state: OnboardingState;
   next_step: OnboardingStep | null;
@@ -95,11 +118,22 @@ export type OwnerProfile = {
   city: string | null;
   occupation: string | null;
   job_title: string | null;
+  school_or_institution: string | null;
+  looking_for_text: string | null;
+  company_name: string | null;
   height_cm: number | null;
   smoking: string | null;
   drinking: string | null;
   fitness: string | null;
+  languages_spoken: string[];
   options: Record<string, string[]>;
+  /**
+   * Nested contact verification. Treat `verified` here as reachability only,
+   * never as RealMe.
+   */
+  contact_verified: boolean | null;
+  publication_completion: Completion | null;
+  profile_completion: ProfileCompletion | null;
 };
 
 export type CurrentProfileResponse = {
@@ -125,6 +159,13 @@ export type ProfileUpdateBody = {
   city?: string;
   smoking?: string;
   drinking?: string;
+  looking_for_text?: string;
+  occupation?: string;
+  job_title?: string;
+  school_or_institution?: string;
+  company_name?: string;
+  height_cm?: number | null;
+  fitness?: string;
 };
 
 export type ProfileLocationUpdateBody = {

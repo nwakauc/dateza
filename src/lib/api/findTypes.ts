@@ -10,9 +10,10 @@
  * `dateza` brand per the openapi.yaml "Implementation status" preamble —
  * calling it for DateZA returns 404 `matching_not_configured`.
  *
- * "Discovery" is a separate, not-yet-built DateZA product concept (10
- * curated recommendations/day). It has no backend contract yet and must
- * never be wired to this endpoint — see src/features/discovery/.
+ * "Discovery" is DateZA's curated, recommendation-led surface (10/day),
+ * backed by its own endpoint (`GET /api/v1/discovery` — see discovery.ts /
+ * discoveryTypes.ts). It is a separate product and allowance from Find and
+ * must never be wired to `/api/v1/find` or vice versa.
  */
 
 export type PublicProfilePhoto = {
@@ -132,6 +133,12 @@ export type ProfileDetail = PublicProfile &
   ProfileStatus & {
     prompts: PromptAnswer[];
     interests: ProfileInterest[];
+    /**
+     * DatezaV1 presentation payload. Present on public detail after the
+     * rich-profile contract; null when comparable input is insufficient.
+     * Confidence/version are parsed for type fidelity and must not be shown.
+     */
+    compatibility: DatezaCompatibility;
   };
 
 export type ProfileDetailResponse = {

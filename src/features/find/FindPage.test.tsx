@@ -555,4 +555,96 @@ describe("Find (FE-05, rich swipe)", () => {
 
     expect(discoveryCallCount()).toBe(0);
   });
+
+  it("celebrates a mutual match with a modal whose Message action opens the real conversation, not a fabricated opener", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let conversationCalls = 0;
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.endsWith("/p1/likes") && method === "POST") {
+        return jsonResponse(200, { liked: true, matched: true, match_id: "m1", created: true });
+      }
+      if (url.endsWith("/api/v1/matches/m1/conversation") && method === "POST") {
+        conversationCalls += 1;
+        return jsonResponse(200, {
+          conversation: { id: "c1", match_id: "m1", status: "active", created_at: "2026-08-24T00:00:00Z", profile: findProfile({ id: "p1", display_name: "Maya" }), last_message: null },
+        });
+      }
+      if (url.endsWith("/api/v1/conversations")) return jsonResponse(200, { conversations: [], next_cursor: null });
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+
+    expect(await screen.findByRole("dialog", { name: /it's a match!/i }, { timeout: 4000 })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /message maya/i }));
+
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
+    expect(conversationCalls).toBe(1);
+  }, 10000);
+
+  it("shows a desktop side panel backed by real compatibility, lifestyle, and interest data", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [
+        findProfile({
+          id: "p1",
+          display_name: "Maya",
+          job_title: "Marketing Manager",
+          smoking: "never",
+          options: { interests: ["hiking", "coffee"] },
+          compatibility: { score: 87, confidence: 0.8, confidence_level: "high", version: "dateza_v1", reasons: ["shared_long_term_intent", "compatible_family_plans"] },
+        }),
+      ],
+      allowance(),
+    );
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            configuration: {
+              identity_fields: [],
+              profile_fields: [],
+              preference_fields: [],
+              collections: [],
+              option_groups: [{ key: "interests", label: "Interests", cardinality: "multiple", max_selections: 5, required: false, visibility: "public", options: [
+                { code: "hiking", label: "Hiking" },
+                { code: "coffee", label: "Coffee" },
+              ] }],
+            },
+            onboarding: completeOnboarding,
+          }),
+        );
+      }
+      return fetchImpl(input, init);
+    });
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    expect(await screen.findByText("Why you're compatible")).toBeInTheDocument();
+    expect(screen.getByText("Both want something long-term")).toBeInTheDocument();
+    expect(screen.getByText("About Maya")).toBeInTheDocument();
+    expect(screen.getByText("Marketing Manager")).toBeInTheDocument();
+    expect(screen.getByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("Interests")).toBeInTheDocument();
+    expect(screen.getByText("Hiking")).toBeInTheDocument();
+    expect(screen.getByText("Coffee")).toBeInTheDocument();
+  });
+
+  it("does not render the side panel when the profile has no extra data to show", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance());
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    expect(screen.queryByText("Why you're compatible")).not.toBeInTheDocument();
+    expect(document.querySelector(".find-side")).not.toBeInTheDocument();
+  });
 });

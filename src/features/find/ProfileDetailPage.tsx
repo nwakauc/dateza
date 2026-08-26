@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { getProfileDetail, likeProfile } from "../../lib/api/find.ts";
+import { getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
+import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
-import type { ProfileDetail } from "../../lib/api/findTypes.ts";
+import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes.ts";
+import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
-import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
+import { MatchModal } from "../shell/MatchModal.tsx";
+import { RichProfileSkeleton, RichProfileView } from "../profile/RichProfileView.tsx";
+import { originBack, profileOriginFromState } from "../profile/profileOrigin.ts";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 
@@ -15,14 +19,10 @@ function detailErrorMessage(error: unknown): string {
   return "We could not load this profile. Try again.";
 }
 
-// Profile detail is shared by Find and Discovery. The caller marks which
-// surface it came from via router state so the back link/verification
-// redirect return the member where they started; absent state preserves
-// the original Find-only behavior for any other caller (e.g. Likes).
-function originSurface(state: unknown): "discover" | "find" {
-  return typeof state === "object" && state !== null && (state as { from?: unknown }).from === "discover"
-    ? "discover"
-    : "find";
+function compatibilityFromState(state: unknown): DatezaCompatibility {
+  if (typeof state !== "object" || state === null) return null;
+  const value = (state as { compatibility?: unknown }).compatibility;
+  return value && typeof value === "object" ? (value as DatezaCompatibility) : null;
 }
 
 export default function ProfileDetailPage() {
@@ -30,20 +30,20 @@ export default function ProfileDetailPage() {
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const { verified } = useVerificationGate();
-  const from = originSurface(routerLocation.state);
-  const backTo = from === "discover" ? "/discover" : "/find";
-  const backLabel = from === "discover" ? "← Back to Discover" : "← Back to Find";
+  const origin = profileOriginFromState(routerLocation.state);
+  const routedCompatibility = compatibilityFromState(routerLocation.state);
+  const back = originBack(origin);
   const [profile, setProfile] = useState<ProfileDetail | undefined>();
+  const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
-  const [liked, setLiked] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [interaction, setInteraction] = useState<"idle" | "liked" | "passed">("idle");
+  const [busy, setBusy] = useState(false);
+  const [matchId, setMatchId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!verified || !id) {
-      // Unverified: the component renders the verification flow before ever
-      // consulting `loading` below, so there is nothing to synchronize here.
-      return;
-    }
+    if (!verified || !id) return;
     let cancelled = false;
     getProfileDetail(id)
       .then((result) => {
@@ -55,77 +55,95 @@ export default function ProfileDetailPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    getProfileConfiguration()
+      .then((result) => {
+        if (!cancelled) setConfiguration(result.configuration);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [id, verified]);
 
+  function like() {
+    if (!profile || busy || interaction !== "idle") return;
+    setBusy(true);
+    likeProfile(profile.id)
+      .then((result) => {
+        setInteraction("liked");
+        if (result.matched) setMatchId(result.match_id);
+      })
+      .catch(() => undefined)
+      .finally(() => setBusy(false));
+  }
+
+  function pass() {
+    if (!profile || busy || interaction !== "idle") return;
+    setBusy(true);
+    passProfile(profile.id)
+      .then(() => setInteraction("passed"))
+      .catch(() => undefined)
+      .finally(() => setBusy(false));
+  }
+
   if (!id) {
     return <SessionStatusPage title="Profile not found" body="This link is not valid." />;
   }
 
-  // Route-level enforcement (item 14): an unverified member never receives
-  // profile detail content here, regardless of how this route was reached.
   if (!verified) {
     return (
       <div className="auth-screen">
         <div className="auth-screen__panel">
-          <VerificationFlow onDone={() => navigate(backTo, { replace: true })} />
+          <VerificationFlow onDone={() => navigate(back.to, { replace: true })} />
         </div>
       </div>
     );
   }
 
   if (loading) {
-    return <SessionStatusPage title="Loading profile…" body="Just a moment." busy />;
+    return (
+      <div className="shell-page">
+        <Link className="onboard-back-top" to={back.to}>
+          {back.label}
+        </Link>
+        <RichProfileSkeleton />
+      </div>
+    );
   }
 
   if (error || !profile) {
     return <SessionStatusPage title="We could not load this profile" body={error ?? "Try again."} />;
   }
 
-  const location = [profile.city, profile.country_code].filter(Boolean).join(", ");
+  const name = profile.display_name ?? "DateZA member";
+  const compatibility = profile.compatibility ?? routedCompatibility;
 
   return (
     <div className="shell-page">
-      <Link className="onboard-back-top" to={backTo}>
-        {backLabel}
+      <Link className="onboard-back-top" to={back.to}>
+        {back.label}
       </Link>
-      <article className="profile-detail">
-        <div className="profile-detail__photos">
-          {profile.photos.length > 0 ? (
-            profile.photos.map((photo) => <img key={photo.id} src={photo.url} alt="" />)
-          ) : (
-            <div className="discover-card__photo-placeholder" aria-hidden="true" />
-          )}
-        </div>
-        <div className="profile-detail__body">
-          <h1 className="auth-screen__title">
-            {profile.display_name ?? "DateZA member"}
-            {profile.age ? `, ${profile.age}` : ""}
-          </h1>
-          {profile.verified ? <p className="profile-detail__badge">{VERIFIED_CONTACT_LABEL}</p> : null}
-          {location ? <p className="profile-detail__location">{location}</p> : null}
-          {profile.bio ? <p className="auth-screen__intro">{profile.bio}</p> : null}
-          {profile.prompts.map((prompt) => (
-            <div className="profile-detail__prompt" key={prompt.key}>
-              <p className="profile-detail__prompt-text">{prompt.prompt}</p>
-              <p className="profile-detail__prompt-answer">{prompt.answer}</p>
-            </div>
-          ))}
-          <button
-            className="auth-form__submit"
-            type="button"
-            disabled={liked}
-            onClick={() => {
-              setLiked(true);
-              void likeProfile(profile.id).catch(() => setLiked(false));
-            }}
-          >
-            {liked ? "Liked" : "Like"}
-          </button>
-        </div>
-      </article>
+      <RichProfileView
+        profile={profile}
+        compatibility={compatibility}
+        configuration={configuration}
+        photoIndex={photoIndex}
+        onPhotoIndex={setPhotoIndex}
+        mode="member"
+        busy={busy}
+        interaction={interaction}
+        onLike={like}
+        onPass={pass}
+      />
+      {matchId ? (
+        <MatchModal
+          name={name}
+          photoUrl={profile.photos[0]?.url}
+          matchId={matchId}
+          continueLabel={back.label}
+          onContinue={() => navigate(back.to)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -6,10 +6,20 @@
  */
 const MISSING_KEY_COPY: Record<string, { label: string; description: string }> = {
   photos: { label: "Add more photos", description: "More photos, more matches" },
+  more_photos: { label: "Add more photos", description: "More photos, more matches" },
   bio: { label: "Write your bio", description: "Show your personality" },
+  looking_for: { label: "Tell people what you're looking for", description: "Help the right people find you" },
   "options.interests": { label: "Add interests", description: "Help us find better matches" },
+  interests: { label: "Add interests", description: "Help us find better matches" },
   "options.relationship_intent": { label: "Share your intent", description: "What are you looking for?" },
+  relationship_intent: { label: "Share your intent", description: "What are you looking for?" },
   prompts: { label: "Write a prompt", description: "Give people something to reply to" },
+  prompt: { label: "Write a prompt", description: "Give people something to reply to" },
+  work_or_education: { label: "Add work or education", description: "A little context goes a long way" },
+  lifestyle: { label: "Share your lifestyle", description: "Smoking, drinking, and how you live" },
+  family_plans: { label: "Share family plans", description: "Only what you're comfortable with" },
+  languages: { label: "Add languages", description: "How you like to talk" },
+  personality: { label: "Share how you connect", description: "Social and communication style" },
   location: { label: "Confirm your location", description: "See people near you" },
 };
 

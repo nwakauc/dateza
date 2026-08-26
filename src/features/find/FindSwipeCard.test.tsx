@@ -210,6 +210,26 @@ describe("FindSwipeCard", () => {
     expect(onOpenDetail).toHaveBeenCalledTimes(1);
   });
 
+  it("opens the full profile from the name and from the photo", async () => {
+    const user = userEvent.setup();
+    const onOpenDetail = vi.fn();
+    render(
+      <FindSwipeCard
+        profile={profile({
+          display_name: "Maya",
+          photos: [{ id: "ph1", position: 0, url: "https://example.test/1.jpg", url_expires_in: 3600 }],
+        })}
+        interaction="idle"
+        optionLabel={lookup}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Maya" }));
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByAltText(""));
+    expect(onOpenDetail).toHaveBeenCalledTimes(2);
+  });
+
   it("shows a match note when interaction is matched", () => {
     render(<FindSwipeCard profile={profile()} interaction="matched" optionLabel={lookup} onOpenDetail={noop} />);
     expect(screen.getByText(/it's a match!/i)).toBeInTheDocument();

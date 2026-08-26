@@ -364,4 +364,170 @@ describe("Discover (FE-02)", () => {
     expect(await screen.findByRole("dialog", { name: /verify your account/i })).toBeInTheDocument();
     expect(likeCalls).toBe(0);
   });
+
+  it("celebrates a mutual match with a modal whose Message action opens the real conversation", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    let conversationCalls = 0;
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      const method = methodOf(init);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, { configuration: { identity_fields: [], profile_fields: [], preference_fields: [], collections: [], option_groups: [] }, onboarding: completeOnboarding }),
+        );
+      }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      if (url.endsWith("/p1/likes") && method === "POST") {
+        return Promise.resolve(jsonResponse(200, { liked: true, matched: true, match_id: "m1", created: true }));
+      }
+      if (url.endsWith("/api/v1/matches/m1/conversation") && method === "POST") {
+        conversationCalls += 1;
+        return Promise.resolve(
+          jsonResponse(200, { conversation: { id: "c1", match_id: "m1", status: "active", created_at: "2026-08-24T00:00:00Z", profile: discoveryProfile(), last_message: null } }),
+        );
+      }
+      if (url.endsWith("/api/v1/conversations")) return Promise.resolve(jsonResponse(200, { conversations: [], next_cursor: null }));
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+
+    expect(await screen.findByRole("dialog", { name: /it's a match!/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /message maya/i }));
+
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
+    expect(conversationCalls).toBe(1);
+  });
+
+  it("opens a rich profile from the photo and returns to Discover", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, { configuration: { identity_fields: [], profile_fields: [], preference_fields: [], collections: [], option_groups: [] }, onboarding: completeOnboarding }),
+        );
+      }
+      if (url.endsWith("/api/v1/profiles/p1")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: {
+              ...discoveryProfile(),
+              hook_tonight_active: false,
+              hook_state: "unavailable",
+              prompts: [],
+              interests: [],
+            },
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Open Maya's profile" }));
+    expect(await screen.findByRole("link", { name: /back to discover/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /back to discover/i }));
+    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+  });
+
+  it("shows stand-out suggestions from backend profile_completion", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: {
+              ...ownerProfile,
+              profile_completion: {
+                percent: 72,
+                level: "good",
+                missing: ["more_photos", "interests"],
+                suggestions: [
+                  { key: "more_photos", label: "Add more photos" },
+                  { key: "interests", label: "Add interests" },
+                ],
+                sections: {},
+              },
+            },
+            onboarding: completeOnboarding,
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+    await screen.findByText("Maya");
+    expect(await screen.findByText(/make your profile stand out/i)).toBeInTheDocument();
+    expect(screen.getByText("72% complete")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add more photos" })).toHaveAttribute("href", "/profile/photos");
+    expect(screen.getByRole("link", { name: "Add interests" })).toHaveAttribute("href", "/profile/edit#interests");
+    expect(screen.queryByText(/your profile is incomplete/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a profile-completion panel driven by real onboarding.completion, not fabricated progress", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: ownerProfile,
+            onboarding: { ...completeOnboarding, completion: { complete: false, percent: 60, missing: ["photos", "prompts"] } },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+
+    await screen.findByText("Maya");
+    expect(await screen.findByText(/make your profile stand out/i)).toBeInTheDocument();
+    expect(screen.getByText("60% complete")).toBeInTheDocument();
+    expect(screen.getByText("Add more photos")).toBeInTheDocument();
+    expect(screen.getByText("Write a prompt")).toBeInTheDocument();
+  });
+
+  it("hides the profile-completion panel once the profile is already complete", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+
+    await screen.findByText("Maya");
+    expect(screen.queryByText(/make your profile stand out/i)).not.toBeInTheDocument();
+  });
 });

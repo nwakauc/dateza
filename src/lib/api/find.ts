@@ -65,6 +65,9 @@ export function parsePublicProfile(value: unknown): PublicProfile {
   if (!isRecord(value) || typeof value.id !== "string") {
     throw new ApiError(502, undefined, "invalid_profile_response");
   }
+  const nestedLocation = isRecord(value.location) ? value.location : undefined;
+  const nestedCity = nestedLocation ? asStringOrNull(nestedLocation.city) : null;
+  const nestedCountry = nestedLocation ? asStringOrNull(nestedLocation.country_code) : null;
   return {
     id: value.id,
     display_name: asStringOrNull(value.display_name),
@@ -72,15 +75,17 @@ export function parsePublicProfile(value: unknown): PublicProfile {
     bio: asStringOrNull(value.bio),
     gender: asStringOrNull(value.gender),
     pronouns: asStringOrNull(value.pronouns),
-    country_code: asStringOrNull(value.country_code),
-    city: asStringOrNull(value.city),
+    country_code: asStringOrNull(value.country_code) ?? nestedCountry,
+    city: asStringOrNull(value.city) ?? nestedCity,
     occupation: asStringOrNull(value.occupation),
     job_title: asStringOrNull(value.job_title),
     school_or_institution: asStringOrNull(value.school_or_institution),
     looking_for_text: asStringOrNull(value.looking_for_text),
     height_cm: asNumberOrNull(value.height_cm),
     body_type: asStringOrNull(value.body_type),
-    languages_spoken: asStringArray(value.languages_spoken),
+    languages_spoken: asStringArray(value.languages_spoken).length > 0
+      ? asStringArray(value.languages_spoken)
+      : asStringArray(value.languages),
     smoking: asStringOrNull(value.smoking),
     drinking: asStringOrNull(value.drinking),
     fitness: asStringOrNull(value.fitness),
@@ -134,12 +139,19 @@ export function parseCompatibility(value: unknown): DatezaCompatibility {
   };
 }
 
+function parseContactVerified(record: Record<string, unknown>): boolean {
+  if (isRecord(record.verification) && isRecord(record.verification.contact) && typeof record.verification.contact.verified === "boolean") {
+    return record.verification.contact.verified;
+  }
+  return asBoolean(record.verified, false);
+}
+
 function parseFindProfile(value: unknown): FindProfile {
   const base = parsePublicProfile(value);
   const record = value as Record<string, unknown>;
   return {
     ...base,
-    verified: asBoolean(record.verified, false),
+    verified: parseContactVerified(record),
     online: asBoolean(record.online, false),
     active_today: asBoolean(record.active_today, false),
     new_here: asBoolean(record.new_here, false),
@@ -219,7 +231,7 @@ function parseProfileDetail(value: unknown): ProfileDetail {
   const record = value as Record<string, unknown>;
   return {
     ...base,
-    verified: asBoolean(record.verified, false),
+    verified: parseContactVerified(record),
     online: asBoolean(record.online, false),
     active_today: asBoolean(record.active_today, false),
     new_here: asBoolean(record.new_here, false),
@@ -237,6 +249,7 @@ function parseProfileDetail(value: unknown): ProfileDetail {
     interests: Array.isArray(record.interests)
       ? record.interests.map(parseInterest).filter((i) => i !== undefined)
       : [],
+    compatibility: parseCompatibility(record.compatibility),
   };
 }
 

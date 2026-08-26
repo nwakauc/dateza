@@ -28,15 +28,18 @@ type ActiveMatch = { profile: DiscoveryProfile; matchId: string | null };
  */
 export default function DiscoveryPage() {
   const navigate = useNavigate();
+  const account = useOwnAccount();
   const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([]);
   const [selection, setSelection] = useState<DiscoverySelection | undefined>();
+  const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [interactions, setInteractions] = useState<Record<string, Interaction>>({});
   const [busyProfileId, setBusyProfileId] = useState<string | undefined>();
   const [attempt, setAttempt] = useState(0);
+  const [activeMatch, setActiveMatch] = useState<ActiveMatch | undefined>();
 
   useEffect(() => {
     document.title = "Discover — DateZA";
@@ -54,6 +57,13 @@ export default function DiscoveryPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    // Best-effort: powers the relationship-intent/interest chips on each
+    // card (see optionLabels.ts). Discover still renders fully without it.
+    getProfileConfiguration()
+      .then((result) => {
+        if (!cancelled) setConfiguration(result.configuration);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
       document.title = "DateZA — Meet someone who chooses you.";
@@ -61,7 +71,8 @@ export default function DiscoveryPage() {
   }, [attempt]);
 
   function openProfile(profileId: string) {
-    requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "discover" } }));
+    const compatibility = profiles.find((candidate) => candidate.id === profileId)?.compatibility ?? null;
+    requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "discover", compatibility } }));
   }
 
   function like(profileId: string) {
@@ -70,6 +81,10 @@ export default function DiscoveryPage() {
       likeProfile(profileId)
         .then((result) => {
           setInteractions((current) => ({ ...current, [profileId]: result.matched ? "matched" : "liked" }));
+          if (result.matched) {
+            const profile = profiles.find((candidate) => candidate.id === profileId);
+            if (profile) setActiveMatch({ profile, matchId: result.match_id });
+          }
         })
         .catch(() => undefined)
         .finally(() => setBusyProfileId(undefined));
@@ -160,16 +175,20 @@ export default function DiscoveryPage() {
     );
   }
 
+  const optionLabel = buildOptionLabelLookup(configuration);
+
   return (
     <div className="shell-page">
       {header}
-      <div className="discovery-grid">
+      <DiscoverValueStrip />
+      <div className="discovery-grid" id="discover-grid">
         {profiles.map((profile) => (
           <DiscoveryCard
             key={profile.id}
             profile={profile}
             interaction={interactions[profile.id] ?? "idle"}
             pending={busyProfileId === profile.id}
+            optionLabel={optionLabel}
             onOpen={() => openProfile(profile.id)}
             onLike={() => like(profile.id)}
             onPass={() => pass(profile.id)}
@@ -177,7 +196,26 @@ export default function DiscoveryPage() {
         ))}
       </div>
       {refreshTime ? <p className="discovery-refresh-note">New picks {refreshTime}</p> : null}
+      {account.onboarding ? (
+        account.profile?.profile_completion ? (
+          <ProfileCompletionPanel
+            profileCompletion={account.profile.profile_completion}
+            publication={account.onboarding.completion}
+          />
+        ) : (
+          <ProfileCompletionPanel publication={account.onboarding.completion} />
+        )
+      ) : null}
       {verificationModal}
+      {activeMatch ? (
+        <MatchModal
+          name={activeMatch.profile.display_name ?? "them"}
+          photoUrl={activeMatch.profile.photos[0]?.url}
+          matchId={activeMatch.matchId}
+          continueLabel="Keep discovering"
+          onContinue={() => setActiveMatch(undefined)}
+        />
+      ) : null}
     </div>
   );
 }

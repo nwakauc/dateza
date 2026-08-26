@@ -5,13 +5,15 @@ import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { FindAllowance, FindProfile } from "../../lib/api/findTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
-import { SearchIcon } from "../shell/icons.tsx";
+import { BoltIcon, SearchIcon } from "../shell/icons.tsx";
+import { MatchModal } from "../shell/MatchModal.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { FindActions } from "./FindActions.tsx";
+import { FindSidePanel } from "./FindSidePanel.tsx";
 import { FindSwipeStack } from "./FindSwipeStack.tsx";
-import { buildOptionLabelLookup } from "./optionLabels.ts";
+import { buildOptionLabelLookup, buildProfileFieldLabelLookup } from "./optionLabels.ts";
 
 /**
  * Find is DateZA's sequential, one-profile-at-a-time swipe surface — the
@@ -76,6 +78,7 @@ export default function FindPage() {
   const [pendingAction, setPendingAction] = useState<Action | undefined>();
   const [actionError, setActionError] = useState<string | undefined>();
   const [matchedProfile, setMatchedProfile] = useState<FindProfile | undefined>();
+  const [matchedId, setMatchedId] = useState<string | null>(null);
 
   const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -167,6 +170,7 @@ export default function FindPage() {
     setPendingAction(undefined);
     setActionError(undefined);
     setMatchedProfile(undefined);
+    setMatchedId(null);
     setActive(queueRef.current[0]);
     setQueue((current) => current.slice(1));
     setAdvanceCount((current) => current + 1);
@@ -176,7 +180,8 @@ export default function FindPage() {
   }
 
   function openProfile(profileId: string) {
-    requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "find" } }));
+    const compatibility = active?.id === profileId ? active.compatibility : null;
+    requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "find", compatibility } }));
   }
 
   function requestAction(action: Action) {
@@ -199,6 +204,7 @@ export default function FindPage() {
         const result = await likeProfile(active.id);
         if (result.matched) {
           setMatchedProfile(active);
+          setMatchedId(result.match_id);
           setPhase("active");
           setPendingAction(undefined);
           return;
@@ -313,56 +319,69 @@ export default function FindPage() {
         ? "passed"
         : "idle";
   const optionLabel = buildOptionLabelLookup(configuration);
+  const fieldLabel = buildProfileFieldLabelLookup(configuration);
   const actionsDisabled = phase !== "active" || Boolean(matchedProfile);
 
   return (
     <div className="shell-page">
-      <div className="shell-page__header">
-        <h1 className="shell-page__title">Find</h1>
-        <p className="shell-page__subtitle">Meet someone new.</p>
+      <div className="shell-page__header shell-page__header--with-action">
+        <div>
+          <p className="shell-page__eyebrow">Find</p>
+          <h1 className="shell-page__title">Meet someone new</h1>
+          <p className="shell-page__subtitle">Take your time, find your person.</p>
+        </div>
+        {allowance && !exhausted && allowance.remaining > 0 ? (
+          <span className="find-allowance-pill">
+            <BoltIcon className="find-allowance-pill__icon" />
+            {allowance.remaining} {allowance.remaining === 1 ? "pick" : "picks"} left today
+          </span>
+        ) : null}
       </div>
 
-      {allowance && !exhausted && allowance.remaining > 0 ? (
-        <p className="feed-allowance">{allowance.remaining} left today</p>
-      ) : null}
+      <div className="find-layout">
+        <div className="find-layout__main">
+          <FindSwipeStack
+            key={active.id}
+            profile={active}
+            peekProfiles={queue}
+            interaction={interaction}
+            optionLabel={optionLabel}
+            committingAction={phase === "committing" ? pendingAction : undefined}
+            exiting={phase === "exit-left" ? "left" : phase === "exit-right" ? "right" : undefined}
+            dragEnabled={phase === "active" && !matchedProfile}
+            autoFocus={advanceCount > 0}
+            onOpenDetail={() => openProfile(active.id)}
+            onLike={() => requestAction("liked")}
+            onPass={() => requestAction("passed")}
+            onUndo={phase === "committing" ? undo : undefined}
+          />
 
-      <FindSwipeStack
-        key={active.id}
-        profile={active}
-        peekProfiles={queue}
-        interaction={interaction}
-        optionLabel={optionLabel}
-        committingAction={phase === "committing" ? pendingAction : undefined}
-        exiting={phase === "exit-left" ? "left" : phase === "exit-right" ? "right" : undefined}
-        dragEnabled={phase === "active" && !matchedProfile}
-        autoFocus={advanceCount > 0}
-        onOpenDetail={() => openProfile(active.id)}
-        onLike={() => requestAction("liked")}
-        onPass={() => requestAction("passed")}
-        onUndo={phase === "committing" ? undo : undefined}
-      />
+          <FindActions
+            disabled={actionsDisabled}
+            passLabel={interaction === "passed" ? "Passed" : "Pass"}
+            likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
+            onPass={() => requestAction("passed")}
+            onLike={() => requestAction("liked")}
+          />
 
-      <FindActions
-        disabled={actionsDisabled}
-        passLabel={interaction === "passed" ? "Passed" : "Pass"}
-        likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
-        onPass={() => requestAction("passed")}
-        onLike={() => requestAction("liked")}
-      />
+          {actionError ? (
+            <p className="find-action-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
+        </div>
 
-      {actionError ? (
-        <p className="find-action-error" role="alert">
-          {actionError}
-        </p>
-      ) : null}
+        <FindSidePanel key={active.id} profile={active} optionLabel={optionLabel} fieldLabel={fieldLabel} />
+      </div>
 
       {matchedProfile ? (
-        <div className="find-match">
-          <p className="find-match__title">You matched with {matchedProfile.display_name ?? "them"}!</p>
-          <button className="shell-primary-action" type="button" onClick={continueAfterMatch}>
-            Continue browsing
-          </button>
-        </div>
+        <MatchModal
+          name={matchedProfile.display_name ?? "them"}
+          photoUrl={matchedProfile.photos[0]?.url}
+          matchId={matchedId}
+          continueLabel="Continue browsing"
+          onContinue={continueAfterMatch}
+        />
       ) : null}
 
       {verificationModal}

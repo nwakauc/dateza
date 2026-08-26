@@ -1,0 +1,67 @@
+import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
+import type { ProfileDetail } from "../../lib/api/findTypes.ts";
+import type { OwnerProfile } from "../../lib/api/profileTypes.ts";
+
+const HIDDEN_OWNER_OPTIONS = new Set([
+  "has_children",
+  "wants_children",
+  "children_count",
+  "religion",
+  "religion_importance",
+  "physical_affection",
+  "chemistry_importance",
+]);
+
+/**
+ * Approximate public view from owner data when GET /profiles/:id is
+ * unavailable. Omits owner-only fields so the preview stays close to what
+ * other members would see.
+ */
+export function ownerPublicPreview(profile: OwnerProfile, photos: OwnerPhoto[], age: number | null): ProfileDetail {
+  const publicOptions: Record<string, string[]> = {};
+  for (const [key, codes] of Object.entries(profile.options)) {
+    if (!HIDDEN_OWNER_OPTIONS.has(key)) publicOptions[key] = codes;
+  }
+  return {
+    id: profile.id,
+    display_name: profile.display_name,
+    age,
+    bio: profile.bio,
+    gender: profile.gender,
+    pronouns: null,
+    country_code: profile.country_code,
+    city: profile.city,
+    occupation: profile.occupation,
+    job_title: profile.job_title,
+    school_or_institution: profile.school_or_institution,
+    looking_for_text: profile.looking_for_text,
+    height_cm: profile.height_cm,
+    body_type: null,
+    languages_spoken: profile.languages_spoken,
+    smoking: profile.smoking,
+    drinking: profile.drinking,
+    fitness: profile.fitness,
+    photos: photos
+      .filter((photo) => photo.image)
+      .map((photo) => ({
+        id: String(photo.id),
+        position: photo.position,
+        url: photo.image!.url,
+        url_expires_in: photo.image!.url_expires_in,
+      }))
+      .sort((left, right) => left.position - right.position)
+      .map((photo, index) => ({ ...photo, position: index })),
+    options: publicOptions,
+    verified: profile.contact_verified === true,
+    online: false,
+    active_today: false,
+    new_here: false,
+    last_active_at: null,
+    distance_km: null,
+    hook_tonight_active: false,
+    hook_state: "unavailable",
+    prompts: [],
+    interests: [],
+    compatibility: null,
+  };
+}

@@ -1,5 +1,6 @@
 import type { DiscoveryProfile } from "../../lib/api/discoveryTypes.ts";
 import { CloseIcon, HeartIcon, ShieldCheckIcon } from "../shell/icons.tsx";
+import { SendOpenerButton } from "../shell/SendOpenerButton.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import type { OptionLabelLookup } from "../find/optionLabels.ts";
 import { describeCompatibilityReasons } from "./compatibilityCopy.ts";
@@ -111,6 +112,7 @@ export function DiscoveryCard({ profile, interaction, onOpen, onLike, onPass, pe
             >
               <HeartIcon className="discovery-card__icon" />
             </button>
+            <SendOpenerButton className="discovery-card__icon-button" iconClassName="discovery-card__icon" />
           </>
         )}
       </div>
