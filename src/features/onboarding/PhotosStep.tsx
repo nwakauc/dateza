@@ -27,6 +27,17 @@ type Props = {
   error?: string;
 };
 
+const PROCESSING_POLL_MS = 1_200;
+const PROCESSING_NOTICE_MS = 45_000;
+
+function awaitingDerivative(photo: OwnerPhoto): boolean {
+  return photo.processing_state === "pending" || photo.processing_state === "processing";
+}
+
+function hasReadyDerivative(photo: OwnerPhoto): boolean {
+  return photo.processing_state === "ready";
+}
+
 function photoErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 404) {
@@ -86,8 +97,17 @@ export function PhotosStep({
   const [localMessage, setLocalMessage] = useState<string | undefined>();
   const [loadError, setLoadError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const onReconcileRef = useRef(onReconcile);
 
-  const canContinue = !onboarding.completion.missing.includes("photos");
+  useEffect(() => {
+    onReconcileRef.current = onReconcile;
+  }, [onReconcile]);
+
+  const photosMissing = onboarding.completion.missing.includes("photos");
+  const preparing = photos.some(awaitingDerivative);
+  const canContinue = !photosMissing && photos.some(hasReadyDerivative);
+  const shouldPoll = preparing || (photosMissing && photos.some(hasReadyDerivative));
+  const shouldPollRef = useRef(shouldPoll);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +126,56 @@ export function PhotosStep({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    shouldPollRef.current = shouldPoll;
+    if (!shouldPoll) {
+      return;
+    }
+    let cancelled = false;
+    const startedAt = Date.now();
+    let timer = 0;
+
+    async function poll() {
+      try {
+        const items = await listOwnerPhotos();
+        if (cancelled) {
+          return;
+        }
+        setPhotos(items);
+        await onReconcileRef.current();
+        if (cancelled) {
+          return;
+        }
+        if (!shouldPollRef.current) {
+          setLoadError(undefined);
+          return;
+        }
+        if (items.some(awaitingDerivative) && Date.now() - startedAt >= PROCESSING_NOTICE_MS) {
+          setLoadError("This photo is still being prepared. Wait a moment, then try again.");
+        }
+      } catch (caught) {
+        if (cancelled) {
+          return;
+        }
+        setLoadError(photoErrorMessage(caught));
+      }
+      if (cancelled || !shouldPollRef.current) {
+        return;
+      }
+      timer = window.setTimeout(() => {
+        void poll();
+      }, PROCESSING_POLL_MS);
+    }
+
+    timer = window.setTimeout(() => {
+      void poll();
+    }, PROCESSING_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [shouldPoll]);
 
   useEffect(() => {
     return () => {
@@ -291,18 +361,24 @@ export function PhotosStep({
           }
           const { photo } = slot;
           const isMain = photo.id === primaryId;
+          const preparingPhoto = awaitingDerivative(photo);
+          const failed = photo.processing_state === "failed";
+          const ready = hasReadyDerivative(photo);
           return (
             <li key={photo.id}>
-              <figure className="onboard-photo-slot">
+              <figure className="onboard-photo-slot" aria-busy={preparingPhoto}>
                 {photo.image?.url ? (
-                  <img src={photo.image.url} alt={isMain ? "Your main photo" : `Photo ${index + 1}`} />
+                  <img src={photo.image.url} alt={ready ? (isMain ? "Your main photo" : `Photo ${index + 1}`) : ""} />
                 ) : (
-                  <div className="onboard-photo-slot__empty">Getting this ready…</div>
+                  <div className="onboard-photo-slot__empty">Preparing photo…</div>
                 )}
                 {isMain ? <figcaption className="onboard-photo-slot__badge">Main</figcaption> : null}
-                {photo.processing_state === "failed" ? (
-                  <div className="onboard-photo-slot__veil">This photo didn’t work</div>
+                {preparingPhoto ? (
+                  <div className="onboard-photo-slot__veil" role="status">
+                    Preparing photo…
+                  </div>
                 ) : null}
+                {failed ? <div className="onboard-photo-slot__veil">This photo didn’t work</div> : null}
                 <div className="onboard-photo-slot__actions">
                   <button type="button" onClick={() => openPicker(photo.id)} disabled={busy || pending}>
                     Replace
@@ -316,7 +392,11 @@ export function PhotosStep({
           );
         })}
       </ul>
-      <p className="auth-form__hint">Use a clear photo where people can see you.</p>
+      <p className="auth-form__hint">
+        {preparing
+          ? "We’re preparing your photo. Continue unlocks when it’s ready."
+          : "Use a clear photo where people can see you."}
+      </p>
       <div className="onboard-actions">
         <button className="auth-form__submit" type="submit" disabled={!canContinue || pending || busy}>
           {pending ? "Saving…" : "Continue"}

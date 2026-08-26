@@ -502,6 +502,11 @@ const ownerPhoto = {
   },
 };
 
+const readyOwnerPhoto = {
+  ...ownerPhoto,
+  processing_state: "ready" as const,
+};
+
 const tinyPng = Uint8Array.from(
   atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="),
   (char) => char.charCodeAt(0),
@@ -675,6 +680,7 @@ describe("onboarding photo step", () => {
     let listed: unknown[] = [];
     let onboarding = photosOnboarding;
     let intentCalls = 0;
+    let listsAfterAttach = 0;
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
@@ -704,10 +710,16 @@ describe("onboarding photo step", () => {
       }
       if (url.endsWith("/api/v1/profile/photos") && method === "POST") {
         listed = [ownerPhoto];
-        onboarding = optionsOnboarding;
         return Promise.resolve(jsonResponse(201, { photo: ownerPhoto }));
       }
       if (url.endsWith("/api/v1/profile/photos")) {
+        if (listed.length > 0) {
+          listsAfterAttach += 1;
+          if (listsAfterAttach >= 2) {
+            listed = [readyOwnerPhoto];
+            onboarding = optionsOnboarding;
+          }
+        }
         return Promise.resolve(jsonResponse(200, { photos: listed }));
       }
       if (url.endsWith("/api/v1/profile")) {
@@ -732,8 +744,13 @@ describe("onboarding photo step", () => {
     const file = new File([tinyPng], "me.png", { type: "image/png" });
     await user.upload(screen.getByLabelText(/choose a photo/i), file);
 
-    expect(await screen.findByAltText(/your main photo/i)).toBeInTheDocument();
+    expect(await screen.findByText(/preparing photo/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+    expect(screen.queryByAltText(/your main photo/i)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /add your best photos/i })).toBeInTheDocument();
+
+    expect(await screen.findByAltText(/your main photo/i, {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(screen.queryByText(/preparing photo/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^continue$/i }));
     expect(
       await screen.findByRole("heading", { name: /what are you looking for/i }),
@@ -808,16 +825,15 @@ describe("onboarding photo step", () => {
 
     const first = new File([tinyPng], "me.png", { type: "image/png" });
     await user.upload(input, first);
-    expect(await screen.findByAltText(/your main photo/i)).toBeInTheDocument();
+    expect(await screen.findByText(/preparing photo/i)).toBeInTheDocument();
 
     const second = new File([tinyPng], "me2.png", { type: "image/png" });
     await user.upload(input, second);
 
     await waitFor(() => {
-      expect(screen.getAllByRole("img")).toHaveLength(2);
+      expect(screen.getAllByText("Preparing photo…")).toHaveLength(2);
     });
-    expect(screen.getByAltText(/your main photo/i)).toBeInTheDocument();
-    expect(screen.getByAltText(/photo 2/i)).toBeInTheDocument();
+    expect(screen.queryByAltText(/your main photo/i)).not.toBeInTheDocument();
 
     // The photo grid must never surface unrelated Find/Discover/profile-load copy.
     expect(screen.queryByText(/that's everyone/i)).not.toBeInTheDocument();

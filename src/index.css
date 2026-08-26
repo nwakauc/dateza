@@ -2233,7 +2233,7 @@ main.public-status a.public-status__home:hover {
 }
 
 .auth-form__submit:disabled {
-  opacity: 0.7;
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
@@ -2824,6 +2824,7 @@ main.public-status a.public-status__home:hover {
 
 .onboard-photo-slot__actions {
   position: absolute;
+  z-index: 2;
   right: 8px;
   bottom: 8px;
   display: flex;
@@ -2846,6 +2847,7 @@ main.public-status a.public-status__home:hover {
 .onboard-photo-slot__veil,
 .onboard-photo-slot__empty {
   position: absolute;
+  z-index: 1;
   inset: 0;
   display: flex;
   flex-direction: column;
