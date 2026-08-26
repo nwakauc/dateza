@@ -7,6 +7,7 @@ type Props = {
   children: ReactNode;
   backdropClassName?: string;
   panelClassName?: string;
+  hideCloseButton?: boolean;
 };
 
 const FOCUSABLE = [
@@ -18,7 +19,14 @@ const FOCUSABLE = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export function Modal({ ariaLabel, onClose, children, backdropClassName, panelClassName }: Props) {
+export function Modal({
+  ariaLabel,
+  onClose,
+  children,
+  backdropClassName,
+  panelClassName,
+  hideCloseButton = false,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
 
@@ -87,9 +95,11 @@ export function Modal({ ariaLabel, onClose, children, backdropClassName, panelCl
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
-        <button className="verify-modal__close" type="button" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        {hideCloseButton ? null : (
+          <button className="verify-modal__close" type="button" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        )}
         {children}
       </div>
     </div>,

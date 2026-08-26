@@ -1,8 +1,8 @@
 import { Link, NavLink } from "react-router-dom";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
-import { BellIcon, ChevronRightIcon, GearIcon, ShieldIcon, UserIcon } from "./icons.tsx";
-import { PRIMARY_NAV_ITEMS } from "./navConfig.ts";
+import { BellIcon, ChevronRightIcon } from "./icons.tsx";
+import { ACCOUNT_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
 import type { OwnAccount } from "./OwnAccountContext.ts";
 import { useBadgeCounts } from "./useBadgeCounts.ts";
 
@@ -67,9 +67,15 @@ export function TopNav({ account }: Props) {
               <ChevronRightIcon className="shell-account-menu__chevron" />
             </summary>
             <div className="shell-account-menu__panel">
-              <Link to="/profile"><UserIcon /><span>Profile</span></Link>
-              <Link to="/settings"><GearIcon /><span>Settings</span></Link>
-              <Link to="/settings/safety"><ShieldIcon /><span>Safety centre</span></Link>
+              {ACCOUNT_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.to} to={item.to}>
+                    <Icon />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </details>
         </div>

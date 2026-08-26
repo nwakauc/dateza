@@ -68,7 +68,7 @@ export function DatingLocationSearch({ profileId, onSaved }: Props) {
             disabled={phase === "searching" || phase === "saving"}
           />
         </label>
-        <button className="shell-text-action" type="submit" disabled={query.trim().length < 2 || phase === "searching"}>
+        <button className="edit-location__submit" type="submit" disabled={query.trim().length < 2 || phase === "searching"}>
           {phase === "searching" ? "Searching…" : "Find area"}
         </button>
       </form>

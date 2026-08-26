@@ -2,14 +2,15 @@ import { Link } from "react-router-dom";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
 import { BellIcon } from "./icons.tsx";
+import { MobileMenu } from "./MobileMenu.tsx";
 import type { OwnAccount } from "./OwnAccountContext.ts";
 
 type Props = {
   account: OwnAccount;
 };
 
-/** Thin brand bar shown only below the desktop breakpoint — the bottom tab
- * bar carries primary navigation on mobile, so this stays minimal. */
+/** Brand bar shown only below the desktop breakpoint. Dating destinations
+ * live on the tab bar; the hamburger opens account and the rest of the app. */
 export function MobileHeader({ account }: Props) {
   const { verification } = useSession();
   const verified = canInteract(verification);
@@ -32,6 +33,7 @@ export function MobileHeader({ account }: Props) {
           <BellIcon />
           {account.unreadNotifications > 0 ? <span className="shell-icon-link__badge">{account.unreadNotifications > 9 ? "9+" : account.unreadNotifications}</span> : null}
         </Link>
+        <MobileMenu account={account} />
         <Link to="/profile" className="shell-avatar shell-avatar--sm" aria-label="Your profile">
           {account.avatarUrl ? <img src={account.avatarUrl} width="32" height="32" alt="" /> : <span className="shell-avatar__initial">{account.initial}</span>}
           {!verified ? <span className="shell-avatar__dot" aria-label="Verification needed" /> : null}

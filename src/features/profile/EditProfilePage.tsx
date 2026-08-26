@@ -28,7 +28,7 @@ import {
   toggleInterestedIn,
 } from "../onboarding/interestedIn.ts";
 import { canInteract } from "../session/verificationState.ts";
-import { ChevronLeftIcon, ChevronRightIcon, ShieldCheckIcon } from "../shell/icons.tsx";
+import { ChevronLeftIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
@@ -221,6 +221,13 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     const section = sectionIdFromHash(location.hash);
+    const mobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1099px)").matches;
+    if (mobile) {
+      const tab = document.querySelector<HTMLElement>(".edit-profile__tabs a.is-active");
+      tab?.scrollIntoView({ inline: "nearest", block: "nearest" });
+      window.scrollTo({ top: 0 });
+      return;
+    }
     document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [location.hash]);
 
@@ -401,7 +408,9 @@ export default function EditProfilePage() {
   const datingGroups = groupsNamed(groups, [...DATING_OPTION_KEYS, ...PERSONALITY_OPTION_KEYS]);
   const educationGroups = groupsNamed(groups, EDUCATION_OPTION_KEYS);
 
-  const otherSections = EDIT_SECTIONS.filter((section) => section.id !== active && section.id !== "preview");
+  function sectionClass(id: EditSectionId) {
+    return active === id ? undefined : "edit-profile__mobile-hide";
+  }
 
   return (
     <div className="edit-profile">
@@ -441,7 +450,7 @@ export default function EditProfilePage() {
             ))}
           </nav>
 
-          <div className={active === "about" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="about">
+          <div className={sectionClass("about")} data-edit-section id="about">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>About you</h2>
@@ -545,7 +554,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "photos" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="photos">
+          <div className={sectionClass("photos")} data-edit-section id="photos">
             <EditPhotosSection
               collection={photoCollection}
               onChanged={(photos) => {
@@ -555,7 +564,7 @@ export default function EditProfilePage() {
             />
           </div>
 
-          <div className={active === "work" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="work">
+          <div className={sectionClass("work")} data-edit-section id="work">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Work &amp; education</h2>
@@ -600,7 +609,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "lifestyle" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="lifestyle">
+          <div className={sectionClass("lifestyle")} data-edit-section id="lifestyle">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Lifestyle</h2>
@@ -654,7 +663,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "dating" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="dating">
+          <div className={sectionClass("dating")} data-edit-section id="dating">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Dating</h2>
@@ -669,7 +678,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "interests" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="interests">
+          <div className={sectionClass("interests")} data-edit-section id="interests">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Interests</h2>
@@ -692,7 +701,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "languages" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="languages">
+          <div className={sectionClass("languages")} data-edit-section id="languages">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Languages</h2>
@@ -711,7 +720,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "prompts" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="prompts">
+          <div className={sectionClass("prompts")} data-edit-section id="prompts">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Prompts</h2>
@@ -731,7 +740,7 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className={active === "verification" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="verification">
+          <div className={sectionClass("verification")} data-edit-section id="verification">
             <section className="edit-profile__block">
               <header className="edit-profile__block-head">
                 <h2>Verification</h2>
@@ -750,7 +759,11 @@ export default function EditProfilePage() {
             </section>
           </div>
 
-          <div className="edit-profile__mobile-only" data-edit-section id="preview">
+          <div
+            className={active === "preview" ? "edit-profile__mobile-only" : "edit-profile__mobile-only edit-profile__mobile-hide"}
+            data-edit-section
+            id="preview"
+          >
             {previewOwner ? (
               <EditPreviewCard owner={previewOwner} photos={previewPhotos} configuration={configuration} />
             ) : null}
@@ -758,17 +771,6 @@ export default function EditProfilePage() {
               <ProfileStrengthCard profileCompletion={account.profile?.profile_completion ?? null} richness={richness} />
             </div>
           </div>
-
-          <ul className="edit-profile__jump-list">
-            {otherSections.map((section) => (
-              <li key={section.id}>
-                <button type="button" onClick={() => goSection(section.id)}>
-                  {section.label}
-                  <ChevronRightIcon />
-                </button>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <aside className="edit-profile__rail">

@@ -228,6 +228,7 @@ describe("Edit profile", () => {
     expect(previews.some((node) => node.textContent?.includes("Bright Ideas"))).toBe(false);
     expect(screen.getAllByText("72%").length).toBeGreaterThan(0);
     expect(screen.queryByText(/your profile is incomplete/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /work & education/i })).not.toBeInTheDocument();
   });
 
   it("saves bio through PATCH /profile and keeps the page on an error in options", async () => {
