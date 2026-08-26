@@ -6,6 +6,7 @@ export type OwnAccount = {
   profile: OwnerProfile | null;
   onboarding: ProfileOnboardingStatus | null;
   avatarUrl: string | null;
+  photoCount: number;
   displayName: string;
   initial: string;
   unreadNotifications: number;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
+import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
 import { BellIcon } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 
@@ -50,6 +51,7 @@ export default function NotificationsPage() {
         <div><p className="shell-page__eyebrow">Updates</p><h1 className="shell-page__title">Notifications</h1><p className="shell-page__subtitle">The important things happening on DateZA.</p></div>
         {hasUnread ? <button className="shell-text-action" type="button" onClick={() => void readAll()} disabled={markingAll}>{markingAll ? "Marking read…" : "Mark all read"}</button> : null}
       </div>
+      <ProfileStandOutPrompt compact />
       {loading ? <div className="shell-loading" aria-live="polite"><span />Loading notifications…</div> : null}
       {error ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">Notifications didn’t load</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div> : null}
       {!loading && !error && items.length === 0 ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">You’re all caught up</p><p className="shell-empty__body">New DateZA updates will appear here.</p></div> : null}

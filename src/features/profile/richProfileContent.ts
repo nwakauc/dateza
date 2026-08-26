@@ -52,7 +52,9 @@ function joinList(items: string[]): string {
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
-export const MAX_PROFILE_INTERESTS = 12;
+export function interestLabels(profile: ProfileDetail): string[] {
+  return profile.interests.map((interest) => interest.label).filter(Boolean);
+}
 
 export function formatLanguages(languages: string[]): string {
   return joinList(languages);
@@ -169,10 +171,6 @@ export function moreFacts(profile: ProfileDetail, optionLabel: OptionLabelLookup
     facts.push({ key: "languages", label: "Languages", value: formatLanguages(profile.languages_spoken) });
   }
   return facts;
-}
-
-export function interestLabels(profile: ProfileDetail): string[] {
-  return profile.interests.map((interest) => interest.label).filter(Boolean).slice(0, MAX_PROFILE_INTERESTS);
 }
 
 export function summaryPills(

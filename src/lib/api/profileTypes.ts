@@ -1,4 +1,5 @@
 import type { BrandSummary } from "./types.ts";
+import type { PromptAnswer } from "./findTypes.ts";
 
 export type OnboardingState =
   | "profile_required"
@@ -85,12 +86,19 @@ export type ConfiguredCollection = {
   minimum_count: number;
 };
 
+export type ConfiguredPrompt = {
+  key: string;
+  text: string;
+  category: string | null;
+};
+
 export type ProfileConfiguration = {
   identity_fields: ConfiguredField[];
   profile_fields: ConfiguredField[];
   preference_fields: ConfiguredField[];
   collections: ConfiguredCollection[];
   option_groups: ConfiguredOptionGroup[];
+  prompts: ConfiguredPrompt[];
 };
 
 export type ProfileConfigurationResponse = {
@@ -127,6 +135,7 @@ export type OwnerProfile = {
   fitness: string | null;
   languages_spoken: string[];
   options: Record<string, string[]>;
+  prompts: PromptAnswer[];
   /**
    * Nested contact verification. Treat `verified` here as reachability only,
    * never as RealMe.
@@ -166,6 +175,7 @@ export type ProfileUpdateBody = {
   company_name?: string;
   height_cm?: number | null;
   fitness?: string;
+  languages?: string[];
 };
 
 export type ProfileLocationUpdateBody = {

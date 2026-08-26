@@ -39,6 +39,7 @@ const configuration = {
     ],
     preference_fields: [],
     collections: [],
+    prompts: [],
     option_groups: [
       {
         key: "relationship_intent",
@@ -151,8 +152,9 @@ describe("rich profile detail", () => {
   });
 
   function mockApis(profile: Record<string, unknown> = detailProfile()) {
-    vi.mocked(fetch).mockImplementation((input) => {
+    vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
+      const method = ((init as RequestInit | undefined)?.method ?? "GET").toUpperCase();
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile")) {
         return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
@@ -162,6 +164,29 @@ describe("rich profile detail", () => {
         return Promise.resolve(jsonResponse(200, { notifications: [], unread_count: 0, next_cursor: null }));
       }
       if (url.endsWith("/api/v1/profile/configuration")) return Promise.resolve(jsonResponse(200, configuration));
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profiles: [],
+            selection: {
+              allocation_date: "2026-08-26",
+              daily_limit: 10,
+              count: 0,
+              finalized: true,
+              refreshes_at: "2026-08-27T00:00:00+02:00",
+            },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/prompts")) {
+        return Promise.resolve(jsonResponse(200, { prompts: [] }));
+      }
+      if (url.endsWith("/api/v1/profiles/p1/report") && method === "POST") {
+        return Promise.resolve(jsonResponse(200, { reported: true, created: true }));
+      }
+      if (url.endsWith("/api/v1/profiles/p1/block") && method === "POST") {
+        return Promise.resolve(jsonResponse(200, { blocked: true, created: true }));
+      }
       if (url.endsWith("/api/v1/profiles/p1")) return Promise.resolve(jsonResponse(200, { profile }));
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
@@ -175,19 +200,20 @@ describe("rich profile detail", () => {
     expect(screen.getByText(/cape town, za · 8 km away/i)).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();
     expect(screen.getByText("Great match")).toBeInTheDocument();
-    expect(screen.getByText("Both want something long-term")).toBeInTheDocument();
+    expect(screen.getByText("Both want long-term")).toBeInTheDocument();
     expect(screen.getByText("Aligned on family plans")).toBeInTheDocument();
     expect(screen.getByText("Verified contact")).toBeInTheDocument();
     expect(screen.queryByText(/realme/i)).not.toBeInTheDocument();
     expect(screen.getByText("Passionate about living intentionally.")).toBeInTheDocument();
-    expect(screen.getByText("Long-term relationship")).toBeInTheDocument();
+    expect(screen.getAllByText("Long-term relationship").length).toBeGreaterThan(0);
     expect(screen.getByText("Hiking")).toBeInTheDocument();
     expect(screen.getByText("A road trip or a quiet reset.")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Balanced diet")).toBeInTheDocument();
     expect(screen.queryByText("dateza_v1")).not.toBeInTheDocument();
     expect(screen.queryByText("shared_long_term_intent")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /report or block/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /intent/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^like$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^pass$/i })).toBeInTheDocument();
   });
@@ -225,8 +251,28 @@ describe("rich profile detail", () => {
     mockApis();
     renderAt("/profile/p1", { from: "find" });
     expect(await screen.findByText("1 / 2")).toBeInTheDocument();
+    expect(screen.getByText(/view all photos/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /next photo/i }));
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
+  });
+
+  it("uses the side strip to skip ahead when there are more than three other photos", async () => {
+    const user = userEvent.setup();
+    mockApis(
+      detailProfile({
+        photos: Array.from({ length: 6 }, (_, index) => ({
+          id: `ph${index + 1}`,
+          position: index,
+          url: `https://example.test/${index + 1}.jpg`,
+          url_expires_in: 3600,
+        })),
+      }),
+    );
+    renderAt("/profile/p1", { from: "find" });
+    expect(await screen.findByText("1 / 6")).toBeInTheDocument();
+    expect(screen.getByText("+2")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /2 more photos/i }));
+    expect(screen.getByText("5 / 6")).toBeInTheDocument();
   });
 
   it("keeps origin-aware back navigation", async () => {
@@ -239,5 +285,48 @@ describe("rich profile detail", () => {
     mockApis();
     renderAt("/profile/p1", { from: "likes" });
     expect(await screen.findByRole("link", { name: /back to likes/i })).toHaveAttribute("href", "/likes");
+  });
+
+  it("renders every public interest on full profile detail", async () => {
+    mockApis(
+      detailProfile({
+        interests: Array.from({ length: 10 }, (_, index) => ({
+          slug: `interest-${index}`,
+          label: `Interest ${index + 1}`,
+          category: null,
+        })),
+      }),
+    );
+    renderAt("/profile/p1", { from: "find" });
+    expect(await screen.findByText("Interest 1")).toBeInTheDocument();
+    expect(screen.getByText("Interest 10")).toBeInTheDocument();
+  });
+
+  it("stays usable when public photos are empty", async () => {
+    mockApis(detailProfile({ photos: [] }));
+    renderAt("/profile/p1", { from: "find" });
+    expect(await screen.findByText(/photos aren/i)).toBeInTheDocument();
+  });
+
+  it("lets a member report another profile without exposing reason codes", async () => {
+    const user = userEvent.setup();
+    mockApis();
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
+    expect(screen.queryByText("harassment")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByText(/we received your report/i)).toBeInTheDocument();
+  });
+
+  it("blocks a profile and returns to Discover", async () => {
+    const user = userEvent.setup();
+    mockApis();
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /^block$/i }));
+    await user.click(screen.getByRole("button", { name: /block thando/i }));
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
   });
 });

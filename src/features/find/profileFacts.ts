@@ -16,6 +16,48 @@ function lifestyleLabel(key: "smoking" | "drinking", code: string, fieldLabel: O
 
 export type AboutFact = { key: string; label: string; value: string };
 
+export function findAboutItems(
+  profile: FactSource & { options?: Record<string, string[]> },
+  fieldLabel: OptionLabelLookup,
+  optionLabel: OptionLabelLookup,
+): AboutFact[] {
+  const items: AboutFact[] = [];
+  if (profile.job_title) {
+    items.push({ key: "work", label: "Work", value: profile.job_title });
+  } else if (profile.occupation) {
+    items.push({ key: "work", label: "Work", value: profile.occupation });
+  }
+  if (profile.school_or_institution) {
+    items.push({ key: "education", label: "Education", value: profile.school_or_institution });
+  }
+  if (profile.smoking) {
+    const smoking =
+      profile.smoking === "never"
+        ? "Never smoked"
+        : profile.smoking === "occasionally"
+          ? "Smokes sometimes"
+          : lifestyleLabel("smoking", profile.smoking, fieldLabel);
+    items.push({ key: "smoking", label: "Smoking", value: smoking });
+  }
+  if (profile.drinking) {
+    const drinking =
+      profile.drinking === "occasionally"
+        ? "Drinks socially"
+        : profile.drinking === "never"
+          ? "Doesn't drink"
+          : lifestyleLabel("drinking", profile.drinking, fieldLabel);
+    items.push({ key: "drinking", label: "Drinking", value: drinking });
+  }
+  const intentCode = profile.options?.relationship_intent?.[0];
+  const intent = intentCode ? optionLabel("relationship_intent", intentCode) : undefined;
+  if (intent) {
+    items.push({ key: "looking_for", label: "Looking for", value: `Looking for ${intent.replace(/^long[-\s]term relationship$/i, "long-term")}` });
+  } else if (profile.looking_for_text) {
+    items.push({ key: "looking_for", label: "Looking for", value: profile.looking_for_text });
+  }
+  return items;
+}
+
 type FactSource = Pick<
   PublicProfile,
   "occupation" | "job_title" | "school_or_institution" | "looking_for_text" | "height_cm" | "body_type" | "languages_spoken" | "smoking" | "drinking" | "fitness"

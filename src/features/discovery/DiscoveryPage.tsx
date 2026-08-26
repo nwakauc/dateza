@@ -1,34 +1,47 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDiscoveryProfiles } from "../../lib/api/discovery.ts";
-import { likeProfile, passProfile } from "../../lib/api/find.ts";
+import { likeProfile } from "../../lib/api/find.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
+import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { DiscoveryProfile, DiscoverySelection } from "../../lib/api/discoveryTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
-import { CompassIcon } from "../shell/icons.tsx";
+import { CompassIcon, SlidersIcon } from "../shell/icons.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
-import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { buildOptionLabelLookup } from "../find/optionLabels.ts";
+import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
 import { DiscoveryCard } from "./DiscoveryCard.tsx";
-import { DiscoverValueStrip } from "./DiscoverValueStrip.tsx";
-import { ProfileCompletionPanel } from "./ProfileCompletionPanel.tsx";
+import { DiscoverDailyPicks, DiscoverEmptySelection, DiscoverFilteredEmpty } from "./DiscoverDailyPicks.tsx";
+import { DiscoverFilterSheet } from "./DiscoverFilterSheet.tsx";
+import { DiscoverMatchModule } from "./DiscoverMatchModule.tsx";
+import { DiscoverQuickFilters } from "./DiscoverQuickFilters.tsx";
+import { DiscoverRecentlyActive } from "./DiscoverRecentlyActive.tsx";
+import {
+  EMPTY_DISCOVER_FILTERS,
+  applyDiscoverFilters,
+  hasDiscoverFilters,
+  toggleQuickFilter,
+  type DiscoverFilters,
+} from "./discoverFilters.ts";
+import { loadDiscoverFilters, loadDiscoverScroll, saveDiscoverFilters, saveDiscoverScroll } from "./discoverFilterMemory.ts";
 
 type Interaction = "idle" | "liked" | "matched" | "passed";
 type ActiveMatch = { profile: DiscoveryProfile; matchId: string | null };
+
+const PHOTO_REFRESH_BUFFER_MS = 20_000;
 
 /**
  * Discovery is DateZA's curated, recommendation-led surface (10/day) — a
  * separate product and allowance from Find, backed by `GET /api/v1/discovery`.
  * It must never call `/api/v1/find` or otherwise borrow Find's allowance
- * semantics.
+ * semantics. Filters only reshape the current daily batch.
  */
 export default function DiscoveryPage() {
   const navigate = useNavigate();
-  const account = useOwnAccount();
   const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([]);
@@ -40,6 +53,10 @@ export default function DiscoveryPage() {
   const [busyProfileId, setBusyProfileId] = useState<string | undefined>();
   const [attempt, setAttempt] = useState(0);
   const [activeMatch, setActiveMatch] = useState<ActiveMatch | undefined>();
+  const [railMatch, setRailMatch] = useState<ActiveMatch | undefined>();
+  const [filters, setFilters] = useState<DiscoverFilters>(loadDiscoverFilters);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selfPhotoUrl, setSelfPhotoUrl] = useState<string | undefined>();
 
   useEffect(() => {
     document.title = "Discover — DateZA";
@@ -57,11 +74,14 @@ export default function DiscoveryPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    // Best-effort: powers the relationship-intent/interest chips on each
-    // card (see optionLabels.ts). Discover still renders fully without it.
     getProfileConfiguration()
       .then((result) => {
         if (!cancelled) setConfiguration(result.configuration);
+      })
+      .catch(() => undefined);
+    listOwnerPhotos()
+      .then((photos) => {
+        if (!cancelled) setSelfPhotoUrl(photos[0]?.image?.url);
       })
       .catch(() => undefined);
     return () => {
@@ -70,7 +90,44 @@ export default function DiscoveryPage() {
     };
   }, [attempt]);
 
+  useEffect(() => {
+    saveDiscoverFilters(filters);
+  }, [filters]);
+
+  useEffect(() => {
+    if (loading) return;
+    const offset = loadDiscoverScroll();
+    if (offset > 0) window.scrollTo(0, offset);
+  }, [loading]);
+
+  useEffect(() => {
+    return () => saveDiscoverScroll(window.scrollY);
+  }, []);
+
+  useEffect(() => {
+    if (profiles.length === 0) return;
+    const expiries = profiles.flatMap((profile) => (profile.photos[0] ? [profile.photos[0].url_expires_in] : []));
+    if (expiries.length === 0) return;
+    const soonest = Math.min(...expiries);
+    if (!Number.isFinite(soonest) || soonest <= 0) return;
+    const wait = Math.max(5_000, soonest * 1000 - PHOTO_REFRESH_BUFFER_MS);
+    const timer = window.setTimeout(() => {
+      getDiscoveryProfiles()
+        .then((result) => {
+          setProfiles(result.profiles);
+          setSelection(result.selection);
+        })
+        .catch(() => undefined);
+    }, wait);
+    return () => window.clearTimeout(timer);
+  }, [profiles]);
+
+  const visible = useMemo(() => applyDiscoverFilters(profiles, filters), [profiles, filters]);
+  const optionLabel = useMemo(() => buildOptionLabelLookup(configuration), [configuration]);
+  const filteredEmpty = profiles.length > 0 && visible.length === 0;
+
   function openProfile(profileId: string) {
+    saveDiscoverScroll(window.scrollY);
     const compatibility = profiles.find((candidate) => candidate.id === profileId)?.compatibility ?? null;
     requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "discover", compatibility } }));
   }
@@ -83,20 +140,12 @@ export default function DiscoveryPage() {
           setInteractions((current) => ({ ...current, [profileId]: result.matched ? "matched" : "liked" }));
           if (result.matched) {
             const profile = profiles.find((candidate) => candidate.id === profileId);
-            if (profile) setActiveMatch({ profile, matchId: result.match_id });
+            if (profile) {
+              const match = { profile, matchId: result.match_id };
+              setActiveMatch(match);
+              setRailMatch(match);
+            }
           }
-        })
-        .catch(() => undefined)
-        .finally(() => setBusyProfileId(undefined));
-    });
-  }
-
-  function pass(profileId: string) {
-    requireVerified("pass", () => {
-      setBusyProfileId(profileId);
-      passProfile(profileId)
-        .then(() => {
-          setInteractions((current) => ({ ...current, [profileId]: "passed" }));
         })
         .catch(() => undefined)
         .finally(() => setBusyProfileId(undefined));
@@ -109,11 +158,20 @@ export default function DiscoveryPage() {
     setAttempt((current) => current + 1);
   }
 
+  function clearFilters() {
+    setFilters(EMPTY_DISCOVER_FILTERS);
+  }
+
   const header = (
-    <div className="shell-page__header">
-      <p className="shell-page__eyebrow">Discover</p>
-      <h1 className="shell-page__title">Picked for you today</h1>
-      <p className="shell-page__subtitle">A small set of people DateZA thinks are worth meeting.</p>
+    <div className="discover-heading">
+      <div>
+        <h1 className="shell-page__title discover-heading__title">Discover</h1>
+        <p className="shell-page__subtitle">Curated for you. Real people. Better dates.</p>
+      </div>
+      <button type="button" className="discover-heading__filter" onClick={() => setFilterOpen(true)}>
+        <SlidersIcon />
+        Filter
+      </button>
     </div>
   );
 
@@ -123,14 +181,49 @@ export default function DiscoveryPage() {
     </Modal>
   ) : null;
 
+  const completion = <ProfileStandOutPrompt />;
+
+  const refreshTime = formatRefreshTime(selection?.refreshes_at);
+
+  const matchModule = railMatch ? (
+    <div className="discover-match-slot">
+      <DiscoverMatchModule
+        name={railMatch.profile.display_name ?? "them"}
+        photoUrl={railMatch.profile.photos[0]?.url}
+        selfPhotoUrl={selfPhotoUrl}
+        matchId={railMatch.matchId}
+        onKeepDiscovering={() => setRailMatch(undefined)}
+      />
+    </div>
+  ) : null;
+
+  const rail = (
+    <aside className="discover-rail" aria-label="Discover extras">
+      {selection ? <DiscoverDailyPicks selection={selection} refreshTime={refreshTime} /> : null}
+      <DiscoverRecentlyActive profiles={profiles} onOpen={openProfile} />
+      {completion}
+    </aside>
+  );
+
   if (loading) {
     return (
-      <div className="shell-page">
+      <div className="shell-page discover-page">
         {header}
-        <div className="discover-preview" aria-hidden="true">
-          <span />
-          <span />
-          <span />
+        <div className="discover-stage">
+          <div className="discover-main">
+            <div className="discover-facets discover-facets--skeleton" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="discovery-grid" aria-hidden="true">
+              <span className="discovery-card-skeleton" />
+              <span className="discovery-card-skeleton" />
+              <span className="discovery-card-skeleton" />
+              <span className="discovery-card-skeleton" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -138,7 +231,7 @@ export default function DiscoveryPage() {
 
   if (error) {
     return (
-      <div className="shell-page">
+      <div className="shell-page discover-page">
         {header}
         <div className="shell-empty">
           <CompassIcon className="shell-empty__icon" />
@@ -152,60 +245,69 @@ export default function DiscoveryPage() {
     );
   }
 
-  const refreshTime = formatRefreshTime(selection?.refreshes_at);
-
   if (profiles.length === 0) {
     return (
-      <div className="shell-page">
+      <div className="shell-page discover-page">
         {header}
-        <div className="shell-empty">
-          <CompassIcon className="shell-empty__icon" />
-          <p className="shell-empty__title">No picks right now</p>
-          <p className="shell-empty__body">
-            {refreshTime
-              ? `DateZA is putting together your next selection. New picks arrive ${refreshTime}.`
-              : "DateZA is putting together your next selection. Check back soon."}
-          </p>
-          <Link className="shell-primary-action" to="/find">
-            Browse Find instead
-          </Link>
-        </div>
+        <DiscoverEmptySelection refreshTime={refreshTime} />
+        {completion}
         {verificationModal}
       </div>
     );
   }
 
-  const optionLabel = buildOptionLabelLookup(configuration);
-
   return (
-    <div className="shell-page">
-      {header}
-      <DiscoverValueStrip />
-      <div className="discovery-grid" id="discover-grid">
-        {profiles.map((profile) => (
-          <DiscoveryCard
-            key={profile.id}
-            profile={profile}
-            interaction={interactions[profile.id] ?? "idle"}
-            pending={busyProfileId === profile.id}
-            optionLabel={optionLabel}
-            onOpen={() => openProfile(profile.id)}
-            onLike={() => like(profile.id)}
-            onPass={() => pass(profile.id)}
+    <div className="shell-page discover-page">
+      <div className={`discover-stage${railMatch ? " discover-stage--matched" : ""}`}>
+        <div className="discover-main">
+          {header}
+          <DiscoverQuickFilters
+            profiles={profiles}
+            filters={filters}
+            onToggleOnline={() => setFilters((current) => toggleQuickFilter(current, "online"))}
+            onToggleNearby={() => setFilters((current) => toggleQuickFilter(current, "nearby"))}
+            onToggleNewHere={() => setFilters((current) => toggleQuickFilter(current, "newHere"))}
+            onOpenFilters={() => setFilterOpen(true)}
           />
-        ))}
+          {hasDiscoverFilters(filters) ? (
+            <div className="discover-active-bar">
+              <p>{filteredEmpty ? "No matches in today's picks" : `${visible.length} in today's picks`}</p>
+              <button type="button" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          ) : null}
+          {filteredEmpty ? (
+            <DiscoverFilteredEmpty onClear={clearFilters} />
+          ) : (
+            <div className="discovery-grid" id="discover-grid">
+              {visible.map((profile, index) => (
+                <DiscoveryCard
+                  key={profile.id}
+                  profile={profile}
+                  interaction={interactions[profile.id] ?? "idle"}
+                  pending={busyProfileId === profile.id}
+                  optionLabel={optionLabel}
+                  eagerPhoto={index < 4}
+                  onOpen={() => openProfile(profile.id)}
+                  onLike={() => like(profile.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="discover-sidebar">
+          {matchModule}
+          {rail}
+        </div>
       </div>
-      {refreshTime ? <p className="discovery-refresh-note">New picks {refreshTime}</p> : null}
-      {account.onboarding ? (
-        account.profile?.profile_completion ? (
-          <ProfileCompletionPanel
-            profileCompletion={account.profile.profile_completion}
-            publication={account.onboarding.completion}
-          />
-        ) : (
-          <ProfileCompletionPanel publication={account.onboarding.completion} />
-        )
-      ) : null}
+      <DiscoverFilterSheet
+        open={filterOpen}
+        filters={filters}
+        configuration={configuration}
+        onChange={setFilters}
+        onClose={() => setFilterOpen(false)}
+      />
       {verificationModal}
       {activeMatch ? (
         <MatchModal

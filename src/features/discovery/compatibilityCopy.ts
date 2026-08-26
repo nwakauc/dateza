@@ -6,7 +6,7 @@ import type { DatezaCompatibilityReason } from "../../lib/api/findTypes.ts";
  * covers values the contract actually defines; never invent new reasons.
  */
 const REASON_COPY: Record<DatezaCompatibilityReason, string> = {
-  shared_long_term_intent: "Both want something long-term",
+  shared_long_term_intent: "Both want long-term",
   compatible_relationship_goals: "Compatible relationship goals",
   relationship_goal_mismatch: "Different relationship goals",
   compatible_family_plans: "Aligned on family plans",
@@ -25,6 +25,22 @@ const REASON_COPY: Record<DatezaCompatibilityReason, string> = {
   compatible_diet: "Compatible diets",
 };
 
-export function describeCompatibilityReasons(reasons: readonly DatezaCompatibilityReason[]): string[] {
-  return reasons.map((reason) => REASON_COPY[reason]);
+export function describeCompatibilityReasons(
+  reasons: readonly DatezaCompatibilityReason[],
+  version?: string,
+): string[] {
+  const map = reasonCopyForVersion(version);
+  return reasons.flatMap((reason) => {
+    const copy = map[reason];
+    return copy ? [copy] : [];
+  });
+}
+
+const DATEZA_V1 = "dateza_v1";
+
+function reasonCopyForVersion(version?: string): Partial<Record<DatezaCompatibilityReason, string>> {
+  if (!version || version === DATEZA_V1) {
+    return REASON_COPY;
+  }
+  return REASON_COPY;
 }

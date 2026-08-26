@@ -160,7 +160,7 @@ describe("app-shell routing precedence (FE-01)", () => {
 
     expect(await screen.findByRole("heading", { name: /let's start with you/i })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /picked for you today/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: /^discover$/i })).not.toBeInTheDocument();
   });
 
   it("shows Discover with the OTP modal already on the code-entry step for a completed, unverified member — without reissuing a code", async () => {
@@ -190,7 +190,7 @@ describe("app-shell routing precedence (FE-01)", () => {
 
     renderApp("/discover");
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(await screen.findByRole("dialog", { name: /verify your email/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /enter your code/i })).toBeInTheDocument();
     expect(verificationPatchCalls).toBe(0);
@@ -223,7 +223,7 @@ describe("app-shell routing precedence (FE-01)", () => {
 
     renderApp("/discover");
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -252,7 +252,7 @@ describe("app-shell routing precedence (FE-01)", () => {
 
     renderApp("/discover");
 
-    await screen.findByRole("heading", { name: /picked for you today/i });
+    await screen.findByRole("heading", { level: 1, name: /^discover$/i });
     const first = await screen.findByLabelText(/verification code, digit 1/i);
     fireEvent.change(first, { target: { value: "123456" } });
     await user.click(screen.getByRole("button", { name: /verify email/i }));
@@ -264,6 +264,6 @@ describe("app-shell routing precedence (FE-01)", () => {
       },
       { timeout: 2_000 },
     );
-    expect(screen.getByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
   });
 });

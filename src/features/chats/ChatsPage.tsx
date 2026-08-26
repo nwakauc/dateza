@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react
 import { Link, useSearchParams } from "react-router-dom";
 import { listConversations, listMessages, sendMessage } from "../../lib/api/social.ts";
 import type { Conversation, Message } from "../../lib/api/socialTypes.ts";
+import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
 import { ChatIcon } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 
@@ -21,6 +22,7 @@ export default function ChatsPage() {
   if (error) return <div className="shell-page"><div className="shell-empty"><ChatIcon className="shell-empty__icon" /><p className="shell-empty__title">Chats didn’t load</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div></div>;
   return <div className="shell-page shell-page--chats">
     <div className="shell-page__header"><p className="shell-page__eyebrow">Conversations</p><h1 className="shell-page__title">Chats</h1><p className="shell-page__subtitle">A good hello can change everything.</p></div>
+    <ProfileStandOutPrompt compact />
     <div className={`chats-layout${selected ? " chats-layout--selected" : ""}`}><section className="chats-list" aria-label="Conversations">
       {loading ? <div className="shell-loading"><span />Loading chats…</div> : null}
       {!loading && conversations.length === 0 ? <div className="shell-empty shell-empty--in-list"><ChatIcon className="shell-empty__icon" /><p className="shell-empty__title">No conversations yet</p><p className="shell-empty__body">Your chats will appear after you match and start talking.</p><Link className="shell-primary-action" to="/find">Explore Find</Link></div> : null}

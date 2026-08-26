@@ -81,13 +81,13 @@ export type DatezaCompatibilityReason =
   | "similar_travel_style"
   | "compatible_diet";
 
-/** null means comparable input is below the dateza_v1 publication threshold
+/** null means comparable input is below the publication threshold
  * — it does NOT mean incompatibility. */
 export type DatezaCompatibility = {
   score: number;
   confidence: number;
   confidence_level: "low" | "medium" | "high";
-  version: "dateza_v1";
+  version: string;
   reasons: DatezaCompatibilityReason[];
 } | null;
 
@@ -134,9 +134,9 @@ export type ProfileDetail = PublicProfile &
     prompts: PromptAnswer[];
     interests: ProfileInterest[];
     /**
-     * DatezaV1 presentation payload. Present on public detail after the
+     * DateZA compatibility payload. Present on public detail after the
      * rich-profile contract; null when comparable input is insufficient.
-     * Confidence/version are parsed for type fidelity and must not be shown.
+     * Confidence/version are parsed for mapping fidelity and must not be shown.
      */
     compatibility: DatezaCompatibility;
   };

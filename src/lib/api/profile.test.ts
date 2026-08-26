@@ -174,6 +174,7 @@ describe("getCurrentProfile against real staging response shapes", () => {
     expect(result.profile?.height_cm).toBeNull();
     expect(result.profile?.fitness).toBeNull();
     expect(result.profile?.languages_spoken).toEqual([]);
+    expect(result.profile?.prompts).toEqual([]);
     expect(result.profile?.profile_completion).toBeNull();
   });
 });

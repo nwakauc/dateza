@@ -220,7 +220,7 @@ describe("onboarding routing and progression", () => {
 
     renderApp("/onboarding");
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /let's start with you/i }),
     ).not.toBeInTheDocument();
@@ -1062,7 +1062,7 @@ describe("onboarding location step", () => {
     await screen.findByRole("heading", { name: /ready when you are/i });
     await user.click(screen.getByRole("button", { name: /publish profile/i }));
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(callOrder).toEqual(["location", "publication"]);
   });
 

@@ -45,6 +45,7 @@ function configuration(): ProfileConfiguration {
     profile_fields: [],
     preference_fields: [],
     collections: [],
+    prompts: [],
     option_groups: [
       {
         key: "relationship_intent",
@@ -110,9 +111,8 @@ describe("FindSwipeCard", () => {
       />,
     );
     expect(screen.getByText("87% compatible")).toBeInTheDocument();
-    expect(screen.getByText(/both want something long-term/i)).toBeInTheDocument();
-    // Capped at two reasons, so the third shouldn't render.
-    expect(screen.queryByText(/shared languages/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("dateza_v1")).not.toBeInTheDocument();
+    expect(screen.queryByText("shared_long_term_intent")).not.toBeInTheDocument();
   });
 
   it("does not render a compatibility badge when the backend returns null", () => {
@@ -129,7 +129,7 @@ describe("FindSwipeCard", () => {
         onOpenDetail={noop}
       />,
     );
-    expect(screen.getByText(/long-term relationship/i)).toBeInTheDocument();
+    expect(screen.getByText("Long-term")).toBeInTheDocument();
     expect(screen.getByText(/hiking/i)).toBeInTheDocument();
     // Capped at 3 interests shown.
     expect(screen.queryByText(/food/i)).not.toBeInTheDocument();
@@ -202,7 +202,7 @@ describe("FindSwipeCard", () => {
     expect(screen.queryByRole("button", { name: /next photo/i })).not.toBeInTheDocument();
   });
 
-  it("opens the full profile via the info control", async () => {
+  it("opens the full profile from the name", async () => {
     const user = userEvent.setup();
     const onOpenDetail = vi.fn();
     render(<FindSwipeCard profile={profile({ display_name: "Maya" })} interaction="idle" optionLabel={lookup} onOpenDetail={onOpenDetail} />);
@@ -224,7 +224,7 @@ describe("FindSwipeCard", () => {
         onOpenDetail={onOpenDetail}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Maya" }));
+    await user.click(screen.getByRole("button", { name: /open maya's full profile/i }));
     expect(onOpenDetail).toHaveBeenCalledTimes(1);
     await user.click(screen.getByAltText(""));
     expect(onOpenDetail).toHaveBeenCalledTimes(2);

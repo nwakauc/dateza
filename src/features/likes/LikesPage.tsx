@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { listMatches, startConversation } from "../../lib/api/social.ts";
 import type { Match } from "../../lib/api/socialTypes.ts";
+import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
 import { ChatIcon, HeartIcon } from "../shell/icons.tsx";
 
 export default function LikesPage() {
@@ -16,6 +17,7 @@ export default function LikesPage() {
   async function message(match: Match) { setStarting(match.id); setActionError(false); try { const conversation = await startConversation(match.id); navigate(`/chats?conversation=${conversation.id}`); } catch { setActionError(true); } finally { setStarting(undefined); } }
   return <div className="shell-page">
     <div className="shell-page__header"><p className="shell-page__eyebrow">Mutual interest</p><h1 className="shell-page__title">Likes</h1><p className="shell-page__subtitle">When you both choose each other, your matches appear here.</p></div>
+    <ProfileStandOutPrompt />
     <div className="likes-note"><HeartIcon filled={false} /><p><strong>Likes you</strong> is not available yet. Your mutual matches are live below.</p></div>
     {loading ? <div className="shell-loading" aria-live="polite"><span />Loading your matches…</div> : null}
     {error ? <div className="shell-empty"><HeartIcon className="shell-empty__icon" filled={false} /><p className="shell-empty__title">Your matches didn’t load</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div> : null}

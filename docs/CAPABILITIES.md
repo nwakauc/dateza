@@ -1,6 +1,6 @@
 # DateZA Frontend Capability Cockpit
 
-**Last verified against this repository:** 2026-08-24
+**Last verified against this repository:** 2026-08-26
 
 This table records evidence, not aspiration. Update it only when a ticket adds
 or invalidates the linked implementation and verification. Backend availability
@@ -24,8 +24,8 @@ shipped them. See "Known documentation drift" below.
 | Profile/onboarding | P0 | Implemented | `GET/PATCH /api/v1/profile`, configuration, preferences, photos, options, publication | `src/features/onboarding/onboarding.test.tsx` | Needs staging host; reload signs out (memory-only token) |
 | Safe profile media | P0 | Implemented | Direct-to-R2 upload intent, attach, signed retrieval, delete | `src/features/onboarding/onboarding.test.tsx` photo step | Needs staging R2; DateZA photos stay hidden until moderated; no published max count |
 | Post-signup contact verification (email/phone OTP) | P0 | Implemented: registration lands on Discover with the shared OTP modal; lifecycle errors and resend timing are server-driven | `GET /api/v1/me`, `POST/PATCH /api/v1/auth/verification` (contact-only — not RealMe identity verification) | Focused Vitest coverage and local browser QA at 1440/768/390/360 | Needs staging delivery QA |
-| Discover | P1 | Route and honest unavailable state implemented; no profile feed is fabricated | Dedicated DateZA curated Discover contract and independent daily allowance are not implemented | Browser QA at 390/820/1366/1600 | Awaiting D8N capability |
-| Find | P1 | Implemented with explicit independent allowance copy | `GET /api/v1/find` — **not** `GET /api/v1/discovery`, which is deliberately unconfigured for the `dateza` brand | Browser QA at 390/820/1366/1600 | Needs staging host |
+| Discover | P1 | Curated grid, client-side filters of the daily batch, match rail, complete-profile prompt for DateZA richness (not onboarding publication 100%); no Find fallback | `GET /api/v1/discovery`; `GET /profile` owner fields + photos; `profile_completion` when it reports gaps | `src/features/discovery/DiscoveryPage.test.tsx`, `src/features/profile/richProfileGaps.test.ts` | Needs staging host; server-side Discover modes still missing |
+| Find | P1 | Premium three-column Find: swipe deck, Like/Pass, match → conversation, context rail, opener UX stopped at API boundary, notices as activity, same complete-profile prompt as Discover | `GET /api/v1/find` (not Discover); likes/pass; matches/conversation; notifications. **No DateZA opener API** | `src/features/find/FindPage.test.tsx` | Needs staging host; opener/waiting/profile-views are frontend-ready, backend-blocked |
 | Profile detail | P1 | Implemented, verification-gated in the UI and API | `GET /api/v1/profiles/{profile_id}` through `InteractionController` | Manual QA | Needs staging host |
 | Like/Pass | P1 | Implemented, verification-gated in the UI and API | `POST /api/v1/profiles/{profile_id}/likes`, `POST /api/v1/profiles/{profile_id}/pass` through `InteractionController` | Manual QA | Needs staging host |
 | Match | P1 | Match list and start-chat action implemented; match celebration remains unbuilt | `GET /api/v1/matches`, mutual-match response, `POST /api/v1/matches/{id}/conversation` | Browser QA with controlled contract fixtures | Needs staging two-member proof |

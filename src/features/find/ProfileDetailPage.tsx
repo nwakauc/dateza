@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
@@ -7,13 +7,14 @@ import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
+import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
 import { RichProfileSkeleton, RichProfileView } from "../profile/RichProfileView.tsx";
 import { originBack, profileOriginFromState } from "../profile/profileOrigin.ts";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 
 function detailErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.status === 404) {
+  if (error instanceof ApiError && (error.status === 404 || error.code === "profile_unavailable")) {
     return "This profile is not available.";
   }
   return "We could not load this profile. Try again.";
@@ -24,6 +25,8 @@ function compatibilityFromState(state: unknown): DatezaCompatibility {
   const value = (state as { compatibility?: unknown }).compatibility;
   return value && typeof value === "object" ? (value as DatezaCompatibility) : null;
 }
+
+const PHOTO_REFRESH_BUFFER_MS = 20_000;
 
 export default function ProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,13 +44,38 @@ export default function ProfileDetailPage() {
   const [interaction, setInteraction] = useState<"idle" | "liked" | "passed">("idle");
   const [busy, setBusy] = useState(false);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const photoRetryRef = useRef(false);
+
+  const refreshProfile = useCallback(
+    (showLoading: boolean) => {
+      if (!id) return Promise.resolve();
+      if (showLoading) setLoading(true);
+      return getProfileDetail(id)
+        .then((result) => {
+          setProfile(result.profile);
+          setError(undefined);
+          photoRetryRef.current = false;
+        })
+        .catch((caught: unknown) => {
+          setError(detailErrorMessage(caught));
+          if (showLoading) setProfile(undefined);
+        })
+        .finally(() => {
+          if (showLoading) setLoading(false);
+        });
+    },
+    [id],
+  );
 
   useEffect(() => {
     if (!verified || !id) return;
     let cancelled = false;
     getProfileDetail(id)
       .then((result) => {
-        if (!cancelled) setProfile(result.profile);
+        if (!cancelled) {
+          setProfile(result.profile);
+          setError(undefined);
+        }
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(detailErrorMessage(caught));
@@ -64,6 +92,17 @@ export default function ProfileDetailPage() {
       cancelled = true;
     };
   }, [id, verified]);
+
+  useEffect(() => {
+    if (!profile || profile.photos.length === 0) return;
+    const soonest = Math.min(...profile.photos.map((photo) => photo.url_expires_in));
+    if (!Number.isFinite(soonest) || soonest <= 0) return;
+    const wait = Math.max(5_000, soonest * 1000 - PHOTO_REFRESH_BUFFER_MS);
+    const timer = window.setTimeout(() => {
+      void refreshProfile(false);
+    }, wait);
+    return () => window.clearTimeout(timer);
+  }, [profile, refreshProfile]);
 
   function like() {
     if (!profile || busy || interaction !== "idle") return;
@@ -103,9 +142,11 @@ export default function ProfileDetailPage() {
   if (loading) {
     return (
       <div className="shell-page">
-        <Link className="onboard-back-top" to={back.to}>
-          {back.label}
-        </Link>
+        <div className="rich-profile-toolbar">
+          <Link className="onboard-back-top" to={back.to}>
+            {back.label}
+          </Link>
+        </div>
         <RichProfileSkeleton />
       </div>
     );
@@ -120,9 +161,11 @@ export default function ProfileDetailPage() {
 
   return (
     <div className="shell-page">
-      <Link className="onboard-back-top" to={back.to}>
-        {back.label}
-      </Link>
+      <div className="rich-profile-toolbar">
+        <Link className="onboard-back-top" to={back.to}>
+          {back.label}
+        </Link>
+      </div>
       <RichProfileView
         profile={profile}
         compatibility={compatibility}
@@ -134,6 +177,18 @@ export default function ProfileDetailPage() {
         interaction={interaction}
         onLike={like}
         onPass={pass}
+        onPhotosExpired={() => {
+          if (photoRetryRef.current) return;
+          photoRetryRef.current = true;
+          void refreshProfile(false);
+        }}
+        safety={
+          <ProfileSafetyActions
+            profileId={profile.id}
+            name={name}
+            onBlocked={() => navigate(back.to, { replace: true })}
+          />
+        }
       />
       {matchId ? (
         <MatchModal

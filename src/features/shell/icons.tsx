@@ -27,6 +27,14 @@ export function SearchIcon({ className }: IconProps) {
 
 /** Same silhouette as the DateZA brand mark, so Likes reads as "hearts you
  * received/sent" rather than a generic outline icon. */
+export function HourglassIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 4h12M6 20h12M8 4v4.5L12 12l4-3.5V4M8 20v-4.5L12 12l4 3.5V20" />
+    </svg>
+  );
+}
+
 export function HeartIcon({ className, filled = true }: IconProps) {
   return (
     <svg
@@ -155,6 +163,16 @@ export function PencilIcon({ className }: IconProps) {
   );
 }
 
+export function MoreIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
+    </svg>
+  );
+}
+
 export function MapPinIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -169,6 +187,128 @@ export function BoltIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
       <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function CheckCircleIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8.2 12.3l2.4 2.4 5.2-5.4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function UsersIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c.8-3.2 2.8-5 5.5-5s4.7 1.8 5.5 5" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M16 19c.6-2.4 2-4 4.2-4.4" />
+    </svg>
+  );
+}
+
+export function UserPlusIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.6 19c.8-3.2 2.8-5 5.4-5s4.6 1.8 5.4 5" />
+      <path d="M17 8v6M14 11h6" />
+    </svg>
+  );
+}
+
+export function SparkleIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3.5l1.3 4.2L17.5 9 13.3 10.3 12 14.5l-1.3-4.2L6.5 9l4.2-1.3z" />
+      <path d="M18.5 14.5l.7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7z" />
+    </svg>
+  );
+}
+
+export function HeartCircleIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 16.2s-3.4-2.1-3.4-4.2A1.9 1.9 0 0 1 10.6 10c.5 0 1 .2 1.4.7.4-.5.9-.7 1.4-.7a1.9 1.9 0 0 1 2 2c0 2.1-3.4 4.2-3.4 4.2z" />
+    </svg>
+  );
+}
+
+export function BriefcaseIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="8" width="17" height="12" rx="2" />
+      <path d="M8 8V6.5A1.5 1.5 0 0 1 9.5 5h5A1.5 1.5 0 0 1 16 6.5V8" />
+      <path d="M3.5 13h17" />
+    </svg>
+  );
+}
+
+export function GraduationIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10 12 5l9 5-9 5z" />
+      <path d="M7 12.2v4.3c0 .8 2.2 2.5 5 2.5s5-1.7 5-2.5v-4.3" />
+    </svg>
+  );
+}
+
+export function SmokeOffIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 15h11M18 15h2M5 19h9" />
+      <path d="M16 8.5c1.2-1.2 1.2-3.2 0-4.4" />
+      <path d="M4 4l16 16" />
+    </svg>
+  );
+}
+
+export function WineIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 4h8l1 7a5 5 0 0 1-10 0z" />
+      <path d="M12 16v4M9 20h6" />
+    </svg>
+  );
+}
+
+export function ClockIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+export function SlidersIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8h16M4 16h16" />
+      <circle cx="9" cy="8" r="2.2" fill="#fff" />
+      <circle cx="15" cy="16" r="2.2" fill="#fff" />
+    </svg>
+  );
+}
+
+export function LightbulbIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 18h6M10 21h4" />
+      <path d="M8.2 14.2A5.5 5.5 0 1 1 15.8 14.2C14.7 15.4 14 16.6 14 18H10c0-1.4-.7-2.6-1.8-3.8z" />
     </svg>
   );
 }

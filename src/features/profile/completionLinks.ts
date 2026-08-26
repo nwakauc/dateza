@@ -12,9 +12,11 @@ export const COMPLETION_HREF: Record<string, string> = {
   prompt: "/profile/edit#prompts",
   prompts: "/profile/edit#prompts",
   work_or_education: "/profile/edit#work",
+  work: "/profile/edit#work",
   lifestyle: "/profile/edit#lifestyle",
   relationship_intent: "/profile/edit#intent",
   family_plans: "/profile/edit#family",
+  religion: "/profile/edit#faith",
   languages: "/profile/edit#languages",
   personality: "/profile/edit#personality",
 };

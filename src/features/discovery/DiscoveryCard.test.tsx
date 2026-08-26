@@ -42,7 +42,7 @@ const noop = () => undefined;
 describe("DiscoveryCard trust label (FE-03)", () => {
   it("labels a verified profile 'Verified contact', never 'RealMe'", () => {
     render(
-      <DiscoveryCard profile={profile({ verified: true })} interaction="idle" pending={false} onOpen={noop} onLike={vi.fn()} onPass={vi.fn()} />,
+      <DiscoveryCard profile={profile({ verified: true })} interaction="idle" pending={false} onOpen={noop} onLike={vi.fn()} />,
     );
     expect(screen.getByText("Verified contact")).toBeInTheDocument();
     expect(screen.queryByText(/realme/i)).not.toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("DiscoveryCard trust label (FE-03)", () => {
 
   it("shows no verification badge for an unverified profile", () => {
     render(
-      <DiscoveryCard profile={profile({ verified: false })} interaction="idle" pending={false} onOpen={noop} onLike={vi.fn()} onPass={vi.fn()} />,
+      <DiscoveryCard profile={profile({ verified: false })} interaction="idle" pending={false} onOpen={noop} onLike={vi.fn()} />,
     );
     expect(screen.queryByText("Verified contact")).not.toBeInTheDocument();
     expect(screen.queryByText(/realme/i)).not.toBeInTheDocument();

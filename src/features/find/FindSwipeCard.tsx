@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { FindProfile } from "../../lib/api/findTypes.ts";
-import { InfoIcon, ShieldCheckIcon } from "../shell/icons.tsx";
+import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
+import { CheckCircleIcon, HeartIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
+import { cardQuote, findCardChips, locationLine } from "./findCardCopy.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
 
 type InteractionState = "idle" | "liked" | "matched" | "passed";
@@ -11,28 +13,10 @@ type Props = {
   interaction: InteractionState;
   optionLabel: OptionLabelLookup;
   onOpenDetail: () => void;
+  onBlocked?: () => void;
 };
 
-const MAX_INTERESTS_SHOWN = 3;
-const BIO_EXCERPT_MAX_CHARS = 110;
-
-function locationLine(profile: FindProfile): string | undefined {
-  const place = profile.city ?? profile.country_code ?? undefined;
-  const distance = profile.distance_km != null ? `${profile.distance_km} km away` : undefined;
-  if (place && distance) return `${place} · ${distance}`;
-  return place ?? distance;
-}
-
-function bioExcerpt(bio: string | null): string | undefined {
-  if (!bio) return undefined;
-  const trimmed = bio.trim();
-  if (trimmed.length <= BIO_EXCERPT_MAX_CHARS) return trimmed;
-  const cut = trimmed.slice(0, BIO_EXCERPT_MAX_CHARS);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${cut.slice(0, lastSpace > 40 ? lastSpace : BIO_EXCERPT_MAX_CHARS)}…`;
-}
-
-export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail }: Props) {
+export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail, onBlocked }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const photos = profile.photos;
   const activePhoto = photos[photoIndex];
@@ -41,31 +25,44 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
     setPhotoIndex(Math.max(0, Math.min(index, photos.length - 1)));
   }
 
+  function onPhotoKey(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      showPhoto(photoIndex + 1);
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      showPhoto(photoIndex - 1);
+    }
+  }
+
   const location = locationLine(profile);
-  const relationshipCode = profile.options.relationship_intent?.[0];
-  const relationshipLabel = relationshipCode ? optionLabel("relationship_intent", relationshipCode) : undefined;
-  const interestLabels = (profile.options.interests ?? [])
-    .slice(0, MAX_INTERESTS_SHOWN)
-    .map((code) => optionLabel("interests", code))
-    .filter((label): label is string => Boolean(label));
-  const bio = bioExcerpt(profile.bio);
+  const chips = findCardChips(profile, optionLabel);
+  const quote = cardQuote(profile);
   const name = profile.display_name ?? "DateZA member";
 
   return (
     <article className="find-card" aria-label={`${name}${profile.age ? `, ${profile.age}` : ""}`}>
       <div
         className="find-card__photo"
+        tabIndex={photos.length > 1 ? 0 : undefined}
+        onKeyDown={photos.length > 1 ? onPhotoKey : undefined}
         onClick={(event) => {
           if ((event.target as HTMLElement).closest("button")) return;
+          if (photos.length > 1) return;
           onOpenDetail();
         }}
       >
         {activePhoto ? (
-          <img src={activePhoto.url} alt="" loading="lazy" />
+          <img src={activePhoto.url} alt="" loading="lazy" decoding="async" />
         ) : (
           <div className="find-card__photo-placeholder" aria-hidden="true" />
         )}
 
+        {photos.length > 0 ? (
+          <span className="find-card__count" aria-hidden="true">
+            {photoIndex + 1}/{photos.length}
+          </span>
+        ) : null}
         {photos.length > 1 ? (
           <>
             <div className="find-card__photo-indicator" aria-hidden="true">
@@ -93,39 +90,48 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
           </>
         ) : null}
 
-        <button type="button" className="find-card__info" aria-label={`Open ${name}'s full profile`} onClick={onOpenDetail}>
-          <InfoIcon className="find-card__info-icon" />
-        </button>
+        {onBlocked ? (
+          <div className="find-card__safety">
+            <ProfileSafetyActions profileId={profile.id} name={name} onBlocked={onBlocked} />
+          </div>
+        ) : null}
 
         {interaction === "matched" ? <span className="find-card__match-note">It's a match!</span> : null}
 
         <div className="find-card__scrim">
           <div className="find-card__headline">
-            <button type="button" className="find-card__name" onClick={onOpenDetail}>
+            <button
+              type="button"
+              className="find-card__name"
+              onClick={onOpenDetail}
+              aria-label={`Open ${name}'s full profile`}
+            >
               {name}
+              {profile.age ? <span className="find-card__age">, {profile.age}</span> : null}
             </button>
-            {profile.age ? <span className="find-card__age">{profile.age}</span> : null}
-            {profile.verified ? <ShieldCheckIcon className="find-card__name-verified" aria-hidden="true" /> : null}
+            {profile.verified ? <CheckCircleIcon className="find-card__name-verified" /> : null}
           </div>
           {location ? <p className="find-card__location">{location}</p> : null}
 
           {profile.compatibility || profile.verified ? (
             <div className="find-card__badges">
               {profile.compatibility ? (
-                <span className="find-card__badge find-card__badge--score">{profile.compatibility.score}% compatible</span>
+                <span className="find-card__badge find-card__badge--score">
+                  <HeartIcon className="find-card__badge-icon" />
+                  {profile.compatibility.score}% compatible
+                </span>
               ) : null}
               {profile.verified ? (
                 <span className="find-card__badge find-card__badge--verified">
-                  <ShieldCheckIcon className="find-card__badge-icon" /> {VERIFIED_CONTACT_LABEL}
+                  <CheckCircleIcon className="find-card__badge-icon" /> {VERIFIED_CONTACT_LABEL}
                 </span>
               ) : null}
             </div>
           ) : null}
 
-          {relationshipLabel || interestLabels.length > 0 ? (
+          {chips.length > 0 ? (
             <div className="find-card__chips">
-              {relationshipLabel ? <span className="find-card__chip">{relationshipLabel}</span> : null}
-              {interestLabels.map((label) => (
+              {chips.map((label) => (
                 <span className="find-card__chip" key={label}>
                   {label}
                 </span>
@@ -133,7 +139,7 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail 
             </div>
           ) : null}
 
-          {bio ? <p className="find-card__bio">"{bio}"</p> : null}
+          {quote ? <p className="find-card__bio">"{quote}"</p> : null}
         </div>
       </div>
     </article>

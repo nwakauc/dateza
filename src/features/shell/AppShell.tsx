@@ -31,6 +31,7 @@ export default function AppShell() {
   const [profile, setProfile] = useState<OwnerProfile | null>(null);
   const [onboarding, setOnboarding] = useState<ProfileOnboardingStatus | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [photoCount, setPhotoCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [version, setVersion] = useState(0);
@@ -62,7 +63,9 @@ export default function AppShell() {
           setOnboarding(profileResult.value.onboarding);
         }
         if (photosResult.status === "fulfilled") {
-          const withImage = photosResult.value.find((photo) => photo.image !== null);
+          const photos = photosResult.value;
+          setPhotoCount(photos.length);
+          const withImage = photos.find((photo) => photo.image !== null);
           setAvatarUrl(withImage?.image?.url ?? null);
         }
         if (notificationsResult.status === "fulfilled") setUnreadNotifications(notificationsResult.value.unread_count);
@@ -94,6 +97,7 @@ export default function AppShell() {
     profile,
     onboarding,
     avatarUrl,
+    photoCount,
     displayName,
     initial: initialFor(displayName),
     unreadNotifications,

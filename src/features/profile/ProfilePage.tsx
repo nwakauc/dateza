@@ -13,7 +13,7 @@ import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
-import { ProfileCompletionPanel } from "../discovery/ProfileCompletionPanel.tsx";
+import { ProfileStandOutPrompt } from "./ProfileStandOutPrompt.tsx";
 import { ownerPublicPreview } from "./ownerPublicPreview.ts";
 import { RichProfileSkeleton, RichProfileView } from "./RichProfileView.tsx";
 
@@ -59,7 +59,8 @@ export default function ProfilePage() {
         if (detailResult.status === "fulfilled") {
           setPreview(detailResult.value.profile);
         } else {
-          setPreview(ownerPublicPreview(owner, nextPhotos, ageFromBirthdate(owner.birthdate)));
+          const config = configResult.status === "fulfilled" ? configResult.value.configuration : undefined;
+          setPreview(ownerPublicPreview(owner, nextPhotos, ageFromBirthdate(owner.birthdate), config));
         }
       },
     );
@@ -76,10 +77,7 @@ export default function ProfilePage() {
     );
   }
 
-  const profile = account.profile;
   const verified = canInteract(verification);
-  const completion = profile?.profile_completion ?? undefined;
-  const publication = account.onboarding?.completion;
 
   return (
     <div className="shell-page">
@@ -89,11 +87,7 @@ export default function ProfilePage() {
         <p className="shell-page__subtitle">This is close to what other people see when they open your profile.</p>
       </div>
 
-      {completion ? (
-        <ProfileCompletionPanel profileCompletion={completion} publication={publication} />
-      ) : publication ? (
-        <ProfileCompletionPanel publication={publication} />
-      ) : null}
+      <ProfileStandOutPrompt />
 
       {account.profile && preview?.id !== account.profile.id ? (
         <RichProfileSkeleton />
@@ -105,6 +99,12 @@ export default function ProfilePage() {
           photoIndex={photoIndex}
           onPhotoIndex={setPhotoIndex}
           mode="owner"
+          onPhotosExpired={() => {
+            if (!account.profile) return;
+            void getProfileDetail(account.profile.id)
+              .then((result) => setPreview(result.profile))
+              .catch(() => undefined);
+          }}
         />
       ) : (
         <RichProfileSkeleton />

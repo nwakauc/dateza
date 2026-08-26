@@ -5,6 +5,7 @@ import type {
   ConfiguredCollection,
   ConfiguredField,
   ConfiguredOptionGroup,
+  ConfiguredPrompt,
   CurrentProfileResponse,
   FieldOption,
   OwnerProfile,
@@ -19,6 +20,8 @@ import type {
   ProfilePreferences,
   ProfileUpdateBody,
 } from "./profileTypes.ts";
+import type { PromptAnswer } from "./findTypes.ts";
+import { parsePromptAnswer } from "./find.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -158,6 +161,28 @@ function parseProfileCompletion(value: unknown): ProfileCompletion | null {
   };
 }
 
+function parseLanguageList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const languages: string[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item) {
+      languages.push(item);
+      continue;
+    }
+    if (!isRecord(item)) continue;
+    if (typeof item.code === "string" && item.code) languages.push(item.code);
+    else if (typeof item.name === "string" && item.name) languages.push(item.name);
+    else if (typeof item.label === "string" && item.label) languages.push(item.label);
+  }
+  return languages;
+}
+
+function parsePromptList(value: unknown): PromptAnswer[] {
+  return Array.isArray(value) ? value.map(parsePromptAnswer).filter((item): item is PromptAnswer => item !== undefined) : [];
+}
+
 function parseOwnerContactVerified(value: unknown): boolean | null {
   if (!isRecord(value) || !isRecord(value.contact) || typeof value.contact.verified !== "boolean") {
     return null;
@@ -169,11 +194,8 @@ function parseOwnerProfile(value: unknown): OwnerProfile {
   if (!isRecord(value) || typeof value.id !== "string") {
     throw new ApiError(502, undefined, "invalid_profile_response");
   }
-  const languages = Array.isArray(value.languages_spoken)
-    ? value.languages_spoken.filter((item): item is string => typeof item === "string")
-    : Array.isArray(value.languages)
-      ? value.languages.filter((item): item is string => typeof item === "string")
-      : [];
+  const languagesSpoken = parseLanguageList(value.languages_spoken);
+  const languages = languagesSpoken.length > 0 ? languagesSpoken : parseLanguageList(value.languages);
   return {
     id: value.id,
     brand: parseBrand(value.brand),
@@ -198,6 +220,7 @@ function parseOwnerProfile(value: unknown): OwnerProfile {
     fitness: asStringOrNull(value.fitness),
     languages_spoken: languages,
     options: parseOptionsMap(value.options),
+    prompts: parsePromptList(value.prompts),
     contact_verified: parseOwnerContactVerified(value.verification),
     publication_completion: isRecord(value.publication_completion) ? parseCompletion(value.publication_completion) : null,
     profile_completion: parseProfileCompletion(value.profile_completion),
@@ -297,6 +320,21 @@ function parseCollection(value: unknown): ConfiguredCollection | undefined {
   };
 }
 
+function parseConfiguredPrompt(value: unknown): ConfiguredPrompt | undefined {
+  if (!isRecord(value) || typeof value.key !== "string") {
+    return undefined;
+  }
+  const text = asString(value.text) ?? asString(value.prompt);
+  if (!text) {
+    return undefined;
+  }
+  return {
+    key: value.key,
+    text,
+    category: asStringOrNull(value.category),
+  };
+}
+
 function parseConfiguration(value: unknown): ProfileConfiguration {
   if (!isRecord(value)) {
     throw new ApiError(502, undefined, "invalid_configuration_response");
@@ -316,12 +354,19 @@ function parseConfiguration(value: unknown): ProfileConfiguration {
   const optionGroups = Array.isArray(value.option_groups)
     ? value.option_groups.map(parseOptionGroup).filter((group) => group !== undefined)
     : [];
+  const rawPrompts = Array.isArray(value.prompts)
+    ? value.prompts
+    : Array.isArray(value.prompt_definitions)
+      ? value.prompt_definitions
+      : [];
+  const prompts = rawPrompts.map(parseConfiguredPrompt).filter((prompt) => prompt !== undefined);
   return {
     identity_fields: identityFields,
     profile_fields: profileFields,
     preference_fields: preferenceFields,
     collections,
     option_groups: optionGroups,
+    prompts,
   };
 }
 
@@ -398,6 +443,44 @@ export function replaceProfileOptions(selections: Record<string, string[]>): Pro
     "/api/v1/profile/options",
     jsonInit("PATCH", { selections }),
   ).then(() => undefined);
+}
+
+export function getOwnerPrompts(): Promise<PromptAnswer[]> {
+  return apiRequest("/api/v1/profile/prompts").then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_prompts_response");
+    }
+    if (Array.isArray(data.prompts)) {
+      return parsePromptList(data.prompts);
+    }
+    if (Array.isArray(data.answers)) {
+      return parsePromptList(data.answers);
+    }
+    if (isRecord(data.profile)) {
+      return parsePromptList(data.profile.prompts);
+    }
+    return [];
+  });
+}
+
+export function replaceOwnerPrompts(answers: Array<{ key: string; answer: string }>): Promise<PromptAnswer[]> {
+  return apiRequest("/api/v1/profile/prompts", jsonInit("PUT", { answers })).then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_prompts_response");
+    }
+    if (isRecord(data.profile)) {
+      return parsePromptList(data.profile.prompts);
+    }
+    if (Array.isArray(data.prompts)) {
+      return parsePromptList(data.prompts);
+    }
+    return answers.map((item, position) => ({
+      key: item.key,
+      prompt: item.key,
+      answer: item.answer,
+      position,
+    }));
+  });
 }
 
 export function publishCurrentProfile(): Promise<void> {

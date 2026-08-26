@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { describeCompatibilityReasons } from "../discovery/compatibilityCopy.ts";
@@ -31,6 +32,8 @@ type Props = {
   interaction?: "idle" | "liked" | "passed";
   onLike?: () => void;
   onPass?: () => void;
+  safety?: ReactNode;
+  onPhotosExpired?: () => void;
 };
 
 function FactGrid({ facts, title }: { facts: ProfileFact[]; title: string }) {
@@ -51,7 +54,7 @@ function FactGrid({ facts, title }: { facts: ProfileFact[]; title: string }) {
 }
 
 function CompatibilityCard({ compatibility }: { compatibility: NonNullable<DatezaCompatibility> }) {
-  const reasons = describeCompatibilityReasons(compatibility.reasons);
+  const reasons = describeCompatibilityReasons(compatibility.reasons, compatibility.version);
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - Math.max(0, Math.min(100, compatibility.score)) / 100);
@@ -101,6 +104,8 @@ export function RichProfileView({
   interaction = "idle",
   onLike,
   onPass,
+  safety,
+  onPhotosExpired,
 }: Props) {
   const name = profile.display_name ?? "DateZA member";
   const location = identityLocation(profile);
@@ -158,6 +163,8 @@ export function RichProfileView({
             photoIndex={photoIndex}
             onPhotoIndex={onPhotoIndex}
             verified={profile.verified}
+            onPhotosExpired={onPhotosExpired}
+            overlay={safety}
           />
           <header className="rich-profile__identity">
             <h1 className="rich-profile__name">
@@ -192,7 +199,9 @@ export function RichProfileView({
             <section className="rich-profile__section">
               <h2 className="rich-profile__section-title">Prompts</h2>
               <div className="rich-profile__prompts">
-                {profile.prompts.map((prompt) => (
+                {[...profile.prompts]
+                  .sort((left, right) => left.position - right.position)
+                  .map((prompt) => (
                   <blockquote className="rich-prompt" key={prompt.key}>
                     <p className="rich-prompt__q">{prompt.prompt}</p>
                     <p className="rich-prompt__a">{prompt.answer}</p>
@@ -200,11 +209,6 @@ export function RichProfileView({
                 ))}
               </div>
             </section>
-          ) : null}
-          {mode === "member" ? (
-            <p className="rich-profile__safety">
-              <Link to="/safety">Report or block</Link>
-            </p>
           ) : null}
         </aside>
       </div>
@@ -224,18 +228,23 @@ export function RichProfileView({
           </section>
         ) : null}
 
-        {profile.looking_for_text || (intent.length > 0 && !profile.looking_for_text) ? (
+        {profile.looking_for_text || intent.length > 0 ? (
           <section className="rich-profile__section">
             <h2 className="rich-profile__section-title">What I&apos;m looking for</h2>
             {profile.looking_for_text ? <p className="rich-profile__copy">{profile.looking_for_text}</p> : null}
-            {!profile.looking_for_text && intent.length > 0 ? (
-              <div className="rich-profile__pills">
-                {intent.map((fact) => (
-                  <span className="rich-profile__pill" key={fact.key}>
-                    {fact.value}
-                  </span>
-                ))}
-              </div>
+            {intent.length > 0 ? (
+              <>
+                {profile.looking_for_text ? <h3 className="rich-profile__intent-label">Intent</h3> : null}
+                <div className="rich-profile__pills">
+                  {intent.flatMap((fact) =>
+                    fact.value.split(" · ").map((value) => (
+                      <span className="rich-profile__pill" key={`${fact.key}-${value}`}>
+                        {value}
+                      </span>
+                    )),
+                  )}
+                </div>
+              </>
             ) : null}
           </section>
         ) : null}

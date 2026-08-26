@@ -242,14 +242,14 @@ describe("authentication flows", () => {
 
     renderApp("/home");
 
-    await screen.findByRole("heading", { name: /picked for you today/i });
+    await screen.findByRole("heading", { level: 1, name: /^discover$/i });
     await user.click(screen.getAllByRole("link", { name: "Profile" })[0]);
     await user.click(await screen.findByRole("button", { name: /sign out/i }));
 
     await waitFor(() => {
       expect(getBearerToken()).toBeUndefined();
     });
-    expect(screen.queryByRole("heading", { name: /picked for you today/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: /^discover$/i })).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: /meet someone/i }),
     ).toBeInTheDocument();

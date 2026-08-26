@@ -37,6 +37,22 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function asLanguageList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const languages: string[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item) {
+      languages.push(item);
+      continue;
+    }
+    if (!isRecord(item)) continue;
+    if (typeof item.code === "string" && item.code) languages.push(item.code);
+    else if (typeof item.name === "string" && item.name) languages.push(item.name);
+    else if (typeof item.label === "string" && item.label) languages.push(item.label);
+  }
+  return languages;
+}
+
 function parsePhoto(value: unknown): PublicProfilePhoto | undefined {
   if (
     !isRecord(value) ||
@@ -83,9 +99,10 @@ export function parsePublicProfile(value: unknown): PublicProfile {
     looking_for_text: asStringOrNull(value.looking_for_text),
     height_cm: asNumberOrNull(value.height_cm),
     body_type: asStringOrNull(value.body_type),
-    languages_spoken: asStringArray(value.languages_spoken).length > 0
-      ? asStringArray(value.languages_spoken)
-      : asStringArray(value.languages),
+    languages_spoken: (() => {
+      const spoken = asLanguageList(value.languages_spoken);
+      return spoken.length > 0 ? spoken : asLanguageList(value.languages);
+    })(),
     smoking: asStringOrNull(value.smoking),
     drinking: asStringOrNull(value.drinking),
     fitness: asStringOrNull(value.fitness),
@@ -134,7 +151,7 @@ export function parseCompatibility(value: unknown): DatezaCompatibility {
     score: value.score,
     confidence: value.confidence,
     confidence_level: value.confidence_level,
-    version: "dateza_v1",
+    version: typeof value.version === "string" && value.version ? value.version : "dateza_v1",
     reasons,
   };
 }
@@ -206,7 +223,7 @@ export function getFindProfiles(filters: FindFilters = {}): Promise<FindResponse
   });
 }
 
-function parsePromptAnswer(value: unknown): PromptAnswer | undefined {
+export function parsePromptAnswer(value: unknown): PromptAnswer | undefined {
   if (
     !isRecord(value) ||
     typeof value.key !== "string" ||

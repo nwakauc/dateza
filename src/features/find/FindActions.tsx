@@ -1,36 +1,71 @@
-import { CloseIcon, HeartIcon } from "../shell/icons.tsx";
-import { SendOpenerButton } from "../shell/SendOpenerButton.tsx";
+import { CloseIcon, HeartIcon, PaperPlaneIcon } from "../shell/icons.tsx";
 
 type Props = {
   disabled: boolean;
   passLabel: string;
   likeLabel: string;
+  openerLabel: string;
+  openerSoon?: boolean;
   onPass: () => void;
   onLike: () => void;
+  onOpener: () => void;
 };
 
-export function FindActions({ disabled, passLabel, likeLabel, onPass, onLike }: Props) {
+export function FindActions({
+  disabled,
+  passLabel,
+  likeLabel,
+  openerLabel,
+  openerSoon = true,
+  onPass,
+  onLike,
+  onOpener,
+}: Props) {
   return (
     <div className="find-actions">
-      <button
-        type="button"
-        className="find-actions__button find-actions__button--pass"
-        onClick={onPass}
-        disabled={disabled}
-        aria-label={passLabel}
-      >
-        <CloseIcon className="find-actions__icon" />
-      </button>
-      <button
-        type="button"
-        className="find-actions__button find-actions__button--like"
-        onClick={onLike}
-        disabled={disabled}
-        aria-label={likeLabel}
-      >
-        <HeartIcon className="find-actions__icon" />
-      </button>
-      <SendOpenerButton className="find-actions__button" iconClassName="find-actions__icon" />
+      <div className="find-actions__slot">
+        <button
+          type="button"
+          className="find-actions__button find-actions__button--pass"
+          onClick={onPass}
+          disabled={disabled}
+          aria-label={passLabel}
+        >
+          <CloseIcon className="find-actions__icon" />
+        </button>
+        <span className="find-actions__caption" aria-hidden="true">
+          Pass
+        </span>
+      </div>
+      <div className="find-actions__slot">
+        <button
+          type="button"
+          className="find-actions__button find-actions__button--like"
+          onClick={onLike}
+          disabled={disabled}
+          aria-label={likeLabel}
+        >
+          <HeartIcon className="find-actions__icon" />
+        </button>
+        <span className="find-actions__caption" aria-hidden="true">
+          Like
+        </span>
+      </div>
+      <div className="find-actions__slot">
+        <button
+          type="button"
+          className="find-actions__button find-actions__button--opener"
+          onClick={onOpener}
+          disabled={disabled}
+          aria-label={openerLabel}
+        >
+          <PaperPlaneIcon className="find-actions__icon" />
+          {openerSoon ? <span className="find-actions__soon">New</span> : null}
+        </button>
+        <span className="find-actions__caption" aria-hidden="true">
+          Send opener
+        </span>
+      </div>
     </div>
   );
 }

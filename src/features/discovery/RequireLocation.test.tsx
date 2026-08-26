@@ -128,7 +128,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     renderApp();
 
     expect(await screen.findByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /picked for you today/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: /^discover$/i })).not.toBeInTheDocument();
     expect(discoveryCalls).toBe(0);
   });
 
@@ -148,7 +148,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     await screen.findByRole("heading", { name: /where are you dating from/i });
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(discoveryCalls).toBe(1);
     expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
   });
@@ -187,7 +187,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
 
     renderApp();
 
-    expect(await screen.findByRole("heading", { name: /picked for you today/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /where are you dating from/i })).not.toBeInTheDocument();
     expect(discoveryCalls).toBe(1);
   });

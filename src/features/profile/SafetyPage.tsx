@@ -49,8 +49,9 @@ export default function SafetyPage() {
       <div className="profile-section">
         <p className="profile-section__title">Report &amp; block</p>
         <p className="profile-section__text">
-          In-app reporting and blocking tools are coming soon. If you feel unsafe, stop contact with that person
-          and, where relevant, contact local authorities.
+          In-app reporting and blocking are available from another member&apos;s
+          profile. Open the ••• menu, then choose Report or Block. Blocking is
+          free and stops future interaction between you.
         </p>
       </div>
     </div>

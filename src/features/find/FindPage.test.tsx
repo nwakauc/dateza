@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
+import { clearFindDeckMemory } from "./findDeckMemory.ts";
 
 /**
  * FE-05: Find is a rich, sequential swipe experience — the deliberate
@@ -124,6 +125,8 @@ function baseHandler(profiles: unknown[], allowanceBody: unknown, extra?: (url: 
   const fetchImpl = (input: RequestInfo | URL, init?: RequestInit) => {
     const url = requestUrl(input);
     const method = methodOf(init);
+    const extraResult = extra?.(url, method);
+    if (extraResult) return Promise.resolve(extraResult);
     if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
     if (url.endsWith("/api/v1/profile")) {
       return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
@@ -138,8 +141,15 @@ function baseHandler(profiles: unknown[], allowanceBody: unknown, extra?: (url: 
     if (url.endsWith("/api/v1/find")) {
       return Promise.resolve(jsonResponse(200, { profiles, next_cursor: null, allowance: allowanceBody }));
     }
-    const extraResult = extra?.(url, method);
-    if (extraResult) return Promise.resolve(extraResult);
+    if (url.endsWith("/api/v1/notifications")) {
+      return Promise.resolve(jsonResponse(200, { notifications: [], unread_count: 0, next_cursor: null }));
+    }
+    if (url.endsWith("/api/v1/conversations")) {
+      return Promise.resolve(jsonResponse(200, { conversations: [], next_cursor: null }));
+    }
+    if (url.endsWith("/api/v1/profile/photos")) {
+      return Promise.resolve(jsonResponse(200, { photos: [] }));
+    }
     return Promise.resolve(jsonResponse(404, { error: "not_found" }));
   };
   return { fetchImpl, discoveryCallCount: () => discoveryCalls };
@@ -154,6 +164,7 @@ function findStackCard(): HTMLElement {
 describe("Find (FE-05, rich swipe)", () => {
   beforeEach(() => {
     markLocationConfirmed(ownerProfile.id);
+    clearFindDeckMemory();
   });
 
   it("renders exactly one active, actionable profile — not a grid", async () => {
@@ -173,6 +184,39 @@ describe("Find (FE-05, rich swipe)", () => {
     expect(screen.getAllByRole("button", { name: /^pass$/i })).toHaveLength(1);
     expect(document.querySelector(".discover-grid")).not.toBeInTheDocument();
     expect(document.querySelector(".discovery-grid")).not.toBeInTheDocument();
+  });
+
+  it("shows Make your profile stand out with Complete profile when richness is below 100%", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" })],
+      allowance(),
+      (url) => {
+        if (url.endsWith("/api/v1/profile")) {
+          return jsonResponse(200, {
+            profile: {
+              ...ownerProfile,
+              profile_completion: {
+                percent: 72,
+                level: "good",
+                missing: ["interests"],
+                suggestions: [{ key: "interests", label: "Add interests" }],
+                sections: {},
+              },
+            },
+            onboarding: completeOnboarding,
+          });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    expect(await screen.findByText(/make your profile stand out/i)).toBeInTheDocument();
+    expect(screen.getByText("72% complete")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /complete profile/i })).toHaveAttribute("href", "/profile/edit");
   });
 
   it("does not simultaneously present the next candidate as actionable", async () => {
@@ -425,7 +469,8 @@ describe("Find (FE-05, rich swipe)", () => {
     expect(screen.getByText("Maya")).toBeInTheDocument();
     expect(screen.queryByText("Aisha")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /continue browsing/i }));
+    const matchDialog = screen.getByRole("dialog", { name: /it's a match!/i });
+    await user.click(within(matchDialog).getByRole("button", { name: /keep discovering|keep finding/i }));
     expect(await screen.findByText("Aisha")).toBeInTheDocument();
   }, 10000);
 
@@ -530,8 +575,8 @@ describe("Find (FE-05, rich swipe)", () => {
 
     renderApp();
 
-    expect(await screen.findByText(/that's everyone for today/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /see today's discover picks/i })).toHaveAttribute("href", "/discover");
+    expect(await screen.findByText(/you've seen today's find picks/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /explore discover/i })).toHaveAttribute("href", "/discover");
   });
 
   it("shows an intentional empty state, distinct from exhausted, when nothing is eligible", async () => {
@@ -543,6 +588,7 @@ describe("Find (FE-05, rich swipe)", () => {
 
     expect(await screen.findByText(/no one new right now/i)).toBeInTheDocument();
     expect(screen.queryByText(/that's everyone for today/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/you've seen today's find picks/i)).not.toBeInTheDocument();
   });
 
   it("never calls /api/v1/discovery", async () => {
@@ -627,16 +673,16 @@ describe("Find (FE-05, rich swipe)", () => {
     await screen.findByText("Maya");
 
     expect(await screen.findByText("Why you're compatible")).toBeInTheDocument();
-    expect(screen.getByText("Both want something long-term")).toBeInTheDocument();
+    expect(screen.getByText("Both want long-term")).toBeInTheDocument();
     expect(screen.getByText("About Maya")).toBeInTheDocument();
     expect(screen.getByText("Marketing Manager")).toBeInTheDocument();
-    expect(screen.getByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("Never smoked")).toBeInTheDocument();
     expect(screen.getByText("Interests")).toBeInTheDocument();
-    expect(screen.getByText("Hiking")).toBeInTheDocument();
-    expect(screen.getByText("Coffee")).toBeInTheDocument();
+    expect(screen.getAllByText("Hiking").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Coffee").length).toBeGreaterThan(0);
   });
 
-  it("does not render the side panel when the profile has no extra data to show", async () => {
+  it("still offers a full-profile path when the profile has no extra context", async () => {
     setBearerToken("opaque-session-token");
     const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance());
     vi.mocked(fetch).mockImplementation(fetchImpl);
@@ -645,6 +691,73 @@ describe("Find (FE-05, rich swipe)", () => {
     await screen.findByText("Maya");
 
     expect(screen.queryByText("Why you're compatible")).not.toBeInTheDocument();
-    expect(document.querySelector(".find-side")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view full profile/i })).toBeInTheDocument();
+  });
+
+  it("shows the opener composer and keeps the draft when the opener API is unavailable", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance());
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    const field = screen.getByLabelText(/opener message/i);
+    await user.type(field, "Coffee this weekend?");
+    await user.click(document.querySelector(".find-opener-form__icon-send") as HTMLButtonElement);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/aren’t on DateZA|aren't on DateZA/i);
+    expect(field).toHaveValue("Coffee this weekend?");
+    expect(screen.queryByText(/your opener was sent/i)).not.toBeInTheDocument();
+  });
+
+  it("renders product notices in Recent activity without inventing profile views", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url) => {
+      if (url.endsWith("/api/v1/notifications")) {
+        return jsonResponse(200, {
+          notifications: [
+            {
+              id: "n1",
+              type: "dateza.welcome",
+              title: "Welcome to DateZA",
+              body: "Your profile is live.",
+              read_at: null,
+              created_at: "2026-08-26T00:00:00Z",
+            },
+          ],
+          unread_count: 1,
+        });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    expect(await screen.findByText("Welcome to DateZA")).toBeInTheDocument();
+    expect(screen.queryByText(/viewed your profile/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a prompt from public profile detail when Find itself has none", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya", pronouns: "she/her" })], allowance(), (url) => {
+      if (url.endsWith("/api/v1/profiles/p1")) {
+        return jsonResponse(200, {
+          profile: {
+            ...findProfile({ id: "p1", display_name: "Maya", pronouns: "she/her" }),
+            hook_tonight_active: false,
+            hook_state: "unavailable",
+            prompts: [{ key: "dessert", prompt: "The way to my heart", answer: "Good conversations and even better dessert.", position: 0 }],
+            interests: [],
+          },
+        });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    expect(await screen.findByText("Her prompt")).toBeInTheDocument();
+    expect(screen.getByText("Good conversations and even better dessert.")).toBeInTheDocument();
   });
 });

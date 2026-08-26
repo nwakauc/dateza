@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getFindProfiles, likeProfile, passProfile } from "../../lib/api/find.ts";
-import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
-import type { FindAllowance, FindProfile } from "../../lib/api/findTypes.ts";
+import { getFindProfiles, getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
+import type { FindAllowance, FindProfile, ProfileDetail } from "../../lib/api/findTypes.ts";
+import { listNotifications } from "../../lib/api/notifications.ts";
+import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
+import { listOwnerPhotos } from "../../lib/api/photos.ts";
+import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
-import { BoltIcon, SearchIcon } from "../shell/icons.tsx";
+import { listConversations } from "../../lib/api/social.ts";
+import type { Conversation } from "../../lib/api/socialTypes.ts";
+import { BoltIcon, ChevronDownIcon, LightbulbIcon, SearchIcon } from "../shell/icons.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
+import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { FindActions } from "./FindActions.tsx";
+import { FindOpenerPanel, type OpenerView } from "./FindOpenerPanel.tsx";
+import { FindRightRail } from "./FindRightRail.tsx";
 import { FindSidePanel } from "./FindSidePanel.tsx";
 import { FindSwipeStack } from "./FindSwipeStack.tsx";
+import { orderFindProfiles, rememberedFindActiveId, rememberFindActive } from "./findDeckMemory.ts";
 import { buildOptionLabelLookup, buildProfileFieldLabelLookup } from "./optionLabels.ts";
 
 /**
@@ -66,6 +75,7 @@ export default function FindPage() {
   const [queue, setQueue] = useState<FindProfile[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [allowance, setAllowance] = useState<FindAllowance | undefined>();
+  const [detail, setDetail] = useState<ProfileDetail | undefined>();
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -79,6 +89,16 @@ export default function FindPage() {
   const [actionError, setActionError] = useState<string | undefined>();
   const [matchedProfile, setMatchedProfile] = useState<FindProfile | undefined>();
   const [matchedId, setMatchedId] = useState<string | null>(null);
+  const [openerView, setOpenerView] = useState<OpenerView>("compose");
+  const [showOpener, setShowOpener] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  const [allowanceOpen, setAllowanceOpen] = useState(false);
+
+  const [notifications, setNotifications] = useState<ProductNotification[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityUnavailable, setActivityUnavailable] = useState(false);
+  const [conversation, setConversation] = useState<Conversation | undefined>();
+  const [selfPhotoUrl, setSelfPhotoUrl] = useState<string | undefined>();
 
   const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -99,14 +119,17 @@ export default function FindPage() {
   useEffect(() => {
     document.title = "Find — DateZA";
     let cancelled = false;
+    const preferredId = rememberedFindActiveId();
     getFindProfiles()
       .then((result) => {
         if (cancelled) return;
-        setActive(result.profiles[0]);
-        setQueue(result.profiles.slice(1));
+        const profiles = orderFindProfiles(result.profiles, preferredId);
+        setActive(profiles[0]);
+        setQueue(profiles.slice(1));
         setNextCursor(result.next_cursor);
         setAllowance(result.allowance);
-        setSeenAny(result.profiles.length > 0);
+        setSeenAny(profiles.length > 0);
+        rememberFindActive(profiles[0]);
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(findErrorMessage(caught));
@@ -114,13 +137,26 @@ export default function FindPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    // Best-effort: powers human-readable relationship-intent/interest chips
-    // on the swipe card (see optionLabels.ts). Find still renders fully
-    // without it — those chips just stay hidden rather than showing raw
-    // option codes.
     getProfileConfiguration()
       .then((result) => {
         if (!cancelled) setConfiguration(result.configuration);
+      })
+      .catch(() => undefined);
+    listNotifications()
+      .then((result) => {
+        if (cancelled) return;
+        setNotifications(result.notifications);
+        setActivityUnavailable(false);
+      })
+      .catch(() => {
+        if (!cancelled) setActivityUnavailable(true);
+      })
+      .finally(() => {
+        if (!cancelled) setActivityLoading(false);
+      });
+    listOwnerPhotos()
+      .then((photos) => {
+        if (!cancelled) setSelfPhotoUrl(photos[0]?.image?.url);
       })
       .catch(() => undefined);
     return () => {
@@ -136,6 +172,34 @@ export default function FindPage() {
     },
     [],
   );
+
+  useEffect(() => {
+    rememberFindActive(active);
+  }, [active]);
+
+  useEffect(() => {
+    const profileId = active?.id;
+    if (!profileId) return;
+    let cancelled = false;
+    getProfileDetail(profileId)
+      .then((result) => {
+        if (!cancelled) setDetail(result.profile);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(undefined);
+      });
+    listConversations()
+      .then((result) => {
+        if (cancelled) return;
+        setConversation(result.conversations.find((item) => item.profile.id === profileId && item.status === "active"));
+      })
+      .catch(() => {
+        if (!cancelled) setConversation(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active?.id]);
 
   function retry() {
     setLoading(true);
@@ -156,9 +220,6 @@ export default function FindPage() {
       if (result.profiles.length > 0) setSeenAny(true);
       return result.profiles;
     } catch {
-      // Silent: this is a background top-up, not the member's current
-      // request. If the queue actually runs dry, advance() below surfaces
-      // an honest "load more" retry instead.
       return [];
     } finally {
       setLoadingMore(false);
@@ -171,7 +232,11 @@ export default function FindPage() {
     setActionError(undefined);
     setMatchedProfile(undefined);
     setMatchedId(null);
-    setActive(queueRef.current[0]);
+    setOpenerView("compose");
+    setShowOpener(false);
+    const next = queueRef.current[0];
+    setActive(next);
+    rememberFindActive(next);
     setQueue((current) => current.slice(1));
     setAdvanceCount((current) => current + 1);
     if (queueRef.current.length <= 2 && nextCursorRef.current) {
@@ -236,16 +301,34 @@ export default function FindPage() {
     advance();
   }
 
+  const verificationModal = pendingReason ? (
+    <Modal ariaLabel="Verify your account" onClose={dismiss}>
+      <VerificationFlow onDone={dismiss} />
+    </Modal>
+  ) : null;
+
   if (loading) {
     return (
-      <div className="shell-page">
+      <div className="shell-page find-page">
         <div className="shell-page__header">
           <h1 className="shell-page__title">Find</h1>
           <p className="shell-page__subtitle">Meet someone new.</p>
         </div>
-        <div className="find-stack find-stack--skeleton" aria-hidden="true">
-          <div className="find-stack__peek find-card-skeleton" />
-          <div className="find-stack__active find-card-skeleton" />
+        <div className="find-stage find-stage--skeleton" aria-hidden="true">
+          <div className="find-layout__main">
+            <div className="find-stack find-stack--skeleton">
+              <div className="find-stack__peek find-card-skeleton" />
+              <div className="find-stack__active find-card-skeleton" />
+            </div>
+          </div>
+          <div className="find-side find-side--skeleton">
+            <div className="find-side__section" />
+            <div className="find-side__section" />
+          </div>
+          <div className="find-rail find-rail--skeleton">
+            <div className="find-rail-card" />
+            <div className="find-rail-card" />
+          </div>
         </div>
       </div>
     );
@@ -253,7 +336,7 @@ export default function FindPage() {
 
   if (error && !active) {
     return (
-      <div className="shell-page">
+      <div className="shell-page find-page">
         <div className="shell-page__header">
           <h1 className="shell-page__title">Find</h1>
         </div>
@@ -265,33 +348,29 @@ export default function FindPage() {
             Try again
           </button>
         </div>
+        <ProfileStandOutPrompt />
+        {verificationModal}
       </div>
     );
   }
 
   const exhausted = !active && allowance?.exhausted === true;
   const resetTime = allowance ? formatResetTime(allowance.resets_at) : undefined;
-  const verificationModal = pendingReason ? (
-    <Modal ariaLabel="Verify your account" onClose={dismiss}>
-      <VerificationFlow onDone={dismiss} />
-    </Modal>
-  ) : null;
 
   if (!active) {
     return (
-      <div className="shell-page">
+      <div className="shell-page find-page">
         <div className="shell-page__header">
-          <h1 className="shell-page__title">Find</h1>
+          <p className="shell-page__eyebrow">Find</p>
+          <h1 className="shell-page__title">Meet someone new</h1>
         </div>
         <div className="shell-empty">
           <SearchIcon className="shell-empty__icon" />
           {exhausted ? (
             <>
-              <p className="shell-empty__title">That's everyone for today</p>
+              <p className="shell-empty__title">You've seen today's Find picks</p>
               <p className="shell-empty__body">
-                {resetTime
-                  ? `You've seen today's Find profiles. Come back after ${resetTime} for more.`
-                  : "You've seen today's Find profiles. Come back tomorrow for more."}
+                {resetTime ? `Come back after ${resetTime} for more.` : "Come back for more later."}
               </p>
             </>
           ) : (
@@ -302,10 +381,16 @@ export default function FindPage() {
               </p>
             </>
           )}
-          <Link className="shell-primary-action" to="/discover">
-            See today's Discover picks
-          </Link>
+          <div className="find-empty-actions">
+            <Link className="shell-primary-action" to="/discover">
+              Explore Discover
+            </Link>
+            <Link className="shell-text-action" to="/likes">
+              View Likes
+            </Link>
+          </div>
         </div>
+        <ProfileStandOutPrompt />
         {verificationModal}
       </div>
     );
@@ -321,9 +406,10 @@ export default function FindPage() {
   const optionLabel = buildOptionLabelLookup(configuration);
   const fieldLabel = buildProfileFieldLabelLookup(configuration);
   const actionsDisabled = phase !== "active" || Boolean(matchedProfile);
+  const name = active.display_name ?? "this person";
 
   return (
-    <div className="shell-page">
+    <div className="shell-page find-page">
       <div className="shell-page__header shell-page__header--with-action">
         <div>
           <p className="shell-page__eyebrow">Find</p>
@@ -331,14 +417,25 @@ export default function FindPage() {
           <p className="shell-page__subtitle">Take your time, find your person.</p>
         </div>
         {allowance && !exhausted && allowance.remaining > 0 ? (
-          <span className="find-allowance-pill">
-            <BoltIcon className="find-allowance-pill__icon" />
-            {allowance.remaining} {allowance.remaining === 1 ? "pick" : "picks"} left today
-          </span>
+          <div className="find-allowance">
+            <button
+              type="button"
+              className="find-allowance-pill"
+              aria-expanded={allowanceOpen}
+              onClick={() => setAllowanceOpen((open) => !open)}
+            >
+              <BoltIcon className="find-allowance-pill__icon" />
+              {allowance.remaining} {allowance.remaining === 1 ? "pick" : "picks"} left today
+              <ChevronDownIcon className="find-allowance-pill__chevron" />
+            </button>
+            {allowanceOpen && resetTime ? (
+              <p className="find-allowance__detail">New picks after {resetTime}.</p>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
-      <div className="find-layout">
+      <div className="find-stage">
         <div className="find-layout__main">
           <FindSwipeStack
             key={active.id}
@@ -353,6 +450,7 @@ export default function FindPage() {
             onOpenDetail={() => openProfile(active.id)}
             onLike={() => requestAction("liked")}
             onPass={() => requestAction("passed")}
+            onBlocked={advance}
             onUndo={phase === "committing" ? undo : undefined}
           />
 
@@ -360,9 +458,24 @@ export default function FindPage() {
             disabled={actionsDisabled}
             passLabel={interaction === "passed" ? "Passed" : "Pass"}
             likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
+            openerLabel="Send opener"
             onPass={() => requestAction("passed")}
             onLike={() => requestAction("liked")}
+            onOpener={() => setShowOpener(true)}
           />
+
+          <div className="find-tip">
+            <LightbulbIcon className="find-tip__icon" />
+            <div>
+              <p>Tip: Send a thoughtful opener after liking. You can send one opener and wait for a reply.</p>
+              {tipOpen ? (
+                <p className="find-tip__more">Openers aren’t on DateZA yet. When they are, you’ll send one note, then chat after they reply.</p>
+              ) : null}
+            </div>
+            <button type="button" className="find-tip__learn" onClick={() => setTipOpen((open) => !open)}>
+              {tipOpen ? "Show less" : "Learn more"}
+            </button>
+          </div>
 
           {actionError ? (
             <p className="find-action-error" role="alert">
@@ -371,15 +484,54 @@ export default function FindPage() {
           ) : null}
         </div>
 
-        <FindSidePanel key={active.id} profile={active} optionLabel={optionLabel} fieldLabel={fieldLabel} />
+        <FindSidePanel
+          key={`${active.id}-side`}
+          profile={active}
+          detail={detail?.id === active.id ? detail : undefined}
+          optionLabel={optionLabel}
+          fieldLabel={fieldLabel}
+          onOpenDetail={() => openProfile(active.id)}
+        />
+
+        <FindRightRail
+          key={`${active.id}-rail`}
+          name={name}
+          profileId={active.id}
+          matched={Boolean(matchedProfile)}
+          photoUrl={active.photos[0]?.url}
+          selfPhotoUrl={selfPhotoUrl}
+          openerView={openerView}
+          conversation={!matchedProfile && conversation?.profile.id === active.id ? conversation : undefined}
+          online={active.online}
+          notifications={notifications}
+          activityLoading={activityLoading}
+          activityUnavailable={activityUnavailable}
+          onKeepFinding={continueAfterMatch}
+          onOpenerSent={() => setOpenerView("waiting")}
+          onSendOpener={() => setShowOpener(true)}
+        />
       </div>
+
+      {showOpener ? (
+        <Modal ariaLabel={`Send ${name} an opener`} onClose={() => setShowOpener(false)}>
+          <FindOpenerPanel
+            profileId={active.id}
+            name={name}
+            view="compose"
+            onSent={() => {
+              setOpenerView("waiting");
+              setShowOpener(false);
+            }}
+          />
+        </Modal>
+      ) : null}
 
       {matchedProfile ? (
         <MatchModal
           name={matchedProfile.display_name ?? "them"}
           photoUrl={matchedProfile.photos[0]?.url}
           matchId={matchedId}
-          continueLabel="Continue browsing"
+          continueLabel="Keep discovering"
           onContinue={continueAfterMatch}
         />
       ) : null}

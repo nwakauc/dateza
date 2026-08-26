@@ -1,6 +1,6 @@
 import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
-import type { ProfileDetail } from "../../lib/api/findTypes.ts";
-import type { OwnerProfile } from "../../lib/api/profileTypes.ts";
+import type { ProfileDetail, ProfileInterest, PromptAnswer } from "../../lib/api/findTypes.ts";
+import type { OwnerProfile, ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 
 const HIDDEN_OWNER_OPTIONS = new Set([
   "has_children",
@@ -12,12 +12,35 @@ const HIDDEN_OWNER_OPTIONS = new Set([
   "chemistry_importance",
 ]);
 
+function interestPreview(profile: OwnerProfile, configuration?: ProfileConfiguration): ProfileInterest[] {
+  const codes = profile.options.interests ?? [];
+  const group = configuration?.option_groups.find((item) => item.key === "interests");
+  const labels = new Map((group?.options ?? []).map((option) => [option.code, option]));
+  return codes.map((slug) => {
+    const option = labels.get(slug);
+    return {
+      slug,
+      label: option?.label ?? slug,
+      category: option?.category ?? null,
+    };
+  });
+}
+
+function promptPreview(prompts: PromptAnswer[]): PromptAnswer[] {
+  return [...prompts].sort((left, right) => left.position - right.position);
+}
+
 /**
  * Approximate public view from owner data when GET /profiles/:id is
  * unavailable. Omits owner-only fields so the preview stays close to what
  * other members would see.
  */
-export function ownerPublicPreview(profile: OwnerProfile, photos: OwnerPhoto[], age: number | null): ProfileDetail {
+export function ownerPublicPreview(
+  profile: OwnerProfile,
+  photos: OwnerPhoto[],
+  age: number | null,
+  configuration?: ProfileConfiguration,
+): ProfileDetail {
   const publicOptions: Record<string, string[]> = {};
   for (const [key, codes] of Object.entries(profile.options)) {
     if (!HIDDEN_OWNER_OPTIONS.has(key)) publicOptions[key] = codes;
@@ -60,8 +83,8 @@ export function ownerPublicPreview(profile: OwnerProfile, photos: OwnerPhoto[], 
     distance_km: null,
     hook_tonight_active: false,
     hook_state: "unavailable",
-    prompts: [],
-    interests: [],
+    prompts: promptPreview(profile.prompts),
+    interests: interestPreview(profile, configuration),
     compatibility: null,
   };
 }

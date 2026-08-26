@@ -17,6 +17,7 @@ type Props = {
   onOpenDetail: () => void;
   onLike: () => void;
   onPass: () => void;
+  onBlocked?: () => void;
   onUndo?: () => void;
   dragEnabled: boolean;
   /** True once at least one card has already been shown this session — an
@@ -41,6 +42,7 @@ export function FindSwipeStack({
   onOpenDetail,
   onLike,
   onPass,
+  onBlocked,
   onUndo,
   dragEnabled,
   autoFocus,
@@ -101,8 +103,18 @@ export function FindSwipeStack({
   const style = showLiveDrag ? { transform: `translateX(${dragX}px) rotate(${dragX / 22}deg)`, transition: "none" } : undefined;
   const stampOpacity = Math.min(Math.abs(dragX) / DRAG_STAMP_FULL_OPACITY_PX, 1);
 
+  const dashCount = Math.min(5, Math.max(1, 1 + peekProfiles.length));
+
   return (
     <div className="find-stack">
+      <div className="find-deck-progress" aria-hidden="true">
+        {Array.from({ length: dashCount }, (_, index) => (
+          <span
+            key={index}
+            className={index === 0 ? "find-deck-progress__dash find-deck-progress__dash--active" : "find-deck-progress__dash"}
+          />
+        ))}
+      </div>
       {peekProfiles.slice(0, 2).map((peek, index) => (
         <div
           key={peek.id}
@@ -132,7 +144,13 @@ export function FindSwipeStack({
             {dragX > 0 ? "LIKE" : "PASS"}
           </span>
         ) : null}
-        <FindSwipeCard profile={profile} interaction={interaction} optionLabel={optionLabel} onOpenDetail={onOpenDetail} />
+        <FindSwipeCard
+          profile={profile}
+          interaction={interaction}
+          optionLabel={optionLabel}
+          onOpenDetail={onOpenDetail}
+          onBlocked={onBlocked}
+        />
       </div>
       {committingAction && onUndo ? (
         <div className="find-undo" role="status" aria-live="polite">

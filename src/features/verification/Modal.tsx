@@ -5,6 +5,8 @@ type Props = {
   ariaLabel: string;
   onClose: () => void;
   children: ReactNode;
+  backdropClassName?: string;
+  panelClassName?: string;
 };
 
 const FOCUSABLE = [
@@ -16,7 +18,7 @@ const FOCUSABLE = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export function Modal({ ariaLabel, onClose, children }: Props) {
+export function Modal({ ariaLabel, onClose, children, backdropClassName, panelClassName }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
 
@@ -75,10 +77,10 @@ export function Modal({ ariaLabel, onClose, children }: Props) {
   }, []);
 
   return createPortal(
-    <div className="verify-modal-backdrop" onClick={onClose}>
+    <div className={backdropClassName ?? "verify-modal-backdrop"} onClick={onClose}>
       <div
         ref={panelRef}
-        className="verify-modal"
+        className={panelClassName ?? "verify-modal"}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
