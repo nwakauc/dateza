@@ -22,6 +22,7 @@ import type {
 } from "./profileTypes.ts";
 import type { PromptAnswer } from "./findTypes.ts";
 import { parsePromptAnswer } from "./find.ts";
+import { parseConfiguredOpeners } from "./opener.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -317,6 +318,7 @@ function parseCollection(value: unknown): ConfiguredCollection | undefined {
     label: value.label,
     required: value.required,
     minimum_count: value.minimum_count,
+    maximum_count: typeof value.maximum_count === "number" ? value.maximum_count : undefined,
   };
 }
 
@@ -367,6 +369,7 @@ function parseConfiguration(value: unknown): ProfileConfiguration {
     collections,
     option_groups: optionGroups,
     prompts,
+    openers: parseConfiguredOpeners(value.openers ?? value.configured_openers),
   };
 }
 

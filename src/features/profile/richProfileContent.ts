@@ -17,6 +17,9 @@ const HIDDEN_GROUPS = new Set([
   "physical_affection",
   "chemistry_importance",
   "interests",
+  "company",
+  "company_name",
+  "industry",
 ]);
 
 function humanize(code: string): string {
@@ -166,9 +169,6 @@ export function moreFacts(profile: ProfileDetail, optionLabel: OptionLabelLookup
     const values = codes.map((code) => optionLabel(group, code)).filter((label): label is string => Boolean(label));
     if (values.length === 0) continue;
     facts.push({ key: group, label: humanize(group), value: values.join(" · ") });
-  }
-  if (profile.languages_spoken.length > 0) {
-    facts.push({ key: "languages", label: "Languages", value: formatLanguages(profile.languages_spoken) });
   }
   return facts;
 }

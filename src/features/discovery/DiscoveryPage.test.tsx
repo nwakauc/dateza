@@ -402,7 +402,7 @@ describe("Discover (FE-02)", () => {
     await user.click(screen.getByRole("button", { name: /^like$/i }));
 
     expect(await screen.findByRole("dialog", { name: /it's a match!/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /message maya/i }));
+    await user.click(within(screen.getByRole("dialog", { name: /it's a match!/i })).getByRole("button", { name: /send a message/i }));
 
     expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
     expect(conversationCalls).toBe(1);

@@ -2,13 +2,16 @@ import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
+import { openerSendAllowed } from "../../lib/api/openerTypes.ts";
 import { describeCompatibilityReasons } from "../discovery/compatibilityCopy.ts";
 import { buildOptionLabelLookup, buildProfileFieldLabelLookup } from "../find/optionLabels.ts";
-import { CloseIcon, HeartIcon, MapPinIcon, PencilIcon } from "../shell/icons.tsx";
+import { CameraIcon, CloseIcon, HeartIcon, MapPinIcon, PencilIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { SendOpenerButton } from "../shell/SendOpenerButton.tsx";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { ProfileGallery } from "./ProfileGallery.tsx";
 import {
   aboutFacts,
+  formatLanguages,
   identityLocation,
   intentFacts,
   interestLabels,
@@ -32,6 +35,7 @@ type Props = {
   interaction?: "idle" | "liked" | "passed";
   onLike?: () => void;
   onPass?: () => void;
+  onOpenOpener?: () => void;
   safety?: ReactNode;
   onPhotosExpired?: () => void;
 };
@@ -93,6 +97,15 @@ function CompatibilityCard({ compatibility }: { compatibility: NonNullable<Datez
   );
 }
 
+function OwnerCompatibilityNote() {
+  return (
+    <section className="rich-compat rich-compat--note" aria-label="Compatibility">
+      <h2 className="rich-profile__section-title">Compatibility</h2>
+      <p className="rich-compat__note">Compatibility appears here when another member views your profile.</p>
+    </section>
+  );
+}
+
 export function RichProfileView({
   profile,
   compatibility,
@@ -104,6 +117,7 @@ export function RichProfileView({
   interaction = "idle",
   onLike,
   onPass,
+  onOpenOpener,
   safety,
   onPhotosExpired,
 }: Props) {
@@ -118,7 +132,8 @@ export function RichProfileView({
   const personality = personalityFacts(profile, optionLabel);
   const more = moreFacts(profile, optionLabel);
   const interests = interestLabels(profile);
-  const pills = summaryPills(profile, optionLabel, compatibility?.score);
+  const viewerCompatibility = mode === "owner" ? null : compatibility;
+  const pills = summaryPills(profile, optionLabel, viewerCompatibility?.score);
   const locked = busy || interaction !== "idle";
 
   const actions =
@@ -127,6 +142,10 @@ export function RichProfileView({
         <Link className="rich-profile__edit" to="/profile/edit">
           <PencilIcon className="rich-profile__icon" />
           Edit profile
+        </Link>
+        <Link className="rich-profile__edit rich-profile__edit--secondary" to="/profile/edit#photos">
+          <CameraIcon className="rich-profile__icon" />
+          Manage photos
         </Link>
       </div>
     ) : (
@@ -149,7 +168,12 @@ export function RichProfileView({
         >
           <HeartIcon className="rich-profile__icon" />
         </button>
-        <SendOpenerButton className="rich-profile__icon-button" iconClassName="rich-profile__icon" />
+        <SendOpenerButton
+          className="rich-profile__icon-button"
+          iconClassName="rich-profile__icon"
+          disabled={busy || !openerSendAllowed(profile.opener_state)}
+          onClick={onOpenOpener}
+        />
       </div>
     );
 
@@ -170,6 +194,11 @@ export function RichProfileView({
             <h1 className="rich-profile__name">
               {name}
               {profile.age ? <span className="rich-profile__age">, {profile.age}</span> : null}
+              {profile.verified ? (
+                <span className="rich-profile__name-verified" title={VERIFIED_CONTACT_LABEL} aria-hidden="true">
+                  <ShieldCheckIcon />
+                </span>
+              ) : null}
             </h1>
             {location ? (
               <p className="rich-profile__location">
@@ -180,19 +209,27 @@ export function RichProfileView({
             {pills.length > 0 ? (
               <div className="rich-profile__pills">
                 {pills.map((pill, index) => (
-                  <span className={index === 0 && compatibility ? "rich-profile__pill rich-profile__pill--score" : "rich-profile__pill"} key={pill}>
+                  <span className={index === 0 && viewerCompatibility ? "rich-profile__pill rich-profile__pill--score" : "rich-profile__pill"} key={pill}>
                     {pill}
                   </span>
                 ))}
               </div>
             ) : null}
-            {profile.bio ? <p className="rich-profile__lede">{profile.bio}</p> : null}
+            {profile.bio ? (
+              <section className="rich-profile__about-me" aria-labelledby="rich-about-me">
+                <h2 className="rich-profile__section-title" id="rich-about-me">
+                  About me
+                </h2>
+                <p className="rich-profile__lede">{profile.bio}</p>
+              </section>
+            ) : null}
             {actions}
           </header>
         </div>
 
         <aside className="rich-profile__rail">
-          {compatibility ? <CompatibilityCard compatibility={compatibility} /> : null}
+          {mode === "owner" ? <OwnerCompatibilityNote /> : null}
+          {viewerCompatibility ? <CompatibilityCard compatibility={viewerCompatibility} /> : null}
           <FactGrid facts={about} title={`About ${name.split(" ")[0] ?? name}`} />
           <FactGrid facts={work} title="Work & education" />
           {profile.prompts.length > 0 ? (
@@ -216,7 +253,7 @@ export function RichProfileView({
       <div className="rich-profile__story">
         {lifestyle.length > 0 ? (
           <section className="rich-profile__section">
-            <h2 className="rich-profile__section-title">My lifestyle</h2>
+            <h2 className="rich-profile__section-title">Lifestyle</h2>
             <ul className="rich-profile__lifestyle">
               {lifestyle.map((fact) => (
                 <li key={fact.key}>
@@ -251,7 +288,7 @@ export function RichProfileView({
 
         {interests.length > 0 ? (
           <section className="rich-profile__section">
-            <h2 className="rich-profile__section-title">Interests</h2>
+            <h2 className="rich-profile__section-title">Passions</h2>
             <div className="rich-profile__pills rich-profile__pills--interests">
               {interests.map((label) => (
                 <span className="rich-profile__pill rich-profile__pill--interest" key={label}>
@@ -262,6 +299,13 @@ export function RichProfileView({
           </section>
         ) : null}
 
+        {profile.languages_spoken.length > 0 ? (
+          <section className="rich-profile__section">
+            <h2 className="rich-profile__section-title">Languages</h2>
+            <p className="rich-profile__copy">{formatLanguages(profile.languages_spoken)}</p>
+          </section>
+        ) : null}
+
         <FactGrid facts={personality} title="How I connect" />
         <FactGrid facts={more} title="A little more about me" />
       </div>
@@ -269,7 +313,7 @@ export function RichProfileView({
   );
 }
 
-export function RichProfileSkeleton() {
+export function RichProfileSkeleton({ owner = false }: { owner?: boolean }) {
   return (
     <div className="rich-profile rich-profile--loading" aria-busy="true" aria-label="Loading profile">
       <div className="rich-profile__top">
@@ -282,7 +326,7 @@ export function RichProfileSkeleton() {
           <div className="rich-skeleton-line rich-skeleton-line--wide" />
         </div>
         <aside className="rich-profile__rail">
-          <div className="rich-compat rich-compat--skeleton" />
+          {owner ? null : <div className="rich-compat rich-compat--skeleton" />}
           <div className="rich-skeleton-line" />
           <div className="rich-skeleton-line" />
         </aside>

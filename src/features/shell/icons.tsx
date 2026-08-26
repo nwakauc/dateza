@@ -70,6 +70,15 @@ export function UserIcon({ className }: IconProps) {
   );
 }
 
+export function EyeIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.4 12s3.4-6.2 9.6-6.2S21.6 12 21.6 12s-3.4 6.2-9.6 6.2S2.4 12 2.4 12z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+  );
+}
+
 /** Confirmed contact indicator; never implies RealMe identity verification. */
 export function ShieldCheckIcon({ className }: IconProps) {
   return (
@@ -103,6 +112,14 @@ export function GearIcon({ className }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
       <path d="M12 3.5v2.2M12 18.3v2.2M4.9 6.4l1.6 1.6M17.5 16l1.6 1.6M3.5 12h2.2M18.3 12h2.2M4.9 17.6l1.6-1.6M17.5 8l1.6-1.6" />
+    </svg>
+  );
+}
+
+export function ChevronLeftIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 5l-7 7 7 7" />
     </svg>
   );
 }
@@ -144,9 +161,7 @@ export function InfoIcon({ className }: IconProps) {
   );
 }
 
-/** Paper plane — "Send opener" affordance. Currently always disabled: the
- * real backend has no endpoint to message a member before a mutual match
- * (see SendOpenerButton.tsx). */
+/** Paper plane — send an opener. */
 export function PaperPlaneIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

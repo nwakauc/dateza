@@ -1,36 +1,171 @@
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   getOwnerPrompts,
   getProfileConfiguration,
+  getProfilePreferences,
   replaceOwnerPrompts,
   replaceProfileOptions,
   updateCurrentProfile,
+  updateProfilePreferences,
 } from "../../lib/api/profile.ts";
-import type { ConfiguredField, ProfileConfiguration } from "../../lib/api/profileTypes.ts";
-import type { PromptAnswer } from "../../lib/api/findTypes.ts";
+import { listOwnerPhotos } from "../../lib/api/photos.ts";
+import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
+import type {
+  ConfiguredField,
+  ConfiguredOptionGroup,
+  OwnerProfile,
+  ProfileConfiguration,
+  ProfilePreferences,
+} from "../../lib/api/profileTypes.ts";
+import { BROAD_PREFERENCE_DEFAULTS, countryChoices, genderChoices, lifestyleChoices, optionGroupChoices } from "../onboarding/presentation.ts";
+import { BirthdateField } from "../onboarding/BirthdateField.tsx";
 import { MultiChoiceField, SingleChoiceField } from "../onboarding/ChoiceFields.tsx";
-import { OptionsForm } from "../onboarding/OptionsForm.tsx";
-import { lifestyleChoices } from "../onboarding/presentation.ts";
+import {
+  interestedChipSelected,
+  interestedInDisplayOptions,
+  interestedInGenderCodes,
+  toggleInterestedIn,
+} from "../onboarding/interestedIn.ts";
+import { canInteract } from "../session/verificationState.ts";
+import { ChevronLeftIcon, ChevronRightIcon, ShieldCheckIcon } from "../shell/icons.tsx";
+import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { useVerificationGate } from "../verification/useVerificationGate.ts";
+import { Modal } from "../verification/Modal.tsx";
+import { VerificationFlow } from "../verification/VerificationFlow.tsx";
+import { ProfileManageNav } from "./ProfileManageNav.tsx";
+import { datezaRichness } from "./richProfileGaps.ts";
 import { PromptEditor } from "./PromptEditor.tsx";
+import { promptDraftsFromAnswers, type PromptDraft } from "./promptDrafts.ts";
+import { CharCount, PrivacyNote, SelectField } from "./edit/FieldControls.tsx";
+import { DatingLocationSearch } from "./edit/DatingLocationSearch.tsx";
+import { EditPhotosSection } from "./edit/EditPhotosSection.tsx";
+import { EditPreviewCard } from "./edit/EditPreviewCard.tsx";
+import { InterestsPicker } from "./edit/InterestsPicker.tsx";
+import { LanguagesEditor } from "./edit/LanguagesEditor.tsx";
+import { OptionSelects } from "./edit/OptionSelects.tsx";
+import { ProfileStrengthCard } from "./edit/ProfileStrengthCard.tsx";
+import {
+  DATING_OPTION_KEYS,
+  EDIT_SECTIONS,
+  EDUCATION_OPTION_KEYS,
+  INTENT_OPTION_KEYS,
+  LIFESTYLE_OPTION_KEYS,
+  OPTION_KEYS_TO_OMIT,
+  PERSONALITY_OPTION_KEYS,
+  type EditSectionId,
+  sectionIdFromHash,
+} from "./edit/sections.ts";
 
-const SECTION_GROUPS: Record<string, string[]> = {
-  intent: ["relationship_intent", "marriage_intent"],
-  family: ["has_children", "wants_children"],
-  faith: ["religion", "religion_importance"],
-  lifestyle: ["diet", "pets", "travel", "travel_frequency", "sleep_schedule"],
-  personality: ["social_style", "communication_style", "planning_style", "meeting_pace"],
-  interests: ["interests"],
-  education: ["education", "education_level"],
+const NAME_MAX = 60;
+const BIO_MAX = 600;
+const LOOKING_MAX = 400;
+
+type Draft = {
+  displayName: string;
+  bio: string;
+  lookingFor: string;
+  jobTitle: string;
+  occupation: string;
+  companyName: string;
+  school: string;
+  city: string;
+  countryCode: string;
+  height: string;
+  smoking: string;
+  drinking: string;
+  fitness: string;
+  gender: string;
+  birthdate: string;
+  languages: string[];
+  interestedIn: string[];
+  selections: Record<string, string[]>;
+  prompts: PromptDraft[];
 };
 
-const OPTION_KEYS_TO_OMIT = new Set(["languages", "languages_spoken"]);
+function seedDraft(profile: OwnerProfile, preferences: ProfilePreferences | null, prompts: PromptDraft[]): Draft {
+  return {
+    displayName: profile.display_name ?? "",
+    bio: profile.bio ?? "",
+    lookingFor: profile.looking_for_text ?? "",
+    jobTitle: profile.job_title ?? "",
+    occupation: profile.occupation ?? "",
+    companyName: profile.company_name ?? "",
+    school: profile.school_or_institution ?? "",
+    city: profile.city ?? "",
+    countryCode: profile.country_code ?? "",
+    height: profile.height_cm != null ? String(profile.height_cm) : "",
+    smoking: profile.smoking ?? "",
+    drinking: profile.drinking ?? "",
+    fitness: profile.fitness ?? "",
+    gender: profile.gender ?? "",
+    birthdate: profile.birthdate ?? "",
+    languages: profile.languages_spoken,
+    interestedIn: preferences?.interested_in ?? [],
+    selections: { ...profile.options },
+    prompts,
+  };
+}
+
+function serializeDraft(draft: Draft): string {
+  return JSON.stringify(draft);
+}
+
+function parsedHeight(height: string): number | null | undefined {
+  const trimmed = height.trim();
+  if (!trimmed) return null;
+  const value = Number.parseInt(trimmed, 10);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function optionPayload(current: Record<string, string[]>): Record<string, string[]> {
+  const selectionsToSend: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(current)) {
+    if (!OPTION_KEYS_TO_OMIT.has(key)) selectionsToSend[key] = value;
+  }
+  return selectionsToSend;
+}
+
+function groupsNamed(groups: ConfiguredOptionGroup[], keys: readonly string[]) {
+  const set = new Set(keys);
+  return groups.filter((group) => set.has(group.key));
+}
+
+function ownerFromDraft(base: OwnerProfile, draft: Draft): OwnerProfile {
+  return {
+    ...base,
+    display_name: draft.displayName,
+    bio: draft.bio,
+    looking_for_text: draft.lookingFor,
+    job_title: draft.jobTitle,
+    occupation: draft.occupation,
+    company_name: draft.companyName,
+    school_or_institution: draft.school,
+    city: draft.city,
+    country_code: draft.countryCode,
+    height_cm: parsedHeight(draft.height) ?? null,
+    smoking: draft.smoking || null,
+    drinking: draft.drinking || null,
+    fitness: draft.fitness || null,
+    gender: draft.gender || null,
+    birthdate: draft.birthdate || null,
+    languages_spoken: draft.languages,
+    options: draft.selections,
+    prompts: draft.prompts.map((item, position) => ({
+      key: item.key,
+      prompt: item.key,
+      answer: item.answer,
+      position,
+    })),
+  };
+}
 
 export default function EditProfilePage() {
   const account = useOwnAccount();
   const navigate = useNavigate();
   const location = useLocation();
+  const { verification, pendingReason, openPrompt, dismiss } = useVerificationGate();
   const nameId = useId();
   const bioId = useId();
   const lookingId = useId();
@@ -41,479 +176,622 @@ export default function EditProfilePage() {
   const cityId = useId();
   const heightId = useId();
 
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [lookingFor, setLookingFor] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [occupation, setOccupation] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [school, setSchool] = useState("");
-  const [city, setCity] = useState("");
-  const [height, setHeight] = useState("");
-  const [smoking, setSmoking] = useState("");
-  const [drinking, setDrinking] = useState("");
-  const [fitness, setFitness] = useState("");
-  const [languages, setLanguages] = useState<string[]>([]);
-  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [draft, setDraft] = useState<Draft | undefined>();
+  const [baseline, setBaseline] = useState<string>("");
+  const [preferences, setPreferences] = useState<ProfilePreferences | null>(null);
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
-  const [promptAnswers, setPromptAnswers] = useState<PromptAnswer[] | undefined>();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [promptError, setPromptError] = useState<string | undefined>();
-  const [seededFrom, setSeededFrom] = useState<string | null>(null);
-
-  if (account.profile && account.profile.id !== seededFrom) {
-    setSeededFrom(account.profile.id);
-    setDisplayName(account.profile.display_name ?? "");
-    setBio(account.profile.bio ?? "");
-    setLookingFor(account.profile.looking_for_text ?? "");
-    setJobTitle(account.profile.job_title ?? "");
-    setOccupation(account.profile.occupation ?? "");
-    setCompanyName(account.profile.company_name ?? "");
-    setSchool(account.profile.school_or_institution ?? "");
-    setCity(account.profile.city ?? "");
-    setHeight(account.profile.height_cm != null ? String(account.profile.height_cm) : "");
-    setSmoking(account.profile.smoking ?? "");
-    setDrinking(account.profile.drinking ?? "");
-    setFitness(account.profile.fitness ?? "");
-    setLanguages(account.profile.languages_spoken);
-    setSelections(account.profile.options);
-  }
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
+  const hashSection = sectionIdFromHash(location.hash);
+  const [spy, setSpy] = useState<{ hash: string; id: EditSectionId } | null>(null);
+  const active = spy && spy.hash === location.hash ? spy.id : hashSection;
+  const [previewPhotos, setPreviewPhotos] = useState<OwnerPhoto[]>([]);
+  const seededFrom = useRef<string | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "Edit profile — DateZA";
     let cancelled = false;
-    getProfileConfiguration()
-      .then((result) => {
-        if (!cancelled) setConfiguration(result.configuration);
-      })
-      .catch(() => undefined);
-    getOwnerPrompts()
-      .then((answers) => {
-        if (!cancelled) setPromptAnswers(answers);
-      })
-      .catch(() => {
-        if (!cancelled) setPromptAnswers(account.profile?.prompts ?? []);
-      });
+    void Promise.allSettled([getProfileConfiguration(), getOwnerPrompts(), getProfilePreferences()]).then(
+      ([configResult, promptResult, prefsResult]) => {
+        if (cancelled) return;
+        const config = configResult.status === "fulfilled" ? configResult.value.configuration : undefined;
+        if (config) setConfiguration(config);
+        const prompts =
+          promptResult.status === "fulfilled"
+            ? promptDraftsFromAnswers(promptResult.value)
+            : promptDraftsFromAnswers(account.profile?.prompts ?? []);
+        const prefs = prefsResult.status === "fulfilled" ? prefsResult.value : null;
+        setPreferences(prefs);
+        const owner = account.profile;
+        if (owner && seededFrom.current !== owner.id) {
+          const next = seedDraft(owner, prefs, prompts);
+          seededFrom.current = owner.id;
+          setDraft(next);
+          setBaseline(serializeDraft(next));
+        }
+      },
+    );
     return () => {
       cancelled = true;
       document.title = "DateZA — Meet someone who chooses you.";
     };
-  }, [account.profile?.prompts]);
+  }, [account.profile]);
 
   useEffect(() => {
-    const hash = location.hash.replace("#", "");
-    if (!hash) return;
-    document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [location.hash, configuration, promptAnswers]);
+    const section = sectionIdFromHash(location.hash);
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.hash]);
 
-  function toggle(groupKey: string, code: string, cardinality: "single" | "multiple") {
-    setSelections((current) => {
-      const existing = current[groupKey] ?? [];
-      if (cardinality === "single") return { ...current, [groupKey]: [code] };
-      const next = existing.includes(code) ? existing.filter((item) => item !== code) : [...existing, code];
-      return { ...current, [groupKey]: next };
+  useEffect(() => {
+    let cancelled = false;
+    listOwnerPhotos()
+      .then((photos) => {
+        if (!cancelled) setPreviewPhotos(photos);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [account.photoCount]);
+
+  useEffect(() => {
+    const root = workspaceRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1099px)").matches) return;
+    const nodes = [...root.querySelectorAll<HTMLElement>("[data-edit-section]")];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const id = visible?.target.id;
+        if (id && EDIT_SECTIONS.some((section) => section.id === id)) {
+          setSpy({ hash: location.hash, id: id as EditSectionId });
+        }
+      },
+      { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.4] },
+    );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [draft, configuration, location.hash]);
+
+  const dirty = draft != null && serializeDraft(draft) !== baseline;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const onLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onLeave);
+    return () => window.removeEventListener("beforeunload", onLeave);
+  }, [dirty]);
+
+  function patch(partial: Partial<Draft>) {
+    setDraft((current) => (current ? { ...current, ...partial } : current));
+    setSavedFlash(false);
+  }
+
+  function toggleSelection(groupKey: string, code: string, cardinality: "single" | "multiple") {
+    setDraft((current) => {
+      if (!current) return current;
+      const existing = current.selections[groupKey] ?? [];
+      const next =
+        cardinality === "single"
+          ? code
+            ? [code]
+            : []
+          : existing.includes(code)
+            ? existing.filter((item) => item !== code)
+            : [...existing, code];
+      return { ...current, selections: { ...current.selections, [groupKey]: next } };
     });
+    setSavedFlash(false);
   }
 
-  function optionPayload(current: Record<string, string[]>) {
-    const selectionsToSend: Record<string, string[]> = {};
-    for (const [key, value] of Object.entries(current)) {
-      if (!OPTION_KEYS_TO_OMIT.has(key)) selectionsToSend[key] = value;
-    }
-    return selectionsToSend;
+  function goSection(id: EditSectionId) {
+    setSpy({ hash: `#${id}`, id });
+    navigate({ pathname: "/profile/edit", hash: id }, { replace: true });
   }
 
-  function parsedHeight(): number | null | undefined {
-    const trimmed = height.trim();
-    if (!trimmed) return null;
-    const value = Number.parseInt(trimmed, 10);
-    return Number.isFinite(value) ? value : undefined;
-  }
-
-  async function saveProfileScalars() {
-    const heightCm = parsedHeight();
-    await updateCurrentProfile({
-      display_name: displayName,
-      bio,
-      city,
-      looking_for_text: lookingFor,
-      job_title: jobTitle,
-      occupation,
-      company_name: companyName,
-      school_or_institution: school,
-      smoking: smoking || undefined,
-      drinking: drinking || undefined,
-      fitness: fitness || undefined,
-      languages,
-      ...(heightCm === undefined ? {} : { height_cm: heightCm }),
-    });
-  }
-
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function save() {
+    if (!draft || saving) return;
     setSaving(true);
-    setError(undefined);
+    setSectionErrors({});
+    const errors: Record<string, string> = {};
     try {
-      await saveProfileScalars();
-      await replaceProfileOptions(optionPayload(selections));
+      const heightCm = parsedHeight(draft.height);
+      try {
+        await updateCurrentProfile({
+          display_name: draft.displayName,
+          bio: draft.bio,
+          city: draft.city,
+          country_code: draft.countryCode || undefined,
+          looking_for_text: draft.lookingFor,
+          job_title: draft.jobTitle,
+          occupation: draft.occupation,
+          company_name: draft.companyName,
+          school_or_institution: draft.school,
+          smoking: draft.smoking || undefined,
+          drinking: draft.drinking || undefined,
+          fitness: draft.fitness || undefined,
+          languages: draft.languages,
+          gender: draft.gender || undefined,
+          birthdate: /^\d{4}-\d{2}-\d{2}$/.test(draft.birthdate) ? draft.birthdate : undefined,
+          ...(heightCm === undefined ? {} : { height_cm: heightCm }),
+        });
+      } catch {
+        errors.about = "We couldn't save your profile details. Try again.";
+      }
+      if (draft.interestedIn.length > 0) {
+        try {
+          await updateProfilePreferences({
+            min_age: preferences?.min_age ?? BROAD_PREFERENCE_DEFAULTS.min_age,
+            max_age: preferences?.max_age ?? BROAD_PREFERENCE_DEFAULTS.max_age,
+            max_distance_km: preferences?.max_distance_km ?? BROAD_PREFERENCE_DEFAULTS.max_distance_km,
+            interested_in: draft.interestedIn,
+          });
+        } catch {
+          errors.about = errors.about ?? "We couldn't save who you're interested in. Try again.";
+        }
+      }
+      try {
+        await replaceProfileOptions(optionPayload(draft.selections));
+      } catch {
+        errors.options = "We couldn't save some of your answers. Try again.";
+      }
+      let nextPrompts = draft.prompts;
+      if (draft.prompts.every((item) => item.answer.trim()) || draft.prompts.length === 0) {
+        try {
+          const saved = await replaceOwnerPrompts(draft.prompts.map((item) => ({ key: item.key, answer: item.answer.trim() })));
+          nextPrompts = promptDraftsFromAnswers(saved);
+        } catch {
+          errors.prompts = "We couldn't save your prompts. Try again.";
+        }
+      } else {
+        errors.prompts = "Finish each prompt before saving, or remove the empty one.";
+      }
       account.refresh();
-      navigate("/profile");
-    } catch {
-      setError("We could not save your changes. Try again.");
+      if (Object.keys(errors).length === 0) {
+        const savedDraft = { ...draft, prompts: nextPrompts };
+        setDraft(savedDraft);
+        setBaseline(serializeDraft(savedDraft));
+        setSavedFlash(true);
+      } else {
+        setSectionErrors(errors);
+      }
     } finally {
       setSaving(false);
     }
   }
 
-  async function saveOptionsOnly() {
-    setSaving(true);
-    setError(undefined);
-    try {
-      await replaceProfileOptions(optionPayload(selections));
-      account.refresh();
-      navigate("/profile");
-    } catch {
-      setError("We could not save your changes. Try again.");
-    } finally {
-      setSaving(false);
-    }
+  function cancel() {
+    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    navigate("/profile");
   }
 
-  async function saveLifestyle() {
-    setSaving(true);
-    setError(undefined);
-    try {
-      await saveProfileScalars();
-      await replaceProfileOptions(optionPayload(selections));
-      account.refresh();
-      navigate("/profile");
-    } catch {
-      setError("We could not save your changes. Try again.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveLanguages() {
-    setSaving(true);
-    setError(undefined);
-    try {
-      await updateCurrentProfile({ languages });
-      account.refresh();
-      navigate("/profile");
-    } catch {
-      setError("We could not save your changes. Try again.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (account.loading) {
+  if (account.loading || !draft) {
     return (
-      <div className="shell-page shell-page--narrow">
-        <p className="shell-page__subtitle">Loading your profile…</p>
+      <div className="edit-profile">
+        <div className="edit-profile__skeleton" aria-busy="true">
+          <div className="edit-skeleton edit-skeleton--nav" />
+          <div className="edit-skeleton edit-skeleton--form" />
+          <div className="edit-skeleton edit-skeleton--preview" />
+        </div>
       </div>
     );
   }
 
   const groups = configuration?.option_groups ?? [];
-  function groupsFor(section: keyof typeof SECTION_GROUPS) {
-    const keys = new Set(SECTION_GROUPS[section]);
-    return groups.filter((group) => keys.has(group.key));
-  }
-
-  const profileFields = configuration?.profile_fields ?? [];
-  const allFields = [...(configuration?.identity_fields ?? []), ...profileFields];
+  const allFields = [...(configuration?.identity_fields ?? []), ...(configuration?.profile_fields ?? [])];
   function field(key: string): ConfiguredField | undefined {
     return allFields.find((item) => item.key === key);
   }
-  const languageField = allFields.find(
-    (item) => item.key === "languages" || item.input_type === "language_list",
-  );
-  const smokingField = field("smoking");
-  const drinkingField = field("drinking");
-  const fitnessField = field("fitness");
+  const languageField = allFields.find((item) => item.key === "languages" || item.input_type === "language_list");
+  const photoCollection = configuration?.collections.find((item) => item.key === "photos");
+  const interestGroup = groups.find((group) => group.key === "interests");
+  const intentGroup = groupsNamed(groups, INTENT_OPTION_KEYS)[0];
+  const interestedField = configuration?.preference_fields.find((item) => item.key === "interested_in");
+  const genderCodes = interestedInGenderCodes(interestedField?.options ?? []);
+  const verified = canInteract(verification) || account.profile?.contact_verified === true;
+  const richness = datezaRichness(account.profile, account.photoCount);
+  const previewOwner = account.profile ? ownerFromDraft(account.profile, draft) : undefined;
+
+  const lifestyleGroups = groupsNamed(groups, LIFESTYLE_OPTION_KEYS);
+  const datingGroups = groupsNamed(groups, [...DATING_OPTION_KEYS, ...PERSONALITY_OPTION_KEYS]);
+  const educationGroups = groupsNamed(groups, EDUCATION_OPTION_KEYS);
+
+  const otherSections = EDIT_SECTIONS.filter((section) => section.id !== active && section.id !== "preview");
 
   return (
-    <div className="shell-page shell-page--narrow">
-      <Link className="onboard-back-top" to="/profile">
-        ← Back to profile
-      </Link>
-      <div className="shell-page__header">
-        <p className="shell-page__eyebrow">Your profile</p>
-        <h1 className="shell-page__title">Edit profile</h1>
-        <p className="shell-page__subtitle">Update the details people see — no need to repeat onboarding.</p>
-      </div>
+    <div className="edit-profile">
+      <header className="edit-profile__header">
+        <Link className="edit-profile__back" to="/profile">
+          <ChevronLeftIcon />
+          <span className="onboard-sr-only">Back</span>
+        </Link>
+        <div>
+          <h1>Edit profile</h1>
+          <p>Make your profile feel like you.</p>
+        </div>
+      </header>
 
-      <p className="profile-edit-jump">
-        <Link to="/profile/photos">Photos</Link>
-        <a href="#about">About</a>
-        <a href="#looking-for">Looking for</a>
-        <a href="#work">Work</a>
-        <a href="#lifestyle">Lifestyle</a>
-        <a href="#interests">Interests</a>
-        <a href="#languages">Languages</a>
-        <a href="#prompts">Prompts</a>
-      </p>
-
-      <form className="auth-form" onSubmit={(event) => void onSubmit(event)}>
-        {error ? (
-          <p className="auth-form__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-
-        <section className="profile-edit-section" id="about">
-          <h2>About you</h2>
-          <div className="auth-field">
-            <label htmlFor={nameId}>Display name</label>
-            <input id={nameId} type="text" value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={60} />
+      <div className="edit-profile__layout">
+        <aside className="edit-profile__nav" aria-label="Profile sections">
+          <ProfileManageNav current={active} />
+          <div className="edit-profile__nav-strength">
+            <ProfileStrengthCard profileCompletion={account.profile?.profile_completion ?? null} richness={richness} />
           </div>
-          <div className="auth-field">
-            <label htmlFor={cityId}>City</label>
-            <input id={cityId} type="text" value={city} onChange={(event) => setCity(event.target.value)} maxLength={80} />
+        </aside>
+
+        <div className="edit-profile__workspace" ref={workspaceRef}>
+          <nav className="edit-profile__tabs" aria-label="Jump to section">
+            {EDIT_SECTIONS.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className={active === section.id ? "is-active" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  goSection(section.id);
+                }}
+              >
+                {section.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className={active === "about" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="about">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>About you</h2>
+                <p>Let’s help others get to know the real you.</p>
+              </header>
+              {sectionErrors.about ? (
+                <p className="auth-form__error" role="alert">
+                  {sectionErrors.about}
+                </p>
+              ) : null}
+              <div className="auth-field">
+                <label htmlFor={nameId}>Display name</label>
+                <input
+                  id={nameId}
+                  type="text"
+                  value={draft.displayName}
+                  maxLength={NAME_MAX}
+                  onChange={(event) => patch({ displayName: event.target.value })}
+                />
+                <CharCount value={draft.displayName} max={NAME_MAX} />
+              </div>
+              <BirthdateField
+                id="edit-birthdate"
+                label={field("birthdate")?.label ?? "Date of birth"}
+                value={draft.birthdate}
+                onChange={(iso) => patch({ birthdate: iso })}
+                disabled={saving}
+                required={false}
+              />
+              <div className="edit-profile__grid">
+                <SelectField
+                  id="edit-gender"
+                  label={field("gender")?.label ?? "Gender"}
+                  value={draft.gender}
+                  onChange={(value) => patch({ gender: value })}
+                  options={genderChoices(field("gender")?.options ?? [])}
+                  allowEmpty={false}
+                  placeholder="Select"
+                />
+                {interestedField ? (
+                  <div>
+                    <MultiChoiceField
+                      legend="Interested in"
+                      name="interested_in"
+                      options={interestedInDisplayOptions(interestedField.options)}
+                      values={draft.interestedIn}
+                      onChange={(codes) => patch({ interestedIn: codes })}
+                      onToggle={(code) => patch({ interestedIn: toggleInterestedIn(draft.interestedIn, code, genderCodes) })}
+                      isSelected={(code) => interestedChipSelected(draft.interestedIn, code, genderCodes)}
+                      disabled={saving}
+                      compact
+                    />
+                    <PrivacyNote>This stays private. It only shapes who DateZA shows you.</PrivacyNote>
+                  </div>
+                ) : null}
+              </div>
+              <div className="edit-profile__grid">
+                <SelectField
+                  id="edit-country"
+                  label="Country"
+                  value={draft.countryCode}
+                  onChange={(value) => patch({ countryCode: value })}
+                  options={countryChoices()}
+                  allowEmpty={false}
+                />
+                <div className="auth-field">
+                  <label htmlFor={cityId}>City</label>
+                  <input id={cityId} type="text" value={draft.city} maxLength={80} onChange={(event) => patch({ city: event.target.value })} />
+                </div>
+              </div>
+              <p className="edit-profile__kicker">Where are you dating from?</p>
+              {account.profile ? <DatingLocationSearch profileId={account.profile.id} onSaved={() => account.refresh()} /> : null}
+              <div className="auth-field">
+                <label htmlFor={bioId}>About me</label>
+                <p className="auth-form__hint">Tell people a little about who you are.</p>
+                <textarea id={bioId} value={draft.bio} rows={7} maxLength={BIO_MAX} onChange={(event) => patch({ bio: event.target.value })} />
+                <CharCount value={draft.bio} max={BIO_MAX} />
+              </div>
+              {intentGroup ? (
+                <SingleChoiceField
+                  legend="Relationship intent"
+                  name="relationship_intent"
+                  options={optionGroupChoices(intentGroup.key, intentGroup.options)}
+                  value={draft.selections.relationship_intent?.[0] ?? ""}
+                  onChange={(code) => toggleSelection("relationship_intent", code, "single")}
+                  disabled={saving}
+                  layout="segmented"
+                />
+              ) : null}
+              <div className="auth-field">
+                <label htmlFor={lookingId}>I&apos;m looking for</label>
+                <textarea
+                  id={lookingId}
+                  value={draft.lookingFor}
+                  rows={4}
+                  maxLength={LOOKING_MAX}
+                  onChange={(event) => patch({ lookingFor: event.target.value })}
+                />
+                <CharCount value={draft.lookingFor} max={LOOKING_MAX} />
+              </div>
+            </section>
           </div>
-          <div className="auth-field">
-            <label htmlFor={heightId}>Height (cm)</label>
-            <input
-              id={heightId}
-              type="number"
-              inputMode="numeric"
-              min={100}
-              max={250}
-              value={height}
-              onChange={(event) => setHeight(event.target.value)}
+
+          <div className={active === "photos" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="photos">
+            <EditPhotosSection
+              collection={photoCollection}
+              onChanged={(photos) => {
+                setPreviewPhotos(photos);
+                account.refresh();
+              }}
             />
           </div>
-          <div className="auth-field">
-            <label htmlFor={bioId}>About me</label>
-            <textarea id={bioId} value={bio} onChange={(event) => setBio(event.target.value)} rows={5} maxLength={600} />
-          </div>
-        </section>
 
-        <section className="profile-edit-section" id="looking-for">
-          <h2>What I&apos;m looking for</h2>
-          <div className="auth-field">
-            <label htmlFor={lookingId}>In your words</label>
-            <textarea id={lookingId} value={lookingFor} onChange={(event) => setLookingFor(event.target.value)} rows={4} maxLength={400} />
+          <div className={active === "work" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="work">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Work &amp; education</h2>
+                <p>What you do, in a sentence people can picture.</p>
+              </header>
+              <div className="edit-profile__grid">
+                <div className="auth-field">
+                  <label htmlFor={jobId}>Job title</label>
+                  <input id={jobId} type="text" value={draft.jobTitle} maxLength={80} onChange={(event) => patch({ jobTitle: event.target.value })} />
+                </div>
+                <div className="auth-field">
+                  <label htmlFor={companyId}>Company</label>
+                  <input id={companyId} type="text" value={draft.companyName} maxLength={80} onChange={(event) => patch({ companyName: event.target.value })} />
+                  <PrivacyNote>Only you can see this.</PrivacyNote>
+                </div>
+                <div className="auth-field">
+                  <label htmlFor={occupationId}>What you do</label>
+                  <input
+                    id={occupationId}
+                    type="text"
+                    value={draft.occupation}
+                    maxLength={80}
+                    onChange={(event) => patch({ occupation: event.target.value })}
+                  />
+                </div>
+                <div className="auth-field">
+                  <label htmlFor={schoolId}>School / institution</label>
+                  <input id={schoolId} type="text" value={draft.school} maxLength={80} onChange={(event) => patch({ school: event.target.value })} />
+                </div>
+              </div>
+              <OptionSelects
+                groups={educationGroups}
+                selections={draft.selections}
+                onSelect={(key, code) => toggleSelection(key, code, "single")}
+                disabled={saving}
+              />
+              {sectionErrors.options ? (
+                <p className="auth-form__error" role="alert">
+                  {sectionErrors.options}
+                </p>
+              ) : null}
+            </section>
           </div>
-        </section>
 
-        <section className="profile-edit-section" id="work">
-          <h2>Work &amp; education</h2>
-          <div className="auth-field">
-            <label htmlFor={jobId}>Job title</label>
-            <input id={jobId} type="text" value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} maxLength={80} />
+          <div className={active === "lifestyle" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="lifestyle">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Lifestyle</h2>
+                <p>Small details that help the right person recognise you.</p>
+              </header>
+              <SingleChoiceField
+                legend={field("smoking")?.label ?? "Smoking"}
+                name="smoking"
+                options={lifestyleChoices("smoking", field("smoking")?.options ?? [])}
+                value={draft.smoking}
+                onChange={(code) => patch({ smoking: code })}
+                disabled={saving}
+                layout="segmented"
+              />
+              <SingleChoiceField
+                legend={field("drinking")?.label ?? "Drinking"}
+                name="drinking"
+                options={lifestyleChoices("drinking", field("drinking")?.options ?? [])}
+                value={draft.drinking}
+                onChange={(code) => patch({ drinking: code })}
+                disabled={saving}
+                layout="segmented"
+              />
+              {field("fitness") ? (
+                <SelectField
+                  id="edit-fitness"
+                  label={field("fitness")!.label}
+                  value={draft.fitness}
+                  onChange={(value) => patch({ fitness: value })}
+                  options={field("fitness")!.options}
+                />
+              ) : null}
+              <div className="auth-field">
+                <label htmlFor={heightId}>Height (cm)</label>
+                <input
+                  id={heightId}
+                  type="number"
+                  inputMode="numeric"
+                  min={100}
+                  max={250}
+                  value={draft.height}
+                  onChange={(event) => patch({ height: event.target.value })}
+                />
+              </div>
+              <OptionSelects
+                groups={lifestyleGroups}
+                selections={draft.selections}
+                onSelect={(key, code) => toggleSelection(key, code, "single")}
+                disabled={saving}
+              />
+            </section>
           </div>
-          <div className="auth-field">
-            <label htmlFor={occupationId}>What you do</label>
-            <input id={occupationId} type="text" value={occupation} onChange={(event) => setOccupation(event.target.value)} maxLength={80} />
-          </div>
-          <div className="auth-field">
-            <label htmlFor={companyId}>Company</label>
-            <input id={companyId} type="text" value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={80} />
-            <p className="auth-form__hint">Only you can see this.</p>
-          </div>
-          <div className="auth-field">
-            <label htmlFor={schoolId}>School or university</label>
-            <input id={schoolId} type="text" value={school} onChange={(event) => setSchool(event.target.value)} maxLength={80} />
-          </div>
-        </section>
 
-        <button className="auth-form__submit" type="submit" disabled={saving}>
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-      </form>
+          <div className={active === "dating" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="dating">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Dating</h2>
+                <p>How you like to date — some of this stays private.</p>
+              </header>
+              <OptionSelects
+                groups={datingGroups}
+                selections={draft.selections}
+                onSelect={(key, code) => toggleSelection(key, code, "single")}
+                disabled={saving}
+              />
+            </section>
+          </div>
 
-      {groupsFor("education").length > 0 ? (
-        <section className="profile-edit-section">
-          <OptionsForm
-            groups={groupsFor("education")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save education"
-          />
-        </section>
+          <div className={active === "interests" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="interests">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Interests</h2>
+                <p>Give people something easy to open with.</p>
+              </header>
+              {interestGroup ? (
+                <InterestsPicker
+                  group={interestGroup}
+                  selected={draft.selections.interests ?? []}
+                  onChange={(codes) =>
+                    setDraft((current) =>
+                      current ? { ...current, selections: { ...current.selections, interests: codes } } : current,
+                    )
+                  }
+                  disabled={saving}
+                />
+              ) : (
+                <p className="auth-form__hint">Interests aren’t available on your profile yet.</p>
+              )}
+            </section>
+          </div>
+
+          <div className={active === "languages" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="languages">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Languages</h2>
+                <p>The languages you’re happy to date in.</p>
+              </header>
+              {languageField ? (
+                <LanguagesEditor
+                  options={languageField.options}
+                  values={draft.languages}
+                  onChange={(codes) => patch({ languages: codes })}
+                  disabled={saving}
+                />
+              ) : (
+                <p className="auth-form__hint">Language options aren’t available yet.</p>
+              )}
+            </section>
+          </div>
+
+          <div className={active === "prompts" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="prompts">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Prompts</h2>
+                <p>Personality, not a questionnaire.</p>
+              </header>
+              {sectionErrors.prompts ? (
+                <p className="auth-form__error" role="alert">
+                  {sectionErrors.prompts}
+                </p>
+              ) : null}
+              <PromptEditor
+                definitions={configuration?.prompts ?? []}
+                drafts={draft.prompts}
+                onChange={(prompts) => patch({ prompts })}
+                pending={saving}
+              />
+            </section>
+          </div>
+
+          <div className={active === "verification" ? undefined : "edit-profile__mobile-hide"} data-edit-section id="verification">
+            <section className="edit-profile__block">
+              <header className="edit-profile__block-head">
+                <h2>Verification</h2>
+                <p>Trust signals that DateZA actually supports today.</p>
+              </header>
+              {verified ? (
+                <p className="edit-profile__verified-row">
+                  <ShieldCheckIcon /> {VERIFIED_CONTACT_LABEL} ✓
+                </p>
+              ) : (
+                <button type="button" className="edit-strength__cta" onClick={() => openPrompt("profile")}>
+                  Verify your contact details
+                </button>
+              )}
+              <p className="edit-profile__coming">RealMe — Coming soon</p>
+            </section>
+          </div>
+
+          <div className="edit-profile__mobile-only" data-edit-section id="preview">
+            {previewOwner ? (
+              <EditPreviewCard owner={previewOwner} photos={previewPhotos} configuration={configuration} />
+            ) : null}
+            <div className="edit-profile__nav-strength">
+              <ProfileStrengthCard profileCompletion={account.profile?.profile_completion ?? null} richness={richness} />
+            </div>
+          </div>
+
+          <ul className="edit-profile__jump-list">
+            {otherSections.map((section) => (
+              <li key={section.id}>
+                <button type="button" onClick={() => goSection(section.id)}>
+                  {section.label}
+                  <ChevronRightIcon />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <aside className="edit-profile__rail">
+          {previewOwner ? <EditPreviewCard owner={previewOwner} photos={previewPhotos} configuration={configuration} /> : null}
+        </aside>
+      </div>
+
+      {dirty || saving || savedFlash ? (
+        <div className={`edit-profile__save${dirty ? " is-dirty" : ""}`}>
+          <button type="button" className="edit-profile__cancel" onClick={cancel} disabled={saving}>
+            Cancel
+          </button>
+          <button type="button" className="edit-profile__submit" onClick={() => void save()} disabled={saving || !dirty}>
+            {saving ? "Saving…" : savedFlash ? "Saved" : "Save changes"}
+          </button>
+        </div>
       ) : null}
 
-      {groupsFor("intent").length > 0 ? (
-        <section className="profile-edit-section" id="intent">
-          <h2>Relationship intent</h2>
-          <OptionsForm
-            groups={groupsFor("intent")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save intent"
-          />
-        </section>
+      {pendingReason ? (
+        <Modal ariaLabel="Verify your account" onClose={dismiss}>
+          <VerificationFlow onDone={dismiss} />
+        </Modal>
       ) : null}
-
-      {groupsFor("family").length > 0 ? (
-        <section className="profile-edit-section" id="family">
-          <h2>Family plans</h2>
-          <p className="profile-section__text">These answers stay private. They help DateZA understand what you&apos;re looking for.</p>
-          <OptionsForm
-            groups={groupsFor("family")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save family plans"
-          />
-        </section>
-      ) : null}
-
-      {groupsFor("faith").length > 0 ? (
-        <section className="profile-edit-section" id="faith">
-          <h2>Faith</h2>
-          <p className="profile-section__text">Only you can see these answers on DateZA.</p>
-          <OptionsForm
-            groups={groupsFor("faith")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save"
-          />
-        </section>
-      ) : null}
-
-      <section className="profile-edit-section" id="lifestyle">
-        <h2>Lifestyle</h2>
-          <SingleChoiceField
-            legend={smokingField?.label ?? "Smoking"}
-            name="smoking"
-            options={lifestyleChoices("smoking", smokingField?.options ?? [])}
-            value={smoking}
-            onChange={setSmoking}
-            disabled={saving}
-            layout="segmented"
-          />
-          <SingleChoiceField
-            legend={drinkingField?.label ?? "Drinking"}
-            name="drinking"
-            options={lifestyleChoices("drinking", drinkingField?.options ?? [])}
-            value={drinking}
-            onChange={setDrinking}
-            disabled={saving}
-            layout="segmented"
-          />
-        {fitnessField ? (
-          <SingleChoiceField
-            legend={fitnessField.label}
-            name="fitness"
-            options={fitnessField.options}
-            value={fitness}
-            onChange={setFitness}
-            disabled={saving}
-            compact
-          />
-        ) : null}
-        {groupsFor("lifestyle").length > 0 ? (
-          <OptionsForm
-            groups={groupsFor("lifestyle")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveLifestyle}
-            pending={saving}
-            error={error}
-            submitLabel="Save lifestyle"
-          />
-        ) : (
-          <div className="onboard-actions">
-            <button className="auth-form__submit" type="button" disabled={saving} onClick={() => void saveLifestyle()}>
-              {saving ? "Saving…" : "Save lifestyle"}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {groupsFor("personality").length > 0 ? (
-        <section className="profile-edit-section" id="personality">
-          <h2>How you connect</h2>
-          <OptionsForm
-            groups={groupsFor("personality")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save"
-          />
-        </section>
-      ) : null}
-
-      {groupsFor("interests").length > 0 ? (
-        <section className="profile-edit-section" id="interests">
-          <h2>Interests</h2>
-          <OptionsForm
-            groups={groupsFor("interests")}
-            selections={selections}
-            onToggle={toggle}
-            onSubmit={saveOptionsOnly}
-            pending={saving}
-            error={error}
-            submitLabel="Save interests"
-          />
-        </section>
-      ) : null}
-
-      {languageField ? (
-        <section className="profile-edit-section" id="languages">
-          <h2>Languages</h2>
-          <MultiChoiceField
-            legend={languageField.label}
-            name="languages"
-            options={languageField.options}
-            values={languages}
-            onChange={setLanguages}
-            disabled={saving}
-            compact
-          />
-          <div className="onboard-actions">
-            <button className="auth-form__submit" type="button" disabled={saving} onClick={() => void saveLanguages()}>
-              {saving ? "Saving…" : "Save languages"}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="profile-edit-section" id="prompts">
-        <h2>Profile prompts</h2>
-        {promptAnswers ? (
-          <PromptEditor
-            definitions={configuration?.prompts ?? []}
-            answers={promptAnswers}
-            pending={saving}
-            error={promptError}
-            onSave={async (answers) => {
-              setSaving(true);
-              setPromptError(undefined);
-              try {
-                const saved = await replaceOwnerPrompts(answers);
-                setPromptAnswers(saved);
-                account.refresh();
-                navigate("/profile");
-              } catch {
-                setPromptError("We could not save your prompts. Try again.");
-              } finally {
-                setSaving(false);
-              }
-            }}
-          />
-        ) : (
-          <p className="profile-section__text">Loading your prompts…</p>
-        )}
-      </section>
     </div>
   );
 }

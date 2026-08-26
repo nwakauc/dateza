@@ -16,9 +16,13 @@
  * must never be wired to `/api/v1/find` or vice versa.
  */
 
+import type { OpenerState } from "./openerTypes.ts";
+
 export type PublicProfilePhoto = {
   id: string;
   position: number;
+  /** First deliverable photo in backend display order. Do not recompute. */
+  primary: boolean;
   url: string;
   url_expires_in: number;
 };
@@ -94,6 +98,11 @@ export type DatezaCompatibility = {
 export type FindProfile = PublicProfile &
   FindProfileStatus & {
     compatibility: DatezaCompatibility;
+    /**
+     * Viewer-relative D8N Opener state. Undefined until the payload is parsed;
+     * never treat missing as `available`.
+     */
+    opener_state?: OpenerState;
   };
 
 export type FindAllowance = {
@@ -131,6 +140,7 @@ export type ProfileInterest = {
 
 export type ProfileDetail = PublicProfile &
   ProfileStatus & {
+    opener_state?: OpenerState;
     prompts: PromptAnswer[];
     interests: ProfileInterest[];
     /**

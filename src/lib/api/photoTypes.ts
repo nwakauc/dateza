@@ -23,6 +23,8 @@ export type OwnerPhoto = {
   id: number;
   profile_id: string;
   position: number;
+  /** First kept owner photo in position/id order; derived by D8N. */
+  primary: boolean;
   status: PhotoStatus;
   visibility: PhotoVisibility;
   processing_state: PhotoProcessingState;

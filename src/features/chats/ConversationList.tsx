@@ -1,0 +1,127 @@
+import { Link } from "react-router-dom";
+import type { ReceivedOpener } from "../../lib/api/openerTypes.ts";
+import type { Conversation } from "../../lib/api/socialTypes.ts";
+import { IncomingOpener } from "../opener/IncomingOpener.tsx";
+import { ChatIcon } from "../shell/icons.tsx";
+import { conversationTime } from "./chatDisplay.ts";
+
+type Props = {
+  conversations: Conversation[];
+  openers: ReceivedOpener[];
+  selectedId: string | null;
+  loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  onSelect: (id: string) => void;
+  onLoadMore: () => void;
+  onOpenersChanged: () => void;
+};
+
+function ConversationAvatar({ conversation, name }: { conversation: Conversation; name: string }) {
+  const photo = conversation.profile.photos[0];
+  return photo ? (
+    <img src={photo.url} width="56" height="56" alt="" />
+  ) : (
+    <span className="conversation-row__initial" aria-hidden="true">
+      {name[0]?.toUpperCase()}
+    </span>
+  );
+}
+
+export function ConversationList({
+  conversations,
+  openers,
+  selectedId,
+  loading,
+  loadingMore,
+  hasMore,
+  onSelect,
+  onLoadMore,
+  onOpenersChanged,
+}: Props) {
+  const empty = !loading && conversations.length === 0 && openers.length === 0;
+
+  return (
+    <aside className="chats-list" aria-label="Conversations">
+      <header className="chats-list__header">
+        <div>
+          <p>Relationships</p>
+          <h1>Chats</h1>
+        </div>
+        <span>{conversations.length > 0 ? `${conversations.length} loaded` : "Your connections"}</span>
+      </header>
+
+      {loading ? <ConversationListSkeleton /> : null}
+
+      {empty ? (
+        <div className="chats-list__empty">
+          <span className="chats-list__empty-icon"><ChatIcon /></span>
+          <h2>No conversations yet</h2>
+          <p>When a match becomes a conversation, it will be waiting here.</p>
+          <div>
+            <Link to="/discover">Discover people</Link>
+            <Link to="/likes">Go to Likes</Link>
+          </div>
+        </div>
+      ) : null}
+
+      {!loading && openers.length > 0 ? (
+        <section className="chats-openers" aria-labelledby="incoming-openers-title">
+          <div className="chats-openers__heading">
+            <h2 id="incoming-openers-title">Waiting for you</h2>
+            <span>{openers.length}</span>
+          </div>
+          {openers.map((opener) => (
+            <IncomingOpener key={opener.id} opener={opener} onResolved={onOpenersChanged} />
+          ))}
+        </section>
+      ) : null}
+
+      {!loading && conversations.length > 0 ? (
+        <div className="conversation-list">
+          {conversations.map((conversation) => {
+            const name = conversation.profile.display_name || "DateZA member";
+            const preview = conversation.last_message;
+            return (
+              <button
+                type="button"
+                key={conversation.id}
+                className={`conversation-row${selectedId === conversation.id ? " conversation-row--active" : ""}`}
+                aria-current={selectedId === conversation.id ? "true" : undefined}
+                onClick={() => onSelect(conversation.id)}
+              >
+                <ConversationAvatar conversation={conversation} name={name} />
+                <span className="conversation-row__copy">
+                  <strong>{name}</strong>
+                  <span>{preview?.body || "Start the conversation"}</span>
+                </span>
+                <span className="conversation-row__meta">
+                  {preview ? <time dateTime={preview.created_at}>{conversationTime(preview.created_at)}</time> : null}
+                  {conversation.status === "closed" ? <em>Closed</em> : null}
+                </span>
+              </button>
+            );
+          })}
+          {hasMore ? (
+            <button className="chats-list__more" type="button" onClick={onLoadMore} disabled={loadingMore}>
+              {loadingMore ? "Loading…" : "Load more conversations"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
+export function ConversationListSkeleton() {
+  return (
+    <div className="conversation-list conversation-list--loading" aria-label="Loading chats" aria-busy="true">
+      {[0, 1, 2, 3, 4].map((item) => (
+        <div className="conversation-row conversation-row--skeleton" key={item}>
+          <span />
+          <span><i /><i /></span>
+        </div>
+      ))}
+    </div>
+  );
+}

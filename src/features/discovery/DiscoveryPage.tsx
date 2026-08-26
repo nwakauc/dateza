@@ -313,6 +313,7 @@ export default function DiscoveryPage() {
         <MatchModal
           name={activeMatch.profile.display_name ?? "them"}
           photoUrl={activeMatch.profile.photos[0]?.url}
+          selfPhotoUrl={selfPhotoUrl}
           matchId={activeMatch.matchId}
           continueLabel="Keep discovering"
           onContinue={() => setActiveMatch(undefined)}

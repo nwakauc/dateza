@@ -1,5 +1,6 @@
-import { ApiError } from "./errors.ts";
+import { parseOpenerState } from "./openerTypes.ts";
 import { apiRequest } from "./client.ts";
+import { ApiError } from "./errors.ts";
 import type {
   DatezaCompatibility,
   DatezaCompatibilityReason,
@@ -63,7 +64,7 @@ function parsePhoto(value: unknown): PublicProfilePhoto | undefined {
   ) {
     return undefined;
   }
-  return { id: value.id, position: value.position, url: value.url, url_expires_in: value.url_expires_in };
+  return { id: value.id, position: value.position, primary: asBoolean(value.primary, value.position === 0), url: value.url, url_expires_in: value.url_expires_in };
 }
 
 function parseOptions(value: unknown): Record<string, string[]> {
@@ -175,6 +176,7 @@ function parseFindProfile(value: unknown): FindProfile {
     last_active_at: asStringOrNull(record.last_active_at),
     distance_km: asNumberOrNull(record.distance_km),
     compatibility: parseCompatibility(record.compatibility),
+    opener_state: parseOpenerState(record.opener_state),
   };
 }
 
@@ -262,6 +264,7 @@ function parseProfileDetail(value: unknown): ProfileDetail {
       record.hook_state === "unavailable"
         ? record.hook_state
         : "unavailable",
+    opener_state: parseOpenerState(record.opener_state),
     prompts: Array.isArray(record.prompts) ? record.prompts.map(parsePromptAnswer).filter((p) => p !== undefined) : [],
     interests: Array.isArray(record.interests)
       ? record.interests.map(parseInterest).filter((i) => i !== undefined)

@@ -14,7 +14,6 @@ import MemberHomePage from "../features/member/MemberHomePage.tsx";
 import OnboardingPage from "../features/onboarding/OnboardingPage.tsx";
 import NotificationsPage from "../features/notifications/NotificationsPage.tsx";
 import EditProfilePage from "../features/profile/EditProfilePage.tsx";
-import PhotosPage from "../features/profile/PhotosPage.tsx";
 import ProfilePage from "../features/profile/ProfilePage.tsx";
 import SafetyPage from "../features/profile/SafetyPage.tsx";
 import SettingsPage from "../features/profile/SettingsPage.tsx";
@@ -111,7 +110,7 @@ export default function AppRoutes() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<EditProfilePage />} />
-        <Route path="/profile/photos" element={<PhotosPage />} />
+        <Route path="/profile/photos" element={<Navigate to="/profile/edit#photos" replace />} />
         <Route path="/profile/:id" element={<ProfileDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/safety" element={<SafetyPage />} />

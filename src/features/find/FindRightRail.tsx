@@ -1,35 +1,43 @@
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
+import type { ConfiguredOpener, OpenerState } from "../../lib/api/openerTypes.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
+import { OpenerSurface } from "../opener/OpenerSurface.tsx";
 import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
-import { FindConversationPreview } from "./FindConversationPreview.tsx";
 import { FindMatchPanel } from "./FindMatchPanel.tsx";
-import { FindOpenerPanel, type OpenerView } from "./FindOpenerPanel.tsx";
 import { FindRecentActivity } from "./FindRecentActivity.tsx";
 
 type Props = {
   name: string;
   profileId: string;
   matched: boolean;
+  matchId: string | null;
   photoUrl?: string;
   selfPhotoUrl?: string;
-  openerView: OpenerView;
+  openerState: OpenerState | undefined;
+  catalogue: ConfiguredOpener[];
+  catalogueLoading?: boolean;
+  sentText?: string;
   conversation?: Conversation;
   online?: boolean;
   notifications: ProductNotification[];
   activityLoading: boolean;
   activityUnavailable: boolean;
   onKeepFinding: () => void;
-  onOpenerSent: () => void;
-  onSendOpener: () => void;
+  onOpenerSent: (text: string, expiresAt: string) => void;
+  onRetryCatalogue?: () => void;
 };
 
 export function FindRightRail({
   name,
   profileId,
   matched,
+  matchId,
   photoUrl,
   selfPhotoUrl,
-  openerView,
+  openerState,
+  catalogue,
+  catalogueLoading,
+  sentText,
   conversation,
   online,
   notifications,
@@ -37,26 +45,30 @@ export function FindRightRail({
   activityUnavailable,
   onKeepFinding,
   onOpenerSent,
-  onSendOpener,
+  onRetryCatalogue,
 }: Props) {
-  let primary = (
-    <FindOpenerPanel profileId={profileId} name={name} view={openerView} onSent={onOpenerSent} />
+  const primary = matched ? (
+    <FindMatchPanel
+      name={name}
+      photoUrl={photoUrl}
+      selfPhotoUrl={selfPhotoUrl}
+      matchId={matchId}
+      onKeepFinding={onKeepFinding}
+    />
+  ) : (
+    <OpenerSurface
+      profileId={profileId}
+      name={name}
+      online={online}
+      catalogue={catalogue}
+      catalogueLoading={catalogueLoading}
+      openerState={openerState}
+      sentText={sentText}
+      conversation={conversation}
+      onSent={onOpenerSent}
+      onRetryCatalogue={onRetryCatalogue}
+    />
   );
-  if (matched) {
-    primary = (
-      <FindMatchPanel
-        name={name}
-        photoUrl={photoUrl}
-        selfPhotoUrl={selfPhotoUrl}
-        onKeepFinding={onKeepFinding}
-        onSendOpener={onSendOpener}
-      />
-    );
-  } else if (conversation) {
-    primary = <FindConversationPreview conversation={conversation} online={online} />;
-  } else if (openerView === "waiting") {
-    primary = <FindOpenerPanel profileId={profileId} name={name} view="waiting" onSent={onOpenerSent} />;
-  }
 
   return (
     <aside className="find-rail" aria-label="Find updates">

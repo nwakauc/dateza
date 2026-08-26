@@ -7,19 +7,18 @@ import { HeartIcon } from "./icons.tsx";
 type Props = {
   name: string;
   photoUrl?: string;
+  selfPhotoUrl?: string;
   matchId: string | null;
   continueLabel: string;
   onContinue: () => void;
 };
 
 /**
- * The real backend has no "opener" concept (see handoff): conversations only
- * exist once a mutual match already does, via `POST /matches/{id}/conversation`
- * (the same call LikesPage's "Message" button already uses). So the
- * celebratory match moment's one real, working action is opening that
- * conversation — not a fabricated opener/waiting state.
+ * Mutual-like celebration. Conversation exists after a match via
+ * `POST /matches/{id}/conversation`. Opener is a separate pre-chat contract
+ * and is not a substitute for this match chat action.
  */
-export function MatchModal({ name, photoUrl, matchId, continueLabel, onContinue }: Props) {
+export function MatchModal({ name, photoUrl, selfPhotoUrl, matchId, continueLabel, onContinue }: Props) {
   const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
   const [messageError, setMessageError] = useState(false);
@@ -40,14 +39,21 @@ export function MatchModal({ name, photoUrl, matchId, continueLabel, onContinue 
   return (
     <Modal ariaLabel="It's a match!" onClose={onContinue}>
       <div className="match-modal">
-        {photoUrl ? (
-          <img className="match-modal__photo" src={photoUrl} alt="" />
-        ) : (
-          <span className="match-modal__photo match-modal__photo--placeholder" aria-hidden="true" />
-        )}
-        <HeartIcon className="match-modal__heart" />
-        <h2 className="match-modal__title">It's a match!</h2>
-        <p className="match-modal__body">You matched with {name}!</p>
+        <div className="match-modal__faces" aria-hidden="true">
+          {selfPhotoUrl ? (
+            <img className="match-modal__photo" src={selfPhotoUrl} alt="" />
+          ) : (
+            <span className="match-modal__photo match-modal__photo--placeholder" />
+          )}
+          <HeartIcon className="match-modal__heart" />
+          {photoUrl ? (
+            <img className="match-modal__photo" src={photoUrl} alt="" />
+          ) : (
+            <span className="match-modal__photo match-modal__photo--placeholder" />
+          )}
+        </div>
+        <h2 className="match-modal__title">It's a match! 🎉</h2>
+        <p className="match-modal__body">You and {name} like each other.</p>
         {messageError ? (
           <p className="match-modal__error" role="alert">
             That chat couldn't open. Try again.
@@ -61,7 +67,7 @@ export function MatchModal({ name, photoUrl, matchId, continueLabel, onContinue 
             disabled={!matchId || starting}
             data-autofocus
           >
-            {starting ? "Opening…" : `Message ${name}`}
+            {starting ? "Opening…" : "Send a message"}
           </button>
           <button type="button" className="shell-text-action" onClick={onContinue}>
             {continueLabel}

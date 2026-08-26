@@ -46,6 +46,7 @@ function configuration(): ProfileConfiguration {
     preference_fields: [],
     collections: [],
     prompts: [],
+    openers: [],
     option_groups: [
       {
         key: "relationship_intent",
@@ -163,8 +164,8 @@ describe("FindSwipeCard", () => {
       <FindSwipeCard
         profile={profile({
           photos: [
-            { id: "ph1", position: 0, url: "https://example.test/1.jpg", url_expires_in: 3600 },
-            { id: "ph2", position: 1, url: "https://example.test/2.jpg", url_expires_in: 3600 },
+            { id: "ph1", position: 0, primary: true, url: "https://example.test/1.jpg", url_expires_in: 3600 },
+            { id: "ph2", position: 1, primary: false, url: "https://example.test/2.jpg", url_expires_in: 3600 },
           ],
         })}
         interaction="idle"
@@ -175,10 +176,12 @@ describe("FindSwipeCard", () => {
 
     expect(screen.getByText("Photo 1 of 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /previous photo/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /next photo/i })).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: /next photo/i }));
     expect(screen.getByText("Photo 2 of 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next photo/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /previous photo/i })).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: /previous photo/i }));
     expect(screen.getByText("Photo 1 of 2")).toBeInTheDocument();
@@ -193,7 +196,7 @@ describe("FindSwipeCard", () => {
   it("does not render photo navigation for a single photo", () => {
     render(
       <FindSwipeCard
-        profile={profile({ photos: [{ id: "ph1", position: 0, url: "https://example.test/1.jpg", url_expires_in: 3600 }] })}
+        profile={profile({ photos: [{ id: "ph1", position: 0, primary: true, url: "https://example.test/1.jpg", url_expires_in: 3600 }] })}
         interaction="idle"
         optionLabel={lookup}
         onOpenDetail={noop}
@@ -217,7 +220,7 @@ describe("FindSwipeCard", () => {
       <FindSwipeCard
         profile={profile({
           display_name: "Maya",
-          photos: [{ id: "ph1", position: 0, url: "https://example.test/1.jpg", url_expires_in: 3600 }],
+          photos: [{ id: "ph1", position: 0, primary: true, url: "https://example.test/1.jpg", url_expires_in: 3600 }],
         })}
         interaction="idle"
         optionLabel={lookup}

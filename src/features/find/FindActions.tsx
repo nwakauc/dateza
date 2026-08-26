@@ -6,6 +6,7 @@ type Props = {
   likeLabel: string;
   openerLabel: string;
   openerSoon?: boolean;
+  openerDisabled?: boolean;
   onPass: () => void;
   onLike: () => void;
   onOpener: () => void;
@@ -16,7 +17,8 @@ export function FindActions({
   passLabel,
   likeLabel,
   openerLabel,
-  openerSoon = true,
+  openerSoon = false,
+  openerDisabled = false,
   onPass,
   onLike,
   onOpener,
@@ -56,7 +58,7 @@ export function FindActions({
           type="button"
           className="find-actions__button find-actions__button--opener"
           onClick={onOpener}
-          disabled={disabled}
+          disabled={disabled || openerDisabled}
           aria-label={openerLabel}
         >
           <PaperPlaneIcon className="find-actions__icon" />

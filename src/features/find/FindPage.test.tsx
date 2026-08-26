@@ -35,7 +35,7 @@ const completeOnboarding = {
 };
 
 const emptyConfiguration = {
-  configuration: { identity_fields: [], profile_fields: [], preference_fields: [], collections: [], option_groups: [] },
+  configuration: { identity_fields: [], profile_fields: [], preference_fields: [], collections: [], option_groups: [], prompts: [], openers: [{ key: "coffee_or_tea", text: "Coffee or tea — what's your usual?" }, { key: "weekend_plans", text: "What does your perfect weekend look like?" }] },
   onboarding: completeOnboarding,
 };
 
@@ -71,7 +71,7 @@ function findProfile(overrides: Record<string, unknown> = {}) {
     smoking: null,
     drinking: null,
     fitness: null,
-    photos: [{ id: "ph1", position: 0, url: "https://example.test/maya.jpg", url_expires_in: 3600 }],
+    photos: [{ id: "ph1", position: 0, primary: true, url: "https://example.test/maya.jpg", url_expires_in: 3600 }],
     options: {},
     verified: true,
     online: false,
@@ -79,7 +79,7 @@ function findProfile(overrides: Record<string, unknown> = {}) {
     new_here: false,
     last_active_at: null,
     distance_km: 3,
-    compatibility: null,
+    opener_state: "available",
     ...overrides,
   };
 }
@@ -465,7 +465,7 @@ describe("Find (FE-05, rich swipe)", () => {
     await screen.findByText("Maya");
     await user.click(screen.getByRole("button", { name: /^like$/i }));
 
-    expect(await screen.findByText(/you matched with maya/i, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText(/you and maya like each other/i, {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.getByText("Maya")).toBeInTheDocument();
     expect(screen.queryByText("Aisha")).not.toBeInTheDocument();
 
@@ -626,7 +626,7 @@ describe("Find (FE-05, rich swipe)", () => {
     await user.click(screen.getByRole("button", { name: /^like$/i }));
 
     expect(await screen.findByRole("dialog", { name: /it's a match!/i }, { timeout: 4000 })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /message maya/i }));
+    await user.click(within(screen.getByRole("dialog", { name: /it's a match!/i })).getByRole("button", { name: /send a message/i }));
 
     expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
     expect(conversationCalls).toBe(1);
@@ -694,21 +694,51 @@ describe("Find (FE-05, rich swipe)", () => {
     expect(screen.getByRole("button", { name: /view full profile/i })).toBeInTheDocument();
   });
 
-  it("shows the opener composer and keeps the draft when the opener API is unavailable", async () => {
+  it("sends a curated opener and waits without advancing the deck", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
-    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance());
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.includes("/api/v1/profiles/p1/opener") && method === "POST") {
+        return jsonResponse(201, {
+          opener: { id: "o1", status: "pending", created_at: "2026-08-26T00:00:00Z", expires_at: "2026-08-28T00:00:00Z" },
+        });
+      }
+      return undefined;
+    });
     vi.mocked(fetch).mockImplementation(fetchImpl);
 
     renderApp();
     await screen.findByText("Maya");
-    const field = screen.getByLabelText(/opener message/i);
-    await user.type(field, "Coffee this weekend?");
-    await user.click(document.querySelector(".find-opener-form__icon-send") as HTMLButtonElement);
+    await user.click(screen.getByRole("radio", { name: /coffee or tea/i }));
+    const chooser = document.querySelector(".opener-chooser");
+    if (!chooser) throw new Error("expected opener chooser");
+    await user.click(within(chooser as HTMLElement).getByRole("button", { name: /^send opener$/i }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/aren’t on DateZA|aren't on DateZA/i);
-    expect(field).toHaveValue("Coffee this weekend?");
-    expect(screen.queryByText(/your opener was sent/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/opener sent/i)).toBeInTheDocument();
+    expect(screen.getByText("Maya")).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("does not fake a successful opener when the send fails", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya" })], allowance(), (url, method) => {
+      if (url.includes("/api/v1/profiles/p1/opener") && method === "POST") {
+        return jsonResponse(409, { error: "already_hooked" });
+      }
+      return undefined;
+    });
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+    await screen.findByText("Maya");
+    await user.click(screen.getByRole("radio", { name: /coffee or tea/i }));
+    const chooser = document.querySelector(".opener-chooser");
+    if (!chooser) throw new Error("expected opener chooser");
+    await user.click(within(chooser as HTMLElement).getByRole("button", { name: /^send opener$/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/already sent/i);
+    expect(screen.queryByText(/opener sent/i)).not.toBeInTheDocument();
   });
 
   it("renders product notices in Recent activity without inventing profile views", async () => {

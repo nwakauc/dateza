@@ -2,7 +2,7 @@ import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
 import type { ProfileDetail, ProfileInterest, PromptAnswer } from "../../lib/api/findTypes.ts";
 import type { OwnerProfile, ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 
-const HIDDEN_OWNER_OPTIONS = new Set([
+export const HIDDEN_OWNER_OPTIONS = new Set([
   "has_children",
   "wants_children",
   "children_count",
@@ -69,6 +69,7 @@ export function ownerPublicPreview(
       .map((photo) => ({
         id: String(photo.id),
         position: photo.position,
+        primary: photo.primary,
         url: photo.image!.url,
         url_expires_in: photo.image!.url_expires_in,
       }))
@@ -86,5 +87,26 @@ export function ownerPublicPreview(
     prompts: promptPreview(profile.prompts),
     interests: interestPreview(profile, configuration),
     compatibility: null,
+  };
+}
+
+/**
+ * Owner "how you appear" must use public visibility and must not show
+ * viewer-relative signals (compatibility, distance, presence).
+ */
+export function forOwnerPreview(profile: ProfileDetail): ProfileDetail {
+  const publicOptions: Record<string, string[]> = {};
+  for (const [key, codes] of Object.entries(profile.options)) {
+    if (!HIDDEN_OWNER_OPTIONS.has(key)) publicOptions[key] = codes;
+  }
+  return {
+    ...profile,
+    options: publicOptions,
+    distance_km: null,
+    compatibility: null,
+    online: false,
+    active_today: false,
+    last_active_at: null,
+    new_here: false,
   };
 }

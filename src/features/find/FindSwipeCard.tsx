@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from "react";
 import type { FindProfile } from "../../lib/api/findTypes.ts";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
-import { CheckCircleIcon, HeartIcon } from "../shell/icons.tsx";
+import { CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { cardQuote, findCardChips, locationLine } from "./findCardCopy.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
@@ -65,28 +65,27 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail,
         ) : null}
         {photos.length > 1 ? (
           <>
-            <div className="find-card__photo-indicator" aria-hidden="true">
-              {photos.map((photo, index) => (
-                <span key={photo.id} className={index === photoIndex ? "find-card__photo-segment find-card__photo-segment--active" : "find-card__photo-segment"} />
-              ))}
-            </div>
             <span className="sr-only" aria-live="polite">
               Photo {photoIndex + 1} of {photos.length}
             </span>
             <button
               type="button"
-              className="find-card__photo-nav find-card__photo-nav--prev"
+              className="find-card__photo-arrow find-card__photo-arrow--prev"
               aria-label="Previous photo"
-              onClick={() => showPhoto(photoIndex - 1)}
               disabled={photoIndex === 0}
-            />
+              onClick={() => showPhoto(photoIndex - 1)}
+            >
+              <ChevronLeftIcon className="find-card__photo-arrow-icon" />
+            </button>
             <button
               type="button"
-              className="find-card__photo-nav find-card__photo-nav--next"
+              className="find-card__photo-arrow find-card__photo-arrow--next"
               aria-label="Next photo"
-              onClick={() => showPhoto(photoIndex + 1)}
               disabled={photoIndex === photos.length - 1}
-            />
+              onClick={() => showPhoto(photoIndex + 1)}
+            >
+              <ChevronRightIcon className="find-card__photo-arrow-icon" />
+            </button>
           </>
         ) : null}
 

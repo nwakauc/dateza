@@ -1,4 +1,4 @@
-import type { FindProfile } from "../../lib/api/findTypes.ts";
+import type { FindProfile, PublicProfile } from "../../lib/api/findTypes.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
 
 const MAX_CARD_CHIPS = 3;
@@ -7,14 +7,18 @@ const BIO_EXCERPT_MAX_CHARS = 110;
 const FAMILY_OPTION_KEYS = ["family_plans", "wants_children", "children_intent"] as const;
 const FAITH_OPTION_KEYS = ["faith_importance", "religion_importance"] as const;
 
+export function placeLine(profile: PublicProfile): string | undefined {
+  return profile.city ?? profile.country_code ?? undefined;
+}
+
 export function locationLine(profile: FindProfile): string | undefined {
-  const place = profile.city ?? profile.country_code ?? undefined;
+  const place = placeLine(profile);
   const distance = profile.distance_km != null ? `${profile.distance_km} km away` : undefined;
   if (place && distance) return `${place} • ${distance}`;
   return place ?? distance;
 }
 
-function firstLabeled(profile: FindProfile, keys: readonly string[], optionLabel: OptionLabelLookup): string | undefined {
+function firstLabeled(profile: PublicProfile, keys: readonly string[], optionLabel: OptionLabelLookup): string | undefined {
   for (const key of keys) {
     const code = profile.options[key]?.[0];
     if (!code) continue;
@@ -24,7 +28,7 @@ function firstLabeled(profile: FindProfile, keys: readonly string[], optionLabel
   return undefined;
 }
 
-export function findCardChips(profile: FindProfile, optionLabel: OptionLabelLookup): string[] {
+export function findCardChips(profile: PublicProfile, optionLabel: OptionLabelLookup): string[] {
   const chips: string[] = [];
   const intentCode = profile.options.relationship_intent?.[0];
   const intent = intentCode ? optionLabel("relationship_intent", intentCode) : undefined;

@@ -1,6 +1,7 @@
 import { ApiError } from "./errors.ts";
 import { apiRequest } from "./client.ts";
 import { parseCompatibility, parsePublicProfile } from "./find.ts";
+import { parseOpenerState } from "./openerTypes.ts";
 import type { DiscoveryProfile, DiscoveryResponse, DiscoverySelection } from "./discoveryTypes.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,6 +32,7 @@ function parseDiscoveryProfile(value: unknown): DiscoveryProfile {
     last_active_at: asStringOrNull(record.last_active_at),
     distance_km: asNumberOrNull(record.distance_km),
     compatibility: parseCompatibility(record.compatibility),
+    opener_state: parseOpenerState(record.opener_state),
   };
 }
 

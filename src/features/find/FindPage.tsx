@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../../lib/api/errors.ts";
 import { getFindProfiles, getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
@@ -8,6 +8,7 @@ import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
+import { openerSendAllowed } from "../../lib/api/openerTypes.ts";
 import { listConversations } from "../../lib/api/social.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { BoltIcon, ChevronDownIcon, LightbulbIcon, SearchIcon } from "../shell/icons.tsx";
@@ -17,7 +18,6 @@ import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { FindActions } from "./FindActions.tsx";
-import { FindOpenerPanel, type OpenerView } from "./FindOpenerPanel.tsx";
 import { FindRightRail } from "./FindRightRail.tsx";
 import { FindSidePanel } from "./FindSidePanel.tsx";
 import { FindSwipeStack } from "./FindSwipeStack.tsx";
@@ -77,6 +77,7 @@ export default function FindPage() {
   const [allowance, setAllowance] = useState<FindAllowance | undefined>();
   const [detail, setDetail] = useState<ProfileDetail | undefined>();
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
+  const [configurationLoading, setConfigurationLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -89,8 +90,7 @@ export default function FindPage() {
   const [actionError, setActionError] = useState<string | undefined>();
   const [matchedProfile, setMatchedProfile] = useState<FindProfile | undefined>();
   const [matchedId, setMatchedId] = useState<string | null>(null);
-  const [openerView, setOpenerView] = useState<OpenerView>("compose");
-  const [showOpener, setShowOpener] = useState(false);
+  const [sentOpeners, setSentOpeners] = useState<Record<string, string>>({});
   const [tipOpen, setTipOpen] = useState(false);
   const [allowanceOpen, setAllowanceOpen] = useState(false);
 
@@ -116,6 +116,13 @@ export default function FindPage() {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
 
+  const loadConfiguration = useCallback(() => {
+    getProfileConfiguration()
+      .then((result) => setConfiguration(result.configuration))
+      .catch(() => setConfiguration(undefined))
+      .finally(() => setConfigurationLoading(false));
+  }, []);
+
   useEffect(() => {
     document.title = "Find — DateZA";
     let cancelled = false;
@@ -137,11 +144,7 @@ export default function FindPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    getProfileConfiguration()
-      .then((result) => {
-        if (!cancelled) setConfiguration(result.configuration);
-      })
-      .catch(() => undefined);
+    loadConfiguration();
     listNotifications()
       .then((result) => {
         if (cancelled) return;
@@ -163,7 +166,7 @@ export default function FindPage() {
       cancelled = true;
       document.title = "DateZA — Meet someone who chooses you.";
     };
-  }, [attempt]);
+  }, [attempt, loadConfiguration]);
 
   useEffect(
     () => () => {
@@ -232,8 +235,6 @@ export default function FindPage() {
     setActionError(undefined);
     setMatchedProfile(undefined);
     setMatchedId(null);
-    setOpenerView("compose");
-    setShowOpener(false);
     const next = queueRef.current[0];
     setActive(next);
     rememberFindActive(next);
@@ -459,17 +460,23 @@ export default function FindPage() {
             passLabel={interaction === "passed" ? "Passed" : "Pass"}
             likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
             openerLabel="Send opener"
+            openerSoon={false}
+            openerDisabled={!openerSendAllowed(active.opener_state)}
             onPass={() => requestAction("passed")}
             onLike={() => requestAction("liked")}
-            onOpener={() => setShowOpener(true)}
+            onOpener={() => {
+              const chooser = document.querySelector<HTMLElement>(".opener-chooser");
+              chooser?.scrollIntoView({ block: "nearest" });
+              chooser?.querySelector<HTMLButtonElement>(".opener-chooser__send")?.focus();
+            }}
           />
 
           <div className="find-tip">
             <LightbulbIcon className="find-tip__icon" />
             <div>
-              <p>Tip: Send a thoughtful opener after liking. You can send one opener and wait for a reply.</p>
+              <p>Tip: An opener is a first note — separate from a like. Choose one, send it, then wait for a reply.</p>
               {tipOpen ? (
-                <p className="find-tip__more">Openers aren’t on DateZA yet. When they are, you’ll send one note, then chat after they reply.</p>
+                <p className="find-tip__more">You can like without sending an opener, and send an opener without liking.</p>
               ) : null}
             </div>
             <button type="button" className="find-tip__learn" onClick={() => setTipOpen((open) => !open)}>
@@ -498,38 +505,35 @@ export default function FindPage() {
           name={name}
           profileId={active.id}
           matched={Boolean(matchedProfile)}
+          matchId={matchedId}
           photoUrl={active.photos[0]?.url}
           selfPhotoUrl={selfPhotoUrl}
-          openerView={openerView}
+          openerState={active.opener_state}
+          catalogue={configuration?.openers ?? []}
+          catalogueLoading={configurationLoading}
+          sentText={sentOpeners[active.id]}
           conversation={!matchedProfile && conversation?.profile.id === active.id ? conversation : undefined}
           online={active.online}
           notifications={notifications}
           activityLoading={activityLoading}
           activityUnavailable={activityUnavailable}
           onKeepFinding={continueAfterMatch}
-          onOpenerSent={() => setOpenerView("waiting")}
-          onSendOpener={() => setShowOpener(true)}
+          onRetryCatalogue={() => {
+            setConfigurationLoading(true);
+            loadConfiguration();
+          }}
+          onOpenerSent={(text) => {
+            setSentOpeners((current) => ({ ...current, [active.id]: text }));
+            setActive((current) => (current && current.id === active.id ? { ...current, opener_state: "pending" } : current));
+          }}
         />
       </div>
-
-      {showOpener ? (
-        <Modal ariaLabel={`Send ${name} an opener`} onClose={() => setShowOpener(false)}>
-          <FindOpenerPanel
-            profileId={active.id}
-            name={name}
-            view="compose"
-            onSent={() => {
-              setOpenerView("waiting");
-              setShowOpener(false);
-            }}
-          />
-        </Modal>
-      ) : null}
 
       {matchedProfile ? (
         <MatchModal
           name={matchedProfile.display_name ?? "them"}
           photoUrl={matchedProfile.photos[0]?.url}
+          selfPhotoUrl={selfPhotoUrl}
           matchId={matchedId}
           continueLabel="Keep discovering"
           onContinue={continueAfterMatch}

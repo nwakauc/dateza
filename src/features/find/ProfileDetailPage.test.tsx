@@ -40,6 +40,10 @@ const configuration = {
     preference_fields: [],
     collections: [],
     prompts: [],
+    openers: [
+      { key: "coffee_or_tea", text: "Coffee or tea — what's your usual?" },
+      { key: "weekend_plans", text: "What does your perfect weekend look like?" },
+    ],
     option_groups: [
       {
         key: "relationship_intent",
@@ -151,10 +155,15 @@ describe("rich profile detail", () => {
     markLocationConfirmed(ownerProfile.id);
   });
 
-  function mockApis(profile: Record<string, unknown> = detailProfile()) {
+  function mockApis(
+    profile: Record<string, unknown> = detailProfile(),
+    extra?: (url: string, method: string) => Response | undefined,
+  ) {
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = ((init as RequestInit | undefined)?.method ?? "GET").toUpperCase();
+      const extraResult = extra?.(url, method);
+      if (extraResult) return Promise.resolve(extraResult);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile")) {
         return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
@@ -242,7 +251,7 @@ describe("rich profile detail", () => {
     expect(await screen.findByRole("heading", { name: "Thando, 26" })).toBeInTheDocument();
     expect(screen.queryByText(/our compatibility/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/what i'm looking for/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/my lifestyle/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^lifestyle$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /^prompts$/i })).not.toBeInTheDocument();
   });
 
@@ -328,5 +337,23 @@ describe("rich profile detail", () => {
     await user.click(screen.getByRole("menuitem", { name: /^block$/i }));
     await user.click(screen.getByRole("button", { name: /block thando/i }));
     expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
+  });
+
+  it("likes someone back from a Likes-origin profile and celebrates a server match", async () => {
+    const user = userEvent.setup();
+    mockApis(detailProfile(), (url, method) => {
+      if (url.endsWith("/api/v1/conversations")) {
+        return jsonResponse(200, { conversations: [], next_cursor: null });
+      }
+      if (url.endsWith("/api/v1/profiles/p1/likes") && method === "POST") {
+        return jsonResponse(200, { liked: true, matched: true, match_id: "m1", created: true });
+      }
+      return undefined;
+    });
+    renderAt("/profile/p1", { from: "likes" });
+    expect(await screen.findByRole("link", { name: /back to likes/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^like$/i }));
+    expect(await screen.findByRole("dialog", { name: /it's a match!/i })).toBeInTheDocument();
+    expect(screen.getByText(/you and thando like each other/i)).toBeInTheDocument();
   });
 });

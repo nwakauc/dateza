@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
+import { listConversations } from "../../lib/api/social.ts";
+import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { ApiError } from "../../lib/api/errors.ts";
 import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes.ts";
@@ -9,7 +11,9 @@ import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
 import { RichProfileSkeleton, RichProfileView } from "../profile/RichProfileView.tsx";
-import { originBack, profileOriginFromState } from "../profile/profileOrigin.ts";
+import { originBack, profileOriginFromState, profileReturnTo } from "../profile/profileOrigin.ts";
+import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { OpenerSurface } from "../opener/OpenerSurface.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 
@@ -33,17 +37,25 @@ export default function ProfileDetailPage() {
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const { verified } = useVerificationGate();
+  const account = useOwnAccount();
   const origin = profileOriginFromState(routerLocation.state);
   const routedCompatibility = compatibilityFromState(routerLocation.state);
-  const back = originBack(origin);
+  const originDestination = originBack(origin);
+  const back = {
+    ...originDestination,
+    to: profileReturnTo(routerLocation.state, origin) ?? originDestination.to,
+  };
   const [profile, setProfile] = useState<ProfileDetail | undefined>();
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
+  const [configurationLoading, setConfigurationLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [interaction, setInteraction] = useState<"idle" | "liked" | "passed">("idle");
   const [busy, setBusy] = useState(false);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const [sentText, setSentText] = useState<string | undefined>();
+  const [conversation, setConversation] = useState<Conversation | undefined>();
   const photoRetryRef = useRef(false);
 
   const refreshProfile = useCallback(
@@ -67,6 +79,13 @@ export default function ProfileDetailPage() {
     [id],
   );
 
+  const loadConfiguration = useCallback(() => {
+    getProfileConfiguration()
+      .then((result) => setConfiguration(result.configuration))
+      .catch(() => setConfiguration(undefined))
+      .finally(() => setConfigurationLoading(false));
+  }, []);
+
   useEffect(() => {
     if (!verified || !id) return;
     let cancelled = false;
@@ -83,15 +102,19 @@ export default function ProfileDetailPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    getProfileConfiguration()
+    loadConfiguration();
+    listConversations()
       .then((result) => {
-        if (!cancelled) setConfiguration(result.configuration);
+        if (!cancelled) setConversation(result.conversations.find((item) => item.profile.id === id));
+        if (!cancelled && result.conversations.some((item) => item.profile.id === id)) {
+          setInteraction("liked");
+        }
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [id, verified]);
+  }, [id, verified, loadConfiguration]);
 
   useEffect(() => {
     if (!profile || profile.photos.length === 0) return;
@@ -177,6 +200,9 @@ export default function ProfileDetailPage() {
         interaction={interaction}
         onLike={like}
         onPass={pass}
+        onOpenOpener={() => {
+          document.querySelector<HTMLElement>(".opener-chooser")?.scrollIntoView({ block: "nearest" });
+        }}
         onPhotosExpired={() => {
           if (photoRetryRef.current) return;
           photoRetryRef.current = true;
@@ -190,12 +216,33 @@ export default function ProfileDetailPage() {
           />
         }
       />
+      <div className="rich-profile-opener">
+        <OpenerSurface
+          profileId={profile.id}
+          name={name}
+          online={profile.online}
+          catalogue={configuration?.openers ?? []}
+          catalogueLoading={configurationLoading}
+          openerState={profile.opener_state}
+          sentText={sentText}
+          conversation={conversation?.profile.id === profile.id ? conversation : undefined}
+          onSent={(text) => {
+            setSentText(text);
+            setProfile((current) => (current ? { ...current, opener_state: "pending" } : current));
+          }}
+          onRetryCatalogue={() => {
+            setConfigurationLoading(true);
+            loadConfiguration();
+          }}
+        />
+      </div>
       {matchId ? (
         <MatchModal
           name={name}
           photoUrl={profile.photos[0]?.url}
+          selfPhotoUrl={account.avatarUrl ?? undefined}
           matchId={matchId}
-          continueLabel={back.label}
+          continueLabel="Keep discovering"
           onContinue={() => navigate(back.to)}
         />
       ) : null}

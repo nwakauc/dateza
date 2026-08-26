@@ -83,6 +83,7 @@ export function parseOwnerPhoto(value: unknown): OwnerPhoto {
     id: value.id,
     profile_id: profileId,
     position,
+    primary: typeof value.primary === "boolean" ? value.primary : position === 0,
     status: status as PhotoStatus,
     visibility: visibility as PhotoVisibility,
     processing_state: processing as PhotoProcessingState,

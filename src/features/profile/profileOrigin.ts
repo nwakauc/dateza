@@ -20,3 +20,9 @@ export function originBack(origin: ProfileOrigin): { to: string; label: string }
       return { to: "/find", label: "← Back to Find" };
   }
 }
+
+export function profileReturnTo(state: unknown, origin: ProfileOrigin): string | undefined {
+  if (origin !== "chats" || typeof state !== "object" || state === null) return undefined;
+  const value = (state as { returnTo?: unknown }).returnTo;
+  return typeof value === "string" && /^\/chats\?conversation=[^&]+$/.test(value) ? value : undefined;
+}

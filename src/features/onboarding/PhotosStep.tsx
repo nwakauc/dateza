@@ -217,7 +217,7 @@ export function PhotosStep({
   }
 
   const message = error ?? loadError;
-  const primaryId = photos[0]?.id;
+  const primaryId = photos.find((photo) => photo.primary)?.id ?? photos[0]?.id;
   const addLabel =
     collection?.minimum_count && collection.minimum_count > 1
       ? `Add photo (${photos.length} of ${collection.minimum_count})`

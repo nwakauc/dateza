@@ -1,59 +1,167 @@
-/**
- * DateZA opener boundary.
- *
- * D8N does not currently expose a DateZA opener (pre-match message) API.
- * Conversations start only after a mutual match via
- * `POST /api/v1/matches/{id}/conversation`. This module is the frontend
- * contract the Find UX calls — it must not hit HookUs Hook endpoints, must
- * not invent a successful send, and must not persist fake opener state.
- *
- * Desired (not live) contract for backend:
- * - send: POST an opener to a profile with `{ message }`
- * - read: opener status for a pair — none | sent | waiting | replied | unlocked
- * - include opener_id / conversation_id when a thread is created
- */
-export const DATEZA_OPENER_SUPPORTED = false;
+import { apiRequest } from "./client.ts";
+import { ApiError } from "./errors.ts";
+import { parsePublicProfile } from "./find.ts";
+import type { Conversation, Message } from "./socialTypes.ts";
+import { parseConversation, parseMessage } from "./social.ts";
+import type {
+  ConfiguredOpener,
+  OpenerAcknowledgement,
+  OpenerInboxResponse,
+  ReceivedOpener,
+  SendOpenerResponse,
+} from "./openerTypes.ts";
 
-export class OpenerUnavailableError extends Error {
-  readonly code = "opener_unsupported";
-
-  constructor() {
-    super("DateZA does not yet support sending an opener before a match.");
-    this.name = "OpenerUnavailableError";
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-export type OpenerStatus = "none" | "sent" | "waiting" | "replied" | "unlocked";
-
-export type OpenerSendResult = {
-  status: "sent" | "waiting" | "unlocked";
-  opener_id: string;
-  conversation_id: string | null;
-};
-
-export type OpenerThread = {
-  profile_id: string;
-  status: OpenerStatus;
-  message: string | null;
-  opener_id: string | null;
-  conversation_id: string | null;
-};
-
-/** Always rejects until D8N ships a DateZA opener capability. */
-export function sendOpener(profileId: string, message: string): Promise<OpenerSendResult> {
-  if (!profileId || !message.trim()) {
-    return Promise.reject(new OpenerUnavailableError());
+export function parseConfiguredOpeners(value: unknown): ConfiguredOpener[] {
+  if (!Array.isArray(value)) return [];
+  const openers: ConfiguredOpener[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.key !== "string" || !item.key) continue;
+    const text =
+      typeof item.text === "string" && item.text.trim()
+        ? item.text
+        : typeof item.label === "string" && item.label.trim()
+          ? item.label
+          : "";
+    if (!text) continue;
+    openers.push({ key: item.key, text });
   }
-  return Promise.reject(new OpenerUnavailableError());
+  return openers;
 }
 
-/** Always empty until D8N ships opener read state. */
-export function getOpenerThread(_profileId: string): Promise<OpenerThread> {
-  return Promise.resolve({
-    profile_id: _profileId,
-    status: "none",
-    message: null,
-    opener_id: null,
-    conversation_id: null,
+function parseAcknowledgement(value: unknown): OpenerAcknowledgement {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    value.status !== "pending" ||
+    typeof value.created_at !== "string" ||
+    typeof value.expires_at !== "string"
+  ) {
+    throw new ApiError(502, undefined, "invalid_opener_response");
+  }
+  return {
+    id: value.id,
+    status: "pending",
+    created_at: value.created_at,
+    expires_at: value.expires_at,
+  };
+}
+
+function parseReceivedOpener(value: unknown): ReceivedOpener {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.message !== "string" ||
+    typeof value.created_at !== "string" ||
+    typeof value.expires_at !== "string"
+  ) {
+    throw new ApiError(502, undefined, "invalid_opener_response");
+  }
+  return {
+    id: value.id,
+    message: value.message,
+    created_at: value.created_at,
+    expires_at: value.expires_at,
+    sender: parsePublicProfile(value.sender),
+  };
+}
+
+/** POST /api/v1/profiles/{profile_id}/opener — `{ opener_key }` only. */
+export function sendOpener(profileId: string, openerKey: string): Promise<SendOpenerResponse> {
+  return apiRequest(`/api/v1/profiles/${encodeURIComponent(profileId)}/opener`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ opener_key: openerKey }),
+  }).then((data) => {
+    if (!isRecord(data)) throw new ApiError(502, undefined, "invalid_opener_response");
+    return { opener: parseAcknowledgement(data.opener) };
   });
+}
+
+/** GET /api/v1/openers — recipient inbox of live pending openers. */
+export function listReceivedOpeners(cursor?: string): Promise<OpenerInboxResponse> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return apiRequest(`/api/v1/openers${query}`).then((data) => {
+    if (!isRecord(data) || !Array.isArray(data.openers)) {
+      throw new ApiError(502, undefined, "invalid_opener_response");
+    }
+    return {
+      openers: data.openers.map(parseReceivedOpener),
+      next_cursor: typeof data.next_cursor === "string" ? data.next_cursor : null,
+    };
+  });
+}
+
+/** POST /api/v1/openers/{opener_id}/reply — `{ message }`; unlocks conversation. */
+export function replyToOpener(openerId: string, message: string): Promise<{ conversation: Conversation; message: Message }> {
+  return apiRequest(`/api/v1/openers/${encodeURIComponent(openerId)}/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  }).then((data) => {
+    if (!isRecord(data)) throw new ApiError(502, undefined, "invalid_opener_response");
+    return {
+      conversation: parseConversation(data.conversation),
+      message: parseMessage(data.message),
+    };
+  });
+}
+
+/** POST /api/v1/openers/{opener_id}/decline — 204, nothing disclosed to sender. */
+export function declineOpener(openerId: string): Promise<void> {
+  return apiRequest(`/api/v1/openers/${encodeURIComponent(openerId)}/decline`, { method: "POST" }).then(() => undefined);
+}
+
+export function openerSendErrorCopy(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "We couldn’t send that opener. Try again.";
+  }
+  switch (error.code) {
+    case "already_hooked":
+      return "You’ve already sent this person an opener.";
+    case "incoming_hook":
+      return "They’ve already reached out. Check Chats to reply.";
+    case "already_liked":
+      return "You’ve already liked them. Openers aren’t available after a like.";
+    case "already_matched":
+      return "You’re already in a conversation with them.";
+    case "hook_rate_limited":
+      return "You’ve sent all the openers you can for now. Try again later.";
+    case "invalid_opener":
+      return "That opener isn’t available. Pick another.";
+    case "opener_not_configured":
+      return "Openers aren’t available right now.";
+    case "profile_unavailable":
+      return "This profile isn’t available.";
+    default:
+      return "We couldn’t send that opener. Try again.";
+  }
+}
+
+export function openerReplyErrorCopy(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "That reply didn’t send. Try again.";
+  }
+  switch (error.code) {
+    case "message_blank":
+      return "Write a reply before sending.";
+    case "message_too_long":
+      return "That reply is too long. Shorten it and try again.";
+    case "hook_unavailable":
+      return "This opener isn’t available anymore.";
+    case "opener_not_configured":
+      return "Openers aren’t available right now.";
+    default:
+      return "That reply didn’t send. Try again.";
+  }
+}
+
+export function openerDeclineErrorCopy(error: unknown): string {
+  if (error instanceof ApiError && error.code === "hook_unavailable") {
+    return "This opener isn’t available anymore.";
+  }
+  return "We couldn’t decline that. Try again.";
 }

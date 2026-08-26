@@ -84,6 +84,12 @@ export type ConfiguredCollection = {
   label: string;
   required: boolean;
   minimum_count: number;
+  maximum_count?: number;
+};
+
+export type ConfiguredOpener = {
+  key: string;
+  text: string;
 };
 
 export type ConfiguredPrompt = {
@@ -99,6 +105,7 @@ export type ProfileConfiguration = {
   collections: ConfiguredCollection[];
   option_groups: ConfiguredOptionGroup[];
   prompts: ConfiguredPrompt[];
+  openers: ConfiguredOpener[];
 };
 
 export type ProfileConfigurationResponse = {

@@ -1,51 +1,27 @@
 import { useState } from "react";
 import type { ConfiguredPrompt } from "../../lib/api/profileTypes.ts";
-import type { PromptAnswer } from "../../lib/api/findTypes.ts";
+import type { PromptDraft } from "./promptDrafts.ts";
 
 const MAX_PROMPTS = 5;
 const MAX_ANSWER = 300;
 
-type Draft = { key: string; answer: string };
-
 type Props = {
   definitions: ConfiguredPrompt[];
-  answers: PromptAnswer[];
-  onSave: (answers: Draft[]) => Promise<void>;
+  drafts: PromptDraft[];
+  onChange: (drafts: PromptDraft[]) => void;
   pending: boolean;
-  error?: string;
 };
 
-export function PromptEditor({ definitions, answers, onSave, pending, error }: Props) {
-  const [drafts, setDrafts] = useState<Draft[]>(() =>
-    [...answers]
-      .sort((left, right) => left.position - right.position)
-      .map((item) => ({ key: item.key, answer: item.answer })),
-  );
+export function PromptEditor({ definitions, drafts, onChange, pending }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
-
   const used = new Set(drafts.map((item) => item.key));
   const available = definitions.filter((item) => !used.has(item.key));
-  const textFor = (key: string) =>
-    definitions.find((item) => item.key === key)?.text ??
-    answers.find((item) => item.key === key)?.prompt ??
-    "Profile prompt";
+  const textFor = (key: string) => definitions.find((item) => item.key === key)?.text ?? "Profile prompt";
 
   function add(key: string) {
     if (drafts.length >= MAX_PROMPTS || used.has(key)) return;
-    setDrafts((current) => [...current, { key, answer: "" }]);
+    onChange([...drafts, { key, answer: "" }]);
     setPickerOpen(false);
-  }
-
-  function move(index: number, delta: number) {
-    const next = index + delta;
-    if (next < 0 || next >= drafts.length) return;
-    setDrafts((current) => {
-      const copy = [...current];
-      const [item] = copy.splice(index, 1);
-      if (!item) return current;
-      copy.splice(next, 0, item);
-      return copy;
-    });
   }
 
   if (definitions.length === 0 && drafts.length === 0) {
@@ -54,33 +30,18 @@ export function PromptEditor({ definitions, answers, onSave, pending, error }: P
 
   return (
     <div className="prompt-editor">
-      <p className="profile-section__text">
-        Choose up to {MAX_PROMPTS} prompts. These appear on your public profile in this order.
-      </p>
-      {drafts.map((draft, index) => (
+      <p className="edit-profile__lede">A good prompt says more than a long bio. Choose up to {MAX_PROMPTS}.</p>
+      {drafts.map((draft) => (
         <article className="prompt-editor__card" key={draft.key}>
           <header className="prompt-editor__head">
             <p className="prompt-editor__question">{textFor(draft.key)}</p>
-            <div className="prompt-editor__tools">
-              <button type="button" onClick={() => move(index, -1)} disabled={index === 0 || pending} aria-label="Move up">
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => move(index, 1)}
-                disabled={index === drafts.length - 1 || pending}
-                aria-label="Move down"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}
-                disabled={pending}
-              >
-                Remove
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => onChange(drafts.filter((item) => item.key !== draft.key))}
+              disabled={pending}
+            >
+              Remove
+            </button>
           </header>
           <textarea
             value={draft.answer}
@@ -89,7 +50,7 @@ export function PromptEditor({ definitions, answers, onSave, pending, error }: P
             disabled={pending}
             onChange={(event) => {
               const value = event.target.value.slice(0, MAX_ANSWER);
-              setDrafts((current) => current.map((item) => (item.key === draft.key ? { ...item, answer: value } : item)));
+              onChange(drafts.map((item) => (item.key === draft.key ? { ...item, answer: value } : item)));
             }}
           />
           <p className="prompt-editor__count">
@@ -117,21 +78,6 @@ export function PromptEditor({ definitions, answers, onSave, pending, error }: P
           )}
         </div>
       ) : null}
-
-      {error ? (
-        <p className="auth-form__error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <button
-        className="auth-form__submit"
-        type="button"
-        disabled={pending || drafts.some((item) => !item.answer.trim())}
-        onClick={() => void onSave(drafts.map((item) => ({ key: item.key, answer: item.answer.trim() })))}
-      >
-        {pending ? "Saving…" : "Save prompts"}
-      </button>
     </div>
   );
 }
