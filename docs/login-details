@@ -1,0 +1,5 @@
+Login
+- URL: https://dateza-staging-api.d8n.tech
+- Login endpoint: POST /api/v1/auth/password/login
+- Identifier: qa.dateza.staging@d8n.tech
+- Password: QaD8nStaging!2026

@@ -3,6 +3,7 @@ import { apiRequest } from "./client.ts";
 import { parseOnboardingStatus } from "./profile.ts";
 import type {
   IdentifierKind,
+  EmailChangeResponse,
   IdentifierVerificationResponse,
   MessageResponse,
   PasswordAuthRequest,
@@ -171,6 +172,52 @@ export function loginWithPassword(
 
 export function revokeCurrentSession(): Promise<void> {
   return apiRequest("/api/v1/auth/session", { method: "DELETE" }).then(() => undefined);
+}
+
+export function changePassword(
+  currentPassword: string,
+  password: string,
+  passwordConfirmation: string,
+): Promise<MessageResponse> {
+  return apiRequest(
+    "/api/v1/auth/password",
+    jsonInit("PATCH", {
+      current_password: currentPassword,
+      password,
+      password_confirmation: passwordConfirmation,
+    }),
+    { invalidateOnUnauthorized: false },
+  ).then(parseMessage);
+}
+
+export function requestEmailChange(email: string, currentPassword: string): Promise<MessageResponse> {
+  return apiRequest(
+    "/api/v1/auth/email/change",
+    jsonInit("POST", { email, current_password: currentPassword }),
+    { invalidateOnUnauthorized: false },
+  ).then(parseMessage);
+}
+
+export function confirmEmailChange(email: string, code: string): Promise<EmailChangeResponse> {
+  return apiRequest(
+    "/api/v1/auth/email/change",
+    jsonInit("PATCH", { email, code }),
+    { invalidateOnUnauthorized: false },
+  ).then((data) => {
+    if (
+      !isRecord(data) ||
+      !isRecord(data.identifier) ||
+      data.identifier.kind !== "email" ||
+      data.identifier.verified !== true ||
+      typeof data.revoked_session_count !== "number"
+    ) {
+      throw new ApiError(502, undefined, "invalid_email_change_response");
+    }
+    return {
+      identifier: { kind: "email", verified: true },
+      revoked_session_count: data.revoked_session_count,
+    };
+  });
 }
 
 export function requestPasswordRecovery(identifier: string): Promise<MessageResponse> {

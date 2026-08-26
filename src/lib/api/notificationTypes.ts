@@ -3,6 +3,7 @@ export type ProductNotification = {
   type: string;
   title: string;
   body: string;
+  payload: Record<string, unknown>;
   read_at: string | null;
   created_at: string;
 };

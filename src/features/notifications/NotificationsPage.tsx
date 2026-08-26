@@ -1,13 +1,60 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
-import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
-import { BellIcon } from "../shell/icons.tsx";
+import {
+  BellIcon,
+  EyeIcon,
+  GearIcon,
+  ShieldCheckIcon,
+  ShieldIcon,
+  SlidersIcon,
+  UserIcon,
+  UsersIcon,
+} from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 
-function readableDate(value: string): string {
+type NotificationGroup = {
+  label: "Today" | "Yesterday" | "Earlier";
+  items: ProductNotification[];
+};
+
+const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+function readableTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Recently" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+  if (Number.isNaN(date.getTime())) return "Recently";
+  const elapsedMinutes = Math.round((date.getTime() - Date.now()) / 60000);
+  if (Math.abs(elapsedMinutes) < 60) return relativeTime.format(elapsedMinutes, "minute");
+  const elapsedHours = Math.round(elapsedMinutes / 60);
+  if (Math.abs(elapsedHours) < 24) return relativeTime.format(elapsedHours, "hour");
+  const elapsedDays = Math.round(elapsedHours / 24);
+  if (Math.abs(elapsedDays) < 7) return relativeTime.format(elapsedDays, "day");
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+}
+
+function dayDifference(value: string): number {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 2;
+  const today = new Date();
+  const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  return Math.round((localToday - localDate) / 86400000);
+}
+
+function groupNotifications(items: ProductNotification[]): NotificationGroup[] {
+  const groups: Record<NotificationGroup["label"], ProductNotification[]> = {
+    Today: [],
+    Yesterday: [],
+    Earlier: [],
+  };
+  for (const item of items) {
+    const difference = dayDifference(item.created_at);
+    groups[difference <= 0 ? "Today" : difference === 1 ? "Yesterday" : "Earlier"].push(item);
+  }
+  return (Object.entries(groups) as [NotificationGroup["label"], ProductNotification[]][])
+    .filter(([, groupedItems]) => groupedItems.length > 0)
+    .map(([label, groupedItems]) => ({ label, items: groupedItems }));
 }
 
 export default function NotificationsPage() {
@@ -16,9 +63,16 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    void listNotifications().then((result) => setItems(result.notifications)).catch(() => setError(true)).finally(() => setLoading(false));
+    void listNotifications()
+      .then((result) => {
+        setItems(result.notifications);
+        setError(false);
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   function retry() { setError(false); setLoading(true); load(); }
@@ -30,8 +84,17 @@ export default function NotificationsPage() {
   }, [load]);
 
   async function readOne(item: ProductNotification) {
-    if (item.read_at) return;
-    try { const updated = await markNotificationRead(item.id); setItems((current) => current.map((entry) => entry.id === updated.id ? updated : entry)); account.refresh(); } catch { /* Keep it unread so the member can retry. */ }
+    if (item.read_at || markingId) return;
+    setMarkingId(item.id);
+    try {
+      const updated = await markNotificationRead(item.id);
+      setItems((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+      account.refresh();
+    } catch {
+      /* Keep it unread so the member can retry. */
+    } finally {
+      setMarkingId(null);
+    }
   }
 
   async function readAll() {
@@ -45,17 +108,96 @@ export default function NotificationsPage() {
   }
 
   const hasUnread = items.some((item) => item.read_at === null);
+  const groups = groupNotifications(items);
   return (
-    <div className="shell-page shell-page--narrow">
-      <div className="shell-page__header shell-page__header--with-action">
-        <div><p className="shell-page__eyebrow">Updates</p><h1 className="shell-page__title">Notifications</h1><p className="shell-page__subtitle">The important things happening on DateZA.</p></div>
-        {hasUnread ? <button className="shell-text-action" type="button" onClick={() => void readAll()} disabled={markingAll}>{markingAll ? "Marking read…" : "Mark all read"}</button> : null}
+    <div className="shell-page notifications-page">
+      <aside className="notifications-settings-nav" aria-label="Settings">
+        <h2>Settings</h2>
+        <Link to="/settings#account"><UserIcon /><span>Account</span></Link>
+        <Link to="/settings#privacy"><ShieldIcon /><span>Privacy & safety</span></Link>
+        <Link className="notifications-settings-nav__active" to="/notifications" aria-current="page"><BellIcon /><span>Notifications</span></Link>
+        <Link to="/settings#preferences"><SlidersIcon /><span>Preferences</span></Link>
+        <Link to="/settings#blocked"><UsersIcon /><span>Blocked users</span></Link>
+        <Link to="/settings#verification"><ShieldCheckIcon /><span>Verification</span></Link>
+        <Link to="/settings#payments"><GearIcon /><span>Payment & plans</span></Link>
+        <Link to="/settings#data"><EyeIcon /><span>Data & permissions</span></Link>
+        <Link to="/settings#help"><ShieldIcon /><span>Help & support</span></Link>
+        <Link to="/settings#about"><GearIcon /><span>About DateZA</span></Link>
+      </aside>
+      <div className="notifications-content">
+        <div className="shell-page__header shell-page__header--with-action">
+          <div><h1 className="shell-page__title">Notifications</h1><p className="shell-page__subtitle">Stay in the loop with what’s happening on DateZA.</p></div>
+          {hasUnread ? <button className="shell-text-action" type="button" onClick={() => void readAll()} disabled={markingAll}>{markingAll ? "Marking read…" : "Mark all read"}</button> : null}
+        </div>
+        <nav className="notifications-tabs" aria-label="Notification filters">
+          <span className="notifications-tabs__active" aria-current="page">All</span>
+          {["Likes", "Matches", "Messages", "Activity"].map((label) => (
+            <button key={label} type="button" disabled title={`${label} notifications are coming soon`}>
+              {label}<small>Coming soon</small>
+            </button>
+          ))}
+        </nav>
+        <div className="notifications-layout">
+        <section className="notifications-feed" aria-label="Notification activity">
+          {loading ? (
+            <div className="notification-skeletons" aria-live="polite" aria-label="Loading notifications">
+              {[0, 1, 2, 3].map((item) => <div className="notification-skeleton" key={item}><span /><div><i /><i /></div></div>)}
+            </div>
+          ) : null}
+          {error ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">We couldn’t load your notifications</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div> : null}
+          {!loading && !error && items.length === 0 ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">You’re all caught up</p><p className="shell-empty__body">New DateZA updates will appear here.</p><Link className="shell-primary-action" to="/discover">Discover people</Link></div> : null}
+          {!loading && !error && items.length > 0 ? (
+            <div className="notification-list" aria-live="polite">
+              {groups.map((group) => (
+                <section className="notification-group" key={group.label} aria-labelledby={`notification-group-${group.label.toLowerCase()}`}>
+                  <h2 id={`notification-group-${group.label.toLowerCase()}`}>{group.label}</h2>
+                  {group.items.map((item) => {
+                    const unread = item.read_at === null;
+                    const pending = markingId === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`notification-item${unread ? " notification-item--unread" : ""}`}
+                        onClick={() => void readOne(item)}
+                        disabled={!unread || pending}
+                        aria-label={`${unread ? "Unread notification: " : ""}${item.title}. ${item.body}${unread ? " Mark as read." : ""}`}
+                      >
+                        <span className="notification-item__icon" aria-hidden="true"><BellIcon /></span>
+                        <span className="notification-item__body"><strong>{item.title}</strong><span>{item.body}</span></span>
+                        <span className="notification-item__meta">
+                          <time dateTime={item.created_at}>{readableTime(item.created_at)}</time>
+                          {unread ? <span className="notification-item__mark"><span className="sr-only">Unread</span></span> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </section>
+              ))}
+              <div className="notification-list__end">
+                <span aria-hidden="true"><BellIcon /></span>
+                <div><strong>You’re up to date</strong><p>New DateZA updates will appear here.</p></div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+          <aside className="notifications-rail" aria-label="Notification information">
+          <section className="notifications-rail__card">
+            <span className="notifications-rail__icon" aria-hidden="true"><GearIcon /></span>
+            <div><h2>Notification settings</h2><p>Choose how you want to hear from DateZA.</p></div>
+            <div className="notifications-channels">
+              <div><span><BellIcon />Push notifications</span><span className="notifications-coming-soon">Coming soon</span></div>
+              <div><span><GearIcon />Email notifications</span><span className="notifications-coming-soon">Coming soon</span></div>
+              <div><span><BellIcon />In-app notifications</span><span className="notifications-switch notifications-switch--on" aria-label="In-app notifications enabled" /></div>
+            </div>
+          </section>
+          <section className="notifications-rail__card notifications-rail__card--accent">
+            <BellIcon aria-hidden="true" />
+            <div><h2>Stay connected</h2><p>Important in-app updates appear here and on your notification bell.</p></div>
+          </section>
+          </aside>
+        </div>
       </div>
-      <ProfileStandOutPrompt compact />
-      {loading ? <div className="shell-loading" aria-live="polite"><span />Loading notifications…</div> : null}
-      {error ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">Notifications didn’t load</p><p className="shell-empty__body">Check your connection, then try again.</p><button className="shell-primary-action" type="button" onClick={retry}>Try again</button></div> : null}
-      {!loading && !error && items.length === 0 ? <div className="shell-empty"><BellIcon className="shell-empty__icon" /><p className="shell-empty__title">You’re all caught up</p><p className="shell-empty__body">New DateZA updates will appear here.</p></div> : null}
-      {!loading && !error && items.length > 0 ? <div className="notification-list">{items.map((item) => <button key={item.id} type="button" className={`notification-item${item.read_at ? "" : " notification-item--unread"}`} onClick={() => void readOne(item)}><span className="notification-item__mark" /><span className="notification-item__body"><strong>{item.title}</strong><span>{item.body}</span><time dateTime={item.created_at}>{readableDate(item.created_at)}</time></span></button>)}</div> : null}
     </div>
   );
 }

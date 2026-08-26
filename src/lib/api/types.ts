@@ -106,3 +106,17 @@ export type VerificationDeliveryResponse = {
   message: string;
   resend_available_in: number;
 };
+
+export type EmailChangeResponse = {
+  identifier: {
+    kind: "email";
+    verified: true;
+  };
+  revoked_session_count: number;
+};
+
+export type CloseAccountResponse = {
+  closed: true;
+  already_closed: boolean;
+  media_purge_state: "pending" | "completed" | "failed";
+};

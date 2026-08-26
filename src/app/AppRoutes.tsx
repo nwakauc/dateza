@@ -113,7 +113,8 @@ export default function AppRoutes() {
         <Route path="/profile/photos" element={<Navigate to="/profile/edit#photos" replace />} />
         <Route path="/profile/:id" element={<ProfileDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/safety" element={<SafetyPage />} />
+        <Route path="/settings/safety" element={<SafetyPage />} />
+        <Route path="/safety" element={<Navigate to="/settings/safety" replace />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

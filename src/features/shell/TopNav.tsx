@@ -69,7 +69,7 @@ export function TopNav({ account }: Props) {
             <div className="shell-account-menu__panel">
               <Link to="/profile"><UserIcon /><span>Profile</span></Link>
               <Link to="/settings"><GearIcon /><span>Settings</span></Link>
-              <Link to="/safety"><ShieldIcon /><span>Safety &amp; support</span></Link>
+              <Link to="/settings/safety"><ShieldIcon /><span>Safety centre</span></Link>
             </div>
           </details>
         </div>

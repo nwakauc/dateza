@@ -64,7 +64,7 @@ function AccountLinks({
         </span>
         <ChevronRightIcon className="shell-row__chevron" />
       </Link>
-      <Link to="/safety" className="shell-row">
+      <Link to="/settings/safety" className="shell-row">
         <span className="shell-row__icon">
           <ShieldIcon />
         </span>

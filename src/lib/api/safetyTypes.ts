@@ -21,3 +21,11 @@ export type ReportResponse = {
   reported: true;
   created: boolean;
 };
+
+export type BlockedProfile = {
+  profile: {
+    id: string;
+    display_name: string;
+  };
+  blocked_at: string;
+};

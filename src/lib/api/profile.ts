@@ -490,6 +490,10 @@ export function publishCurrentProfile(): Promise<void> {
   return apiRequest("/api/v1/profile/publication", { method: "POST" }).then(() => undefined);
 }
 
+export function unpublishCurrentProfile(): Promise<void> {
+  return apiRequest("/api/v1/profile/publication", { method: "DELETE" }).then(() => undefined);
+}
+
 function parseLocationStatus(value: unknown): ProfileLocationStatus {
   if (!isRecord(value) || typeof value.configured !== "boolean") {
     throw new ApiError(502, undefined, "invalid_location_response");

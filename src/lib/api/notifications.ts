@@ -8,7 +8,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseNotification(value: unknown): ProductNotification {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.type !== "string" ||
-      typeof value.title !== "string" || typeof value.body !== "string" || typeof value.created_at !== "string") {
+      typeof value.title !== "string" || typeof value.body !== "string" || !isRecord(value.payload) ||
+      typeof value.created_at !== "string") {
     throw new ApiError(502, undefined, "invalid_notification_response");
   }
   return {
@@ -16,6 +17,7 @@ function parseNotification(value: unknown): ProductNotification {
     type: value.type,
     title: value.title,
     body: value.body,
+    payload: value.payload,
     read_at: typeof value.read_at === "string" ? value.read_at : null,
     created_at: value.created_at,
   };

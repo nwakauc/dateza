@@ -130,8 +130,8 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
           {reported ? (
             <div className="profile-safety-dialog">
               <p className="profile-safety-dialog__eyebrow">Report</p>
-              <h2>Thanks. We received your report.</h2>
-              <p>Our team will review this. You can also block {name} if you do not want to see them again.</p>
+              <h2>Report received</h2>
+              <p>Thanks for letting us know. We received your report and will review it. You can also block {name} if you do not want to see them again.</p>
               <div className="profile-safety-dialog__actions">
                 <button className="auth-form__submit" type="button" onClick={closeDialog}>
                   Done
@@ -142,7 +142,7 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
             <form className="profile-safety-dialog" onSubmit={(event) => void submitReport(event)}>
               <p className="profile-safety-dialog__eyebrow">Report</p>
               <h2>Why are you reporting {name}?</h2>
-              <p>This stays private. They will not be told who reported them.</p>
+              <p>Choose the reason that best describes what happened.</p>
               <fieldset className="onboard-fieldset onboard-fieldset--plain">
                 <legend className="onboard-sr-only">Reason</legend>
                 <div className="onboard-choices">
@@ -174,7 +174,7 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
-                  maxLength={500}
+                  maxLength={2000}
                 />
               </div>
               {error ? (

@@ -1,6 +1,12 @@
 import { ApiError } from "./errors.ts";
 import { apiRequest } from "./client.ts";
-import type { IdentifierKind, MeResponse, SessionIdentifierVerification, VerificationDispatchState } from "./types.ts";
+import type {
+  CloseAccountResponse,
+  IdentifierKind,
+  MeResponse,
+  SessionIdentifierVerification,
+  VerificationDispatchState,
+} from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -74,4 +80,28 @@ function parseMeResponse(data: unknown): MeResponse {
 
 export function getCurrentIdentity(): Promise<MeResponse> {
   return apiRequest("/api/v1/me").then(parseMeResponse);
+}
+
+export function closeCurrentAccount(): Promise<CloseAccountResponse> {
+  return apiRequest("/api/v1/me", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirmation: "close" }),
+  }).then((data) => {
+    if (
+      !isRecord(data) ||
+      data.closed !== true ||
+      typeof data.already_closed !== "boolean" ||
+      (data.media_purge_state !== "pending" &&
+        data.media_purge_state !== "completed" &&
+        data.media_purge_state !== "failed")
+    ) {
+      throw new ApiError(502, undefined, "invalid_account_closure_response");
+    }
+    return {
+      closed: true,
+      already_closed: data.already_closed,
+      media_purge_state: data.media_purge_state,
+    };
+  });
 }
