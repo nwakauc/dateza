@@ -70,6 +70,20 @@ function installApi() {
     if (url.endsWith("/api/v1/notifications")) {
       return Promise.resolve(jsonResponse({ notifications: [], unread_count: 0 }));
     }
+    if (url.endsWith("/api/v1/notifications/preferences") && method === "GET") {
+      return Promise.resolve(jsonResponse({
+        preferences: { product_email_enabled: true, push_enabled: true },
+      }));
+    }
+    if (url.endsWith("/api/v1/notifications/preferences") && method === "PATCH") {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { product_email_enabled?: boolean; push_enabled?: boolean };
+      return Promise.resolve(jsonResponse({
+        preferences: {
+          product_email_enabled: body.product_email_enabled ?? true,
+          push_enabled: body.push_enabled ?? true,
+        },
+      }));
+    }
     if (url.endsWith("/api/v1/blocks")) {
       return Promise.resolve(jsonResponse({
         blocks: [{
@@ -316,5 +330,24 @@ describe("SettingsPage", () => {
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([input, init]) =>
       requestUrl(input).endsWith("/api/v1/me") && requestMethod(input, init) === "DELETE")).toBe(true));
+  });
+
+  it("loads and updates DateZA email and push notification preferences", async () => {
+    const fetchMock = installApi();
+    const user = userEvent.setup();
+    renderSettings("/settings#notifications");
+
+    const email = await screen.findByRole("switch", { name: "Email notifications" });
+    expect(email).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: "Push notifications" })).toHaveAttribute("aria-checked", "true");
+    await user.click(email);
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) =>
+        requestUrl(input).endsWith("/api/v1/notifications/preferences") && requestMethod(input, init) === "PATCH");
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ product_email_enabled: false });
+    });
+    expect(screen.queryByRole("switch", { name: /whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /sms/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/these settings apply to dateza only/i)).toBeInTheDocument();
   });
 });

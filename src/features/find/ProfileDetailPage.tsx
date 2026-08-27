@@ -219,7 +219,12 @@ export default function ProfileDetailPage() {
           <ProfileSafetyActions
             profileId={profile.id}
             name={name}
+            matchId={matchId ?? (conversation?.status === "active" ? conversation.match_id : undefined)}
             onBlocked={() => navigate(back.to, { replace: true })}
+            onUnmatched={() => {
+              setMatchId(null);
+              setConversation((current) => (current ? { ...current, status: "closed" } : current));
+            }}
           />
         }
       />

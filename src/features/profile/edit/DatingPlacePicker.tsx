@@ -4,12 +4,10 @@ import { listPlaces } from "../../../lib/api/places.ts";
 import { updateProfilePlace } from "../../../lib/api/profile.ts";
 import type { Place } from "../../../lib/api/placesTypes.ts";
 import type { ProfileLocationStatus } from "../../../lib/api/profileTypes.ts";
-import { markLocationConfirmed } from "../../../lib/locationConfirmationStore.ts";
 
 type LoadPhase = "loading" | "ready" | "error";
 
 type Props = {
-  profileId: string;
   /** Human-readable area from GET /profile or the last successful PUT. */
   savedLabel?: string | null;
   /** Server says location is configured but has no Place to name (GPS-only). */
@@ -29,7 +27,6 @@ function placeSaveMessage(error: unknown): string {
 }
 
 export function DatingPlacePicker({
-  profileId,
   savedLabel,
   configuredWithoutPlace = false,
   disabled = false,
@@ -109,7 +106,6 @@ export function DatingPlacePicker({
       }
       const label = status.place?.display_path ?? place.name;
       setConfirmedLabel(label);
-      markLocationConfirmed(profileId);
       onSaved(status);
     } catch (error) {
       setSaveError(placeSaveMessage(error));

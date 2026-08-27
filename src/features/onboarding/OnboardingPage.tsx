@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/api/errors.ts";
 import {
   getCurrentProfile,
   getProfileConfiguration,
+  getProfileLocation,
   getProfilePreferences,
   publishCurrentProfile,
   replaceProfileOptions,
@@ -17,7 +18,6 @@ import type {
   ProfileConfiguration,
   ProfileOnboardingStatus,
 } from "../../lib/api/profileTypes.ts";
-import { hasConfirmedLocation } from "../../lib/locationConfirmationStore.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import {
   HIDDEN_OPTIONS_GROUP_KEYS,
@@ -134,12 +134,17 @@ export default function OnboardingPage() {
     setOptionSelections(nextProfile?.options ?? {});
     setOptionsScreen(optionsScreenForMissing(nextOnboarding.completion.missing));
     setProfileId(nextProfile?.id);
-    // Prefer GET /profile `location.configured` when present. localStorage is
-    // only a refresh fallback when that field is omitted (retire with T6).
-    setLocationConfirmed(
-      nextProfile?.location?.configured === true ||
-        (nextProfile?.location === undefined && nextProfile ? hasConfirmedLocation(nextProfile.id) : false),
-    );
+    if (nextProfile?.location?.configured === true) {
+      setLocationConfirmed(true);
+    } else if (nextProfile?.location?.configured === false) {
+      setLocationConfirmed(false);
+    } else if (nextProfile) {
+      void getProfileLocation()
+        .then((status) => setLocationConfirmed(status.configured))
+        .catch(() => setLocationConfirmed(false));
+    } else {
+      setLocationConfirmed(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -404,7 +409,7 @@ export default function OnboardingPage() {
     if (profileScreen === "location" && profileId) {
       return (
         <OnboardingShell title={copy.title} intro={copy.intro} percent={percent} backDisabled={pending} onBack={onBack}>
-          <LocationStep profileId={profileId} onSuccess={() => void reconcileProfile()} />
+          <LocationStep onSuccess={() => void reconcileProfile()} />
         </OnboardingShell>
       );
     }
@@ -520,7 +525,7 @@ export default function OnboardingPage() {
           intro="Choose the general area you want to date from."
           percent={percent}
         >
-          <LocationStep profileId={profileId} onSuccess={() => setLocationConfirmed(true)} />
+          <LocationStep onSuccess={() => void reconcileProfile()} />
         </OnboardingShell>
       );
     }

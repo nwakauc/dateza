@@ -15,6 +15,11 @@ import {
   updateProfilePreferences,
 } from "../../lib/api/profile.ts";
 import type { FieldOption, ProfilePreferences } from "../../lib/api/profileTypes.ts";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "../../lib/api/notifications.ts";
+import type { NotificationPreferences } from "../../lib/api/notificationTypes.ts";
 import { listBlockedProfiles, unblockProfile } from "../../lib/api/safety.ts";
 import type { BlockedProfile } from "../../lib/api/safetyTypes.ts";
 import { useSignOut } from "../auth/useSignOut.ts";
@@ -121,6 +126,38 @@ function SettingsRow({
     <button className="settings-row" type="button" onClick={onClick}>{content}</button>
   ) : (
     <div className="settings-row settings-row--static">{content}</div>
+  );
+}
+
+function SettingsToggle({
+  title,
+  hint,
+  checked,
+  disabled,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="settings-row settings-row--toggle">
+      <span className="settings-row__body">
+        <strong>{title}</strong>
+        <span>{hint}</span>
+      </span>
+      <button
+        type="button"
+        className={`notifications-switch${checked ? " notifications-switch--on" : ""}`}
+        role="switch"
+        aria-checked={checked}
+        aria-label={title}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+      />
+    </div>
   );
 }
 
@@ -309,6 +346,11 @@ export default function SettingsPage() {
   const [blockedError, setBlockedError] = useState<string>();
   const [unblockingId, setUnblockingId] = useState<string>();
   const [pausePhase, setPausePhase] = useState<"idle" | "saving" | "error">("idle");
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
+  const [notificationPrefsError, setNotificationPrefsError] = useState<string>();
+  const [notificationPrefsSaving, setNotificationPrefsSaving] = useState<"product_email_enabled" | "push_enabled" | null>(null);
+  const [notificationPrefsSaveError, setNotificationPrefsSaveError] = useState<string>();
+  const [notificationPrefsAttempt, setNotificationPrefsAttempt] = useState(0);
   const activeSection = sectionFromHash(location.hash);
 
   useEffect(() => {
@@ -340,6 +382,22 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getNotificationPreferences()
+      .then((prefs) => {
+        if (cancelled) return;
+        setNotificationPrefs(prefs);
+        setNotificationPrefsError(undefined);
+      })
+      .catch(() => {
+        if (!cancelled) setNotificationPrefsError("We couldn't load your notification settings. Try again.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notificationPrefsAttempt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -408,6 +466,23 @@ export default function SettingsPage() {
       setPausePhase("idle");
     } catch {
       setPausePhase("error");
+    }
+  }
+
+  async function toggleNotificationPreference(key: "product_email_enabled" | "push_enabled", next: boolean) {
+    if (!notificationPrefs || notificationPrefsSaving) return;
+    const previous = notificationPrefs;
+    setNotificationPrefs({ ...notificationPrefs, [key]: next });
+    setNotificationPrefsSaving(key);
+    setNotificationPrefsSaveError(undefined);
+    try {
+      const saved = await updateNotificationPreferences({ [key]: next });
+      setNotificationPrefs(saved);
+    } catch {
+      setNotificationPrefs(previous);
+      setNotificationPrefsSaveError("We couldn't update that setting. Try again.");
+    } finally {
+      setNotificationPrefsSaving(null);
     }
   }
 
@@ -525,10 +600,34 @@ export default function SettingsPage() {
             <SettingsRow title="Safety centre" hint="Practical guidance for safer dating" to="/settings/safety" />
           </SettingsSection>
 
-          <SettingsSection id="notifications" title="Notifications" description="Stay on top of activity that matters to you." icon={<BellIcon />} active={activeSection === "notifications"}>
-            <SettingsRow title="In-app notifications" hint="See your DateZA updates and mark them as read" to="/notifications" />
-            <SettingsRow title="Push notifications" hint="Browser push registration is not available yet" status="Unavailable" />
-            <SettingsRow title="Email notifications" hint="Email notification preferences are not available yet" status="Unavailable" />
+          <SettingsSection id="notifications" title="Notifications" description="Choose how DateZA can reach you. These settings apply to DateZA only." icon={<BellIcon />} active={activeSection === "notifications"}>
+            <SettingsRow title="In-app notifications" hint="Updates stay in DateZA and on your notification bell" to="/notifications" />
+            {notificationPrefsError ? (
+              <div className="settings-inline-error" role="alert">
+                <p>{notificationPrefsError}</p>
+                <button type="button" onClick={() => setNotificationPrefsAttempt((current) => current + 1)}>Try again</button>
+              </div>
+            ) : notificationPrefs ? (
+              <>
+                <SettingsToggle
+                  title="Email notifications"
+                  hint="Email DateZA updates to your account email. Turning this off does not hide in-app notifications."
+                  checked={notificationPrefs.product_email_enabled}
+                  disabled={notificationPrefsSaving !== null}
+                  onChange={(next) => void toggleNotificationPreference("product_email_enabled", next)}
+                />
+                <SettingsToggle
+                  title="Push notifications"
+                  hint="Allow DateZA to send push alerts when a device is registered. This browser is not registered for push yet."
+                  checked={notificationPrefs.push_enabled}
+                  disabled={notificationPrefsSaving !== null}
+                  onChange={(next) => void toggleNotificationPreference("push_enabled", next)}
+                />
+                {notificationPrefsSaveError ? <p className="settings-form-error" role="alert">{notificationPrefsSaveError}</p> : null}
+              </>
+            ) : (
+              <p className="settings-row__status">Loading notification settings…</p>
+            )}
           </SettingsSection>
 
           <SettingsSection id="preferences" title="Dating preferences" description="Choose who DateZA looks for around your dating location." icon={<SlidersIcon />} active={activeSection === "preferences"}>
@@ -592,7 +691,6 @@ export default function SettingsPage() {
                   </div>
                   {account.profile ? (
                     <DatingPlacePicker
-                      profileId={account.profile.id}
                       savedLabel={account.profile.location?.place?.display_path}
                       configuredWithoutPlace={
                         account.profile.location?.configured === true && !account.profile.location.place

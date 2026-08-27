@@ -4,12 +4,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { hasConfirmedLocation, markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 /**
- * Discover's location gate prefers GET /profile `location.configured` when
- * present. These tests also cover the localStorage fallback used when that
- * field is omitted (T6 will retire that fallback).
+ * Discover and Find require a configured dating location from the server.
+ * GET /profile `location.configured` is authoritative. When that field is
+ * omitted, DateZA reads GET /api/v1/profile/location. Browser storage is not
+ * consulted.
  */
 
 const PROFILE_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -84,7 +84,11 @@ function renderApp(path = "/discover") {
   );
 }
 
-function mockDiscoveryBackend(onDiscoveryCall: () => void, profile: Record<string, unknown> = ownerProfile) {
+function mockDiscoveryBackend(
+  onDiscoveryCall: () => void,
+  profile: Record<string, unknown> = ownerProfile,
+  locationGet?: { configured: boolean },
+) {
   vi.mocked(fetch).mockImplementation((input, init) => {
     const url = requestUrl(input);
     const method = init?.method ?? "GET";
@@ -109,6 +113,14 @@ function mockDiscoveryBackend(onDiscoveryCall: () => void, profile: Record<strin
             captured_at: "2026-08-27T04:00:00Z",
             place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
           },
+        }),
+      );
+    }
+    if (url.endsWith("/api/v1/profile/location") && method === "GET") {
+      const configured = locationGet?.configured ?? false;
+      return Promise.resolve(
+        jsonResponse(200, {
+          location: { configured, accuracy_meters: configured ? 25 : null, source: configured ? "place" : null, captured_at: null },
         }),
       );
     }
@@ -138,10 +150,10 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     stubGeolocation(undefined);
   });
 
-  it("shows a location prompt instead of Discover for a published account this device has never confirmed", async () => {
+  it("shows a location prompt instead of Discover when the server says location is not configured", async () => {
     setBearerToken("opaque-session-token");
     let discoveryCalls = 0;
-    mockDiscoveryBackend(() => (discoveryCalls += 1));
+    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: false } });
 
     renderApp();
 
@@ -159,7 +171,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
         (success as PositionCallback)(successfulPosition());
       },
     });
-    mockDiscoveryBackend(() => (discoveryCalls += 1));
+    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: false } });
 
     renderApp();
 
@@ -168,7 +180,6 @@ describe("RequireLocation (historical-account Discover guard)", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(discoveryCalls).toBe(1);
-    expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
   });
 
   it("does not call Discovery while permission is denied", async () => {
@@ -186,7 +197,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
         } as GeolocationPositionError);
       },
     });
-    mockDiscoveryBackend(() => (discoveryCalls += 1));
+    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: false } });
 
     renderApp();
 
@@ -197,20 +208,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     expect(discoveryCalls).toBe(0);
   });
 
-  it("skips straight to Discover when this device already confirmed location for this profile", async () => {
-    setBearerToken("opaque-session-token");
-    markLocationConfirmed(PROFILE_ID);
-    let discoveryCalls = 0;
-    mockDiscoveryBackend(() => (discoveryCalls += 1));
-
-    renderApp();
-
-    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /where are you dating from/i })).not.toBeInTheDocument();
-    expect(discoveryCalls).toBe(1);
-  });
-
-  it("skips the gate when GET /profile reports location.configured without a local flag", async () => {
+  it("skips the gate when GET /profile reports location.configured", async () => {
     setBearerToken("opaque-session-token");
     let discoveryCalls = 0;
     mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: true } });
@@ -222,11 +220,21 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     expect(discoveryCalls).toBe(1);
   });
 
-  it("still prompts when the server says location is not configured, even if this device has a local flag", async () => {
+  it("uses GET /profile/location when GET /profile omits location, including on a new browser", async () => {
     setBearerToken("opaque-session-token");
-    markLocationConfirmed(PROFILE_ID);
     let discoveryCalls = 0;
-    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: false } });
+    mockDiscoveryBackend(() => (discoveryCalls += 1), ownerProfile, { configured: true });
+
+    renderApp();
+
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
+    expect(discoveryCalls).toBe(1);
+  });
+
+  it("still prompts when GET /profile/location says location is not configured", async () => {
+    setBearerToken("opaque-session-token");
+    let discoveryCalls = 0;
+    mockDiscoveryBackend(() => (discoveryCalls += 1), ownerProfile, { configured: false });
 
     renderApp();
 

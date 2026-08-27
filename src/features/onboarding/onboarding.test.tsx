@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 import type { ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 
 const meBody = {
@@ -199,7 +198,6 @@ describe("onboarding routing and progression", () => {
 
   it("does not trap a completed member in onboarding", async () => {
     setBearerToken("opaque-session-token");
-    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
       if (url.endsWith("/api/v1/me")) {
@@ -212,7 +210,7 @@ describe("onboarding routing and progression", () => {
       }
       if (url.endsWith("/api/v1/profile")) {
         return Promise.resolve(
-          jsonResponse(200, { profile: { id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", brand: meBody.brand, status: "active", visibility: "visible", options: {} }, onboarding: completeOnboarding }),
+          jsonResponse(200, { profile: { id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", brand: meBody.brand, status: "active", visibility: "visible", options: {}, location: { configured: true, place: null } }, onboarding: completeOnboarding }),
         );
       }
       if (url.endsWith("/api/v1/discovery")) {
@@ -1048,6 +1046,7 @@ describe("onboarding location step", () => {
         (success as PositionCallback)(successfulPosition());
       },
     });
+    let locationConfigured = false;
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
@@ -1059,9 +1058,17 @@ describe("onboarding location step", () => {
       }
       if (url.endsWith("/api/v1/profile/location") && method === "PUT") {
         callOrder.push("location");
+        locationConfigured = true;
         return Promise.resolve(
           jsonResponse(200, {
             location: { configured: true, accuracy_meters: 25, source: "device", captured_at: "2026-08-25T02:05:01Z" },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/location") && method === "GET") {
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: { configured: locationConfigured, accuracy_meters: locationConfigured ? 25 : null, source: locationConfigured ? "device" : null, captured_at: null },
           }),
         );
       }
@@ -1080,7 +1087,10 @@ describe("onboarding location step", () => {
         );
       }
       if (url.endsWith("/api/v1/profile")) {
-        return Promise.resolve(jsonResponse(200, { profile: ownerProfileForPublication, onboarding }));
+        return Promise.resolve(jsonResponse(200, {
+          profile: { ...ownerProfileForPublication, location: { configured: locationConfigured, place: null } },
+          onboarding,
+        }));
       }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
@@ -1097,9 +1107,8 @@ describe("onboarding location step", () => {
     expect(callOrder).toEqual(["location", "publication"]);
   });
 
-  it("resumes directly at publish when this device already confirmed location for this profile", async () => {
+  it("resumes directly at publish when the server already has a dating location", async () => {
     setBearerToken("opaque-session-token");
-    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
@@ -1107,7 +1116,10 @@ describe("onboarding location step", () => {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: publicationOnboarding }));
       }
       if (url.endsWith("/api/v1/profile")) {
-        return Promise.resolve(jsonResponse(200, { profile: ownerProfileForPublication, onboarding: publicationOnboarding }));
+        return Promise.resolve(jsonResponse(200, {
+          profile: { ...ownerProfileForPublication, location: { configured: true, place: null } },
+          onboarding: publicationOnboarding,
+        }));
       }
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });

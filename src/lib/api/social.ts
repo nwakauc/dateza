@@ -1,7 +1,15 @@
 import { apiRequest } from "./client.ts";
 import { ApiError } from "./errors.ts";
-import { parsePublicProfile } from "./find.ts";
-import type { Conversation, ConversationListResponse, MatchListResponse, Message, MessageListResponse } from "./socialTypes.ts";
+import { parseCompatibility, parsePublicProfile } from "./find.ts";
+import type {
+  Conversation,
+  ConversationListResponse,
+  LikeListItem,
+  LikeListResponse,
+  MatchListResponse,
+  Message,
+  MessageListResponse,
+} from "./socialTypes.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function nullableString(value: unknown): string | null { return typeof value === "string" ? value : null; }
@@ -36,6 +44,49 @@ export function startConversation(matchId: string): Promise<Conversation> {
     if (!isRecord(data)) throw new ApiError(502, undefined, "invalid_conversation_response");
     return parseConversation(data.conversation);
   });
+}
+
+/**
+ * POST /api/v1/matches/{match_id}/unmatch — ends the Match without creating
+ * a Block. 204, including when the Match is already ended.
+ */
+export function unmatchMatch(matchId: string): Promise<void> {
+  return apiRequest(`/api/v1/matches/${encodeURIComponent(matchId)}/unmatch`, { method: "POST" }).then(() => undefined);
+}
+
+function parseLikeListItem(value: unknown): LikeListItem {
+  if (!isRecord(value) || typeof value.liked_at !== "string") {
+    throw new ApiError(502, undefined, "invalid_like_list_response");
+  }
+  const profile = parsePublicProfile(value.profile);
+  const record = isRecord(value.profile) ? value.profile : {};
+  return {
+    liked_at: value.liked_at,
+    profile: {
+      ...profile,
+      compatibility: parseCompatibility(record.compatibility),
+    },
+  };
+}
+
+function listLikes(path: "/api/v1/likes/incoming" | "/api/v1/likes/outgoing", cursor?: string): Promise<LikeListResponse> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return apiRequest(`${path}${query}`).then((data) => {
+    if (!isRecord(data) || !Array.isArray(data.likes)) {
+      throw new ApiError(502, undefined, "invalid_like_list_response");
+    }
+    return { likes: data.likes.map(parseLikeListItem), next_cursor: nullableString(data.next_cursor) };
+  });
+}
+
+/** GET /api/v1/likes/incoming — people with an active Like toward the viewer. */
+export function listIncomingLikes(cursor?: string): Promise<LikeListResponse> {
+  return listLikes("/api/v1/likes/incoming", cursor);
+}
+
+/** GET /api/v1/likes/outgoing — people the viewer has Liked who are not yet a Match. */
+export function listOutgoingLikes(cursor?: string): Promise<LikeListResponse> {
+  return listLikes("/api/v1/likes/outgoing", cursor);
 }
 
 export function listConversations(cursor?: string): Promise<ConversationListResponse> {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
 import {
@@ -13,6 +13,7 @@ import {
   UsersIcon,
 } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { resolveNotificationDestination } from "./notificationDestination.ts";
 
 type NotificationGroup = {
   label: "Today" | "Yesterday" | "Earlier";
@@ -59,11 +60,13 @@ function groupNotifications(items: ProductNotification[]): NotificationGroup[] {
 
 export default function NotificationsPage() {
   const account = useOwnAccount();
+  const navigate = useNavigate();
   const [items, setItems] = useState<ProductNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
-  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void listNotifications()
@@ -83,17 +86,22 @@ export default function NotificationsPage() {
     return () => { document.title = "DateZA — Meet someone who chooses you."; };
   }, [load]);
 
-  async function readOne(item: ProductNotification) {
-    if (item.read_at || markingId) return;
-    setMarkingId(item.id);
+  async function openNotification(item: ProductNotification) {
+    if (openingId) return;
+    setOpeningId(item.id);
+    setOpenError(null);
     try {
-      const updated = await markNotificationRead(item.id);
-      setItems((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
-      account.refresh();
+      if (!item.read_at) {
+        const updated = await markNotificationRead(item.id);
+        setItems((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+        account.refresh();
+      }
+      const destination = resolveNotificationDestination(item);
+      if (destination) navigate(destination);
     } catch {
-      /* Keep it unread so the member can retry. */
+      setOpenError("We couldn’t open that update. Try again.");
     } finally {
-      setMarkingId(null);
+      setOpeningId(null);
     }
   }
 
@@ -129,14 +137,7 @@ export default function NotificationsPage() {
           <div><h1 className="shell-page__title">Notifications</h1><p className="shell-page__subtitle">Stay in the loop with what’s happening on DateZA.</p></div>
           {hasUnread ? <button className="shell-text-action" type="button" onClick={() => void readAll()} disabled={markingAll}>{markingAll ? "Marking read…" : "Mark all read"}</button> : null}
         </div>
-        <nav className="notifications-tabs" aria-label="Notification filters">
-          <span className="notifications-tabs__active" aria-current="page">All</span>
-          {["Likes", "Matches", "Messages", "Activity"].map((label) => (
-            <button key={label} type="button" disabled title={`${label} notifications are coming soon`}>
-              {label}<small>Coming soon</small>
-            </button>
-          ))}
-        </nav>
+        {openError ? <p className="shell-inline-error" role="alert">{openError}</p> : null}
         <div className="notifications-layout">
         <section className="notifications-feed" aria-label="Notification activity">
           {loading ? (
@@ -153,15 +154,16 @@ export default function NotificationsPage() {
                   <h2 id={`notification-group-${group.label.toLowerCase()}`}>{group.label}</h2>
                   {group.items.map((item) => {
                     const unread = item.read_at === null;
-                    const pending = markingId === item.id;
+                    const pending = openingId === item.id;
+                    const destination = resolveNotificationDestination(item);
                     return (
                       <button
                         key={item.id}
                         type="button"
                         className={`notification-item${unread ? " notification-item--unread" : ""}`}
-                        onClick={() => void readOne(item)}
-                        disabled={!unread || pending}
-                        aria-label={`${unread ? "Unread notification: " : ""}${item.title}. ${item.body}${unread ? " Mark as read." : ""}`}
+                        onClick={() => void openNotification(item)}
+                        disabled={pending}
+                        aria-label={`${unread ? "Unread notification: " : ""}${item.title}. ${item.body}${destination ? " Open." : unread ? " Mark as read." : ""}`}
                       >
                         <span className="notification-item__icon" aria-hidden="true"><BellIcon /></span>
                         <span className="notification-item__body"><strong>{item.title}</strong><span>{item.body}</span></span>
@@ -184,10 +186,9 @@ export default function NotificationsPage() {
           <aside className="notifications-rail" aria-label="Notification information">
           <section className="notifications-rail__card">
             <span className="notifications-rail__icon" aria-hidden="true"><GearIcon /></span>
-            <div><h2>Notification settings</h2><p>Choose how you want to hear from DateZA.</p></div>
+            <div><h2>Notification settings</h2><p>Choose how DateZA can email or push updates. In-app notifications stay on.</p></div>
             <div className="notifications-channels">
-              <div><span><BellIcon />Push notifications</span><span className="notifications-coming-soon">Coming soon</span></div>
-              <div><span><GearIcon />Email notifications</span><span className="notifications-coming-soon">Coming soon</span></div>
+              <Link to="/settings#notifications"><GearIcon />Email and push settings</Link>
               <div><span><BellIcon />In-app notifications</span><span className="notifications-switch notifications-switch--on" aria-label="In-app notifications enabled" /></div>
             </div>
           </section>

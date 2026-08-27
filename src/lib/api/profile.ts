@@ -540,6 +540,20 @@ function parseLocationStatus(value: unknown): ProfileLocationStatus {
 }
 
 /**
+ * GET /api/v1/profile/location — authoritative dating-location state.
+ * `configured` is identical to GET /profile `location.configured`. Never
+ * includes coordinates.
+ */
+export function getProfileLocation(): Promise<ProfileLocationStatus> {
+  return apiRequest("/api/v1/profile/location").then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_location_response");
+    }
+    return parseLocationStatus(data.location);
+  });
+}
+
+/**
  * PUT /api/v1/profile/location — device GPS write used by onboarding until
  * backend T10 hardens precision. D8N never echoes coordinates back
  * (confirmed against staging 2026-08-25).

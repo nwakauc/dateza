@@ -4,13 +4,13 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 const ownerProfile = {
   id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   options: {},
 };
 
@@ -152,7 +152,6 @@ describe("rich profile detail", () => {
     vi.restoreAllMocks();
     vi.stubGlobal("fetch", vi.fn());
     setBearerToken("opaque-session-token");
-    markLocationConfirmed(ownerProfile.id);
   });
 
   function mockApis(

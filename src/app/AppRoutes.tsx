@@ -124,7 +124,14 @@ export default function AppRoutes() {
         {/* Old path kept working — nothing outside this file should link
             here anymore, but a bookmarked/shared URL still lands safely. */}
         <Route path="/discovery" element={<Navigate to="/discover" replace />} />
-        <Route path="/find" element={<FindPage />} />
+        <Route
+          path="/find"
+          element={
+            <RequireLocation>
+              <FindPage />
+            </RequireLocation>
+          }
+        />
         <Route path="/likes" element={<LikesPage />} />
         <Route path="/chats" element={<ChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

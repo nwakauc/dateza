@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 /**
  * FE-02: Discover's real `/api/v1/discovery` integration. Discover and Find
@@ -19,6 +18,7 @@ const ownerProfile = {
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   options: {},
 };
 
@@ -124,7 +124,6 @@ describe("Discover (FE-02)", () => {
   // seed the device as already having confirmed location so it doesn't
   // intercept every test here.
   beforeEach(() => {
-    markLocationConfirmed(ownerProfile.id);
     sessionStorage.clear();
   });
 

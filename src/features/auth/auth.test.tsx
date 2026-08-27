@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { getBearerToken, setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 const meBody = {
   user_id: 42,
@@ -201,7 +200,6 @@ describe("authentication flows", () => {
   it("clears local credential and session on logout", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
-    markLocationConfirmed("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
@@ -223,6 +221,7 @@ describe("authentication flows", () => {
               status: "active",
               visibility: "visible",
               options: {},
+              location: { configured: true, place: null },
             },
             onboarding: completeOnboarding,
           }),

@@ -25,11 +25,17 @@ function requestUrl(input: RequestInfo | URL): string {
   return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 }
 
-function installHandler(initialNotifications: ProductNotification[], listFails = false) {
+function installHandler(
+  initialNotifications: ProductNotification[],
+  listFails = false,
+  extra?: (url: string, method: string) => Response | undefined,
+) {
   let notifications = initialNotifications;
   vi.mocked(fetch).mockImplementation((input, init) => {
     const url = requestUrl(input);
     const method = (init?.method ?? "GET").toUpperCase();
+    const extraResponse = extra?.(url, method);
+    if (extraResponse) return Promise.resolve(extraResponse);
     if (url.endsWith("/api/v1/me")) {
       return Promise.resolve(jsonResponse(200, {
         user_id: 1,
@@ -42,7 +48,7 @@ function installHandler(initialNotifications: ProductNotification[], listFails =
     }
     if (url.endsWith("/api/v1/profile")) {
       return Promise.resolve(jsonResponse(200, {
-        profile: { id: "owner", display_name: "Thando", options: {}, status: "active", visibility: "visible" },
+        profile: { id: "owner", display_name: "Thando", options: {}, status: "active", visibility: "visible", location: { configured: true, place: null } },
         onboarding: completeOnboarding,
       }));
     }
@@ -95,7 +101,8 @@ describe("Notifications Centre", () => {
     installHandler([unreadNotification]);
     renderNotifications();
 
-    const notice = await screen.findByRole("button", { name: /unread notification: welcome to dateza/i });
+    expect(await screen.findByText("Welcome to DateZA")).toBeInTheDocument();
+    const notice = screen.getByRole("button", { name: /welcome to dateza/i });
     expect(notice).toHaveClass("notification-item--unread");
     expect(await screen.findByLabelText("1 unread notifications")).toBeInTheDocument();
 
@@ -132,5 +139,132 @@ describe("Notifications Centre", () => {
     expect(await screen.findByText("We couldn’t load your notifications")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(screen.getAllByRole("navigation", { name: "Main" }).length).toBeGreaterThan(0);
+  });
+
+  it("opens a like notification onto the member profile after marking it read", async () => {
+    const user = userEvent.setup();
+    installHandler(
+      [
+        {
+          id: "like-1",
+          type: "dateza.like_received",
+          title: "Someone liked you",
+          body: "A member liked your profile.",
+          payload: {
+            actor: { profile_id: "p1" },
+            target: { type: "profile", id: "p1" },
+          },
+          read_at: null,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      false,
+      (url) => {
+        if (url.endsWith("/api/v1/profiles/p1")) {
+          return jsonResponse(200, {
+            profile: {
+              id: "p1",
+              display_name: "Maya",
+              age: 27,
+              bio: null,
+              gender: "female",
+              pronouns: null,
+              country_code: "ZA",
+              city: "Cape Town",
+              occupation: null,
+              job_title: null,
+              school_or_institution: null,
+              looking_for_text: null,
+              height_cm: null,
+              body_type: null,
+              languages_spoken: [],
+              smoking: null,
+              drinking: null,
+              fitness: null,
+              photos: [],
+              options: {},
+              verified: false,
+              online: false,
+              active_today: false,
+              new_here: false,
+              last_active_at: null,
+              distance_km: null,
+              hook_tonight_active: false,
+              hook_state: "unavailable",
+              prompts: [],
+              interests: [],
+              compatibility: null,
+            },
+          });
+        }
+        if (url.endsWith("/api/v1/profile/configuration")) {
+          return jsonResponse(200, {
+            configuration: {
+              identity_fields: [],
+              profile_fields: [],
+              preference_fields: [],
+              collections: [],
+              option_groups: [],
+              prompts: [],
+              openers: [],
+            },
+            onboarding: completeOnboarding,
+          });
+        }
+        if (url.endsWith("/api/v1/conversations")) {
+          return jsonResponse(200, { conversations: [], next_cursor: null });
+        }
+        return undefined;
+      },
+    );
+    renderNotifications();
+
+    await user.click(await screen.findByRole("button", { name: /someone liked you/i }));
+    expect(await screen.findByRole("heading", { level: 1, name: /maya/i })).toBeInTheDocument();
+  });
+
+  it("handles a like notification whose profile target is no longer available", async () => {
+    const user = userEvent.setup();
+    installHandler(
+      [
+        {
+          id: "like-stale",
+          type: "dateza.like_received",
+          title: "Someone liked you",
+          body: "A member liked your profile.",
+          payload: {
+            actor: { profile_id: "gone" },
+            target: { type: "profile", id: "gone" },
+          },
+          read_at: null,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      false,
+      (url) => {
+        if (url.endsWith("/api/v1/profiles/gone")) {
+          return jsonResponse(404, { error: "profile_unavailable" });
+        }
+        if (url.endsWith("/api/v1/profile/configuration")) {
+          return jsonResponse(200, {
+            configuration: {
+              identity_fields: [],
+              profile_fields: [],
+              preference_fields: [],
+              collections: [],
+              option_groups: [],
+              prompts: [],
+              openers: [],
+            },
+            onboarding: completeOnboarding,
+          });
+        }
+        return undefined;
+      },
+    );
+    renderNotifications();
+
+    await user.click(await screen.findByRole("button", { name: /someone liked you/i }));
+    expect(await screen.findByText("This profile is not available.")).toBeInTheDocument();
   });
 });

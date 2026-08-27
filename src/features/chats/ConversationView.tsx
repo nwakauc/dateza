@@ -26,6 +26,7 @@ type Props = {
   onRetryMessages: () => void;
   onLoadOlder: () => Promise<void>;
   onBlocked: () => void;
+  onUnmatched?: () => void;
 };
 
 function MemberAvatar({ conversation, name }: { conversation: Conversation; name: string }) {
@@ -69,6 +70,7 @@ export function ConversationView({
   onRetryMessages,
   onLoadOlder,
   onBlocked,
+  onUnmatched,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const activeConversationRef = useRef<string>();
@@ -113,14 +115,26 @@ export function ConversationView({
               {profile?.verified ? <i title={VERIFIED_CONTACT_LABEL}><ShieldCheckIcon /></i> : null}
             </strong>
             <small>
-              {profile?.online ? "Online now" : profile?.active_today ? "Active today" : active ? "DateZA connection" : "Conversation closed"}
+              {!active
+                ? "Conversation closed"
+                : profile?.online
+                  ? "Online now"
+                  : profile?.active_today
+                    ? "Active today"
+                    : "DateZA connection"}
             </small>
           </span>
         </Link>
         <Link className="chat-header__profile" to={`/profile/${conversation.profile.id}`} state={{ from: "chats", returnTo }}>
           View profile
         </Link>
-        <ProfileSafetyActions profileId={conversation.profile.id} name={name} onBlocked={onBlocked} />
+        <ProfileSafetyActions
+          profileId={conversation.profile.id}
+          name={name}
+          matchId={active ? conversation.match_id : undefined}
+          onBlocked={onBlocked}
+          onUnmatched={onUnmatched}
+        />
       </header>
 
       {matchedAt ? (

@@ -152,9 +152,9 @@ export type OwnerProfile = {
   profile_completion: ProfileCompletion | null;
   /**
    * Owner dating-location summary from GET /api/v1/profile.
-   * Absent when the payload omitted `location` (older fixtures). Not the
-   * future T6 `GET /api/v1/profile/location` contract — no coordinates,
-   * source, or Place id on this read.
+   * `configured` is definitionally identical to GET /api/v1/profile/location.
+   * Absent only when a payload omitted the field; then DateZA reads
+   * GET /profile/location rather than inventing browser authority.
    */
   location?: OwnerProfileLocation;
 };

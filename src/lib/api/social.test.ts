@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "./errors.ts";
-import { listConversations, listMatches, listMessages, parseConversation, sendMessage, startConversation } from "./social.ts";
+import { listConversations, listIncomingLikes, listMatches, listMessages, listOutgoingLikes, parseConversation, sendMessage, startConversation, unmatchMatch } from "./social.ts";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -110,5 +110,33 @@ describe("social adapter", () => {
   it("does not treat a failed send as success", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(500, { error: "server_error" }));
     await expect(sendMessage("c1", "Hello")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("lists incoming likes with cursor pagination and null compatibility", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        likes: [{ liked_at: "2026-08-27T08:00:00Z", profile: { ...publicProfile, compatibility: null } }],
+        next_cursor: "next-likes",
+      }),
+    );
+    const result = await listIncomingLikes();
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("/api/v1/likes/incoming");
+    expect(result.likes[0]?.profile.id).toBe("p1");
+    expect(result.likes[0]?.profile.compatibility).toBeNull();
+    expect(result.next_cursor).toBe("next-likes");
+  });
+
+  it("lists outgoing likes and passes the server cursor", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { likes: [{ liked_at: "2026-08-27T08:00:00Z", profile: publicProfile }], next_cursor: null }));
+    await listOutgoingLikes("cursor-1");
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("/api/v1/likes/outgoing?cursor=cursor-1");
+  });
+
+  it("unmatches with POST /matches/:id/unmatch and accepts 204", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }));
+    await unmatchMatch("m1");
+    const call = vi.mocked(fetch).mock.calls[0];
+    expect(String(call?.[0])).toBe("/api/v1/matches/m1/unmatch");
+    expect(call?.[1]?.method).toBe("POST");
   });
 });

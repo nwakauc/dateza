@@ -224,6 +224,17 @@ export default function ChatsPage() {
     setParams({});
   }
 
+  function handleUnmatched() {
+    if (!selected) return;
+    const matchId = selected.match_id;
+    setMatches((current) => current.filter((match) => match.id !== matchId));
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === selected.id ? { ...conversation, status: "closed" as const } : conversation,
+      ),
+    );
+  }
+
   if (error) {
     return (
       <div className="shell-page shell-page--chats">
@@ -286,6 +297,7 @@ export default function ChatsPage() {
               onRetryMessages={() => retryMessages(selected.id)}
               onLoadOlder={loadOlderMessages}
               onBlocked={removeSelectedConversation}
+              onUnmatched={handleUnmatched}
             />
           ) : selectedId && (loading || loadingMoreConversations || conversationCursor !== null) ? (
             <div className="chat-empty" aria-busy="true">
@@ -312,6 +324,8 @@ export default function ChatsPage() {
             returnTo={`/chats?conversation=${encodeURIComponent(selected.id)}`}
             onRetry={() => retryProfile(selected.profile.id)}
             onBlocked={removeSelectedConversation}
+            matchId={selected.status === "active" ? selected.match_id : undefined}
+            onUnmatched={handleUnmatched}
           />
         ) : null}
       </div>

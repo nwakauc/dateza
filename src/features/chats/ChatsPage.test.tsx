@@ -333,4 +333,25 @@ describe("premium Chats experience", () => {
     await waitFor(() => expect(screen.queryByText("I’d love that.")).not.toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
+
+  it("unmatches from chat without blocking and keeps the conversation as closed history", async () => {
+    const user = userEvent.setup();
+    let unmatched = false;
+    installHandler((url, method) => {
+      if (url.endsWith("/api/v1/matches/m1/unmatch") && method === "POST") {
+        unmatched = true;
+        return new Response(null, { status: 204 });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+
+    expect(await screen.findByText("I’d love that.")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /more actions/i })[0]!);
+    await user.click(screen.getByRole("menuitem", { name: /^unmatch$/i }));
+    expect(screen.getByText(/does not block them/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /end match/i }));
+    await waitFor(() => expect(unmatched).toBe(true));
+    expect(await screen.findByText("Conversation closed")).toBeInTheDocument();
+    expect(screen.queryByText(/you will no longer be able to see each other/i)).not.toBeInTheDocument();
+  });
 });

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { hasConfirmedLocation } from "../../lib/locationConfirmationStore.ts";
+import { useEffect, useState } from "react";
+import { getProfileLocation } from "../../lib/api/profile.ts";
 import type { OwnerProfile } from "../../lib/api/profileTypes.ts";
 import { LocationStep } from "../onboarding/LocationStep.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
@@ -8,24 +8,42 @@ import { useOwnAccount } from "../shell/useOwnAccount.ts";
 type Props = { children: ReactNode };
 
 /**
- * Discover needs a configured dating location. Prefer GET /profile
- * `location.configured` when the owner payload includes it. If that field is
- * omitted, fall back to this device's local confirmation flag (T6 will
- * replace that fallback). Do not redesign Discover here.
+ * Discover and Find need a configured dating location. Server state from
+ * GET /profile `location.configured` is authoritative. When that field is
+ * omitted, DateZA reads GET /api/v1/profile/location. Browser storage never
+ * decides whether location is configured.
  */
-function needsDatingLocation(profile: OwnerProfile): boolean {
-  if (profile.location?.configured === true) {
-    return false;
-  }
-  if (profile.location?.configured === false) {
-    return true;
-  }
-  return !hasConfirmedLocation(profile.id);
+function inlineConfigured(profile: OwnerProfile | null): boolean | undefined {
+  return profile?.location?.configured;
 }
 
 export function RequireLocation({ children }: Props) {
   const account = useOwnAccount();
   const [justConfirmed, setJustConfirmed] = useState(false);
+  const [fetchedConfigured, setFetchedConfigured] = useState<boolean | undefined>();
+  const [lookupFailed, setLookupFailed] = useState(false);
+  const [lookupAttempt, setLookupAttempt] = useState(0);
+
+  const profile = account.profile;
+  const known = inlineConfigured(profile);
+
+  useEffect(() => {
+    if (!profile || known !== undefined || justConfirmed) return;
+    let cancelled = false;
+    void getProfileLocation()
+      .then((status) => {
+        if (!cancelled) {
+          setFetchedConfigured(status.configured);
+          setLookupFailed(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLookupFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, known, justConfirmed, lookupAttempt]);
 
   if (account.loading) {
     return (
@@ -35,9 +53,39 @@ export function RequireLocation({ children }: Props) {
     );
   }
 
-  const profile = account.profile;
-  if (!profile || justConfirmed || !needsDatingLocation(profile)) {
+  const configured = known ?? fetchedConfigured;
+  if (!profile || justConfirmed || configured === true) {
     return children;
+  }
+
+  if (known === undefined && fetchedConfigured === undefined && !lookupFailed) {
+    return (
+      <div className="shell-page">
+        <p className="shell-page__subtitle">Checking your dating location…</p>
+      </div>
+    );
+  }
+
+  if (lookupFailed && known === undefined) {
+    return (
+      <div className="shell-page">
+        <div className="shell-page__header">
+          <p className="shell-page__eyebrow">Dating location</p>
+          <h1 className="shell-page__title">We couldn’t confirm your location</h1>
+          <p className="shell-page__subtitle">Check your connection, then try again.</p>
+        </div>
+        <button
+          className="shell-primary-action"
+          type="button"
+          onClick={() => {
+            setLookupFailed(false);
+            setLookupAttempt((current) => current + 1);
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -47,7 +95,12 @@ export function RequireLocation({ children }: Props) {
         <h1 className="shell-page__title">Where are you dating from?</h1>
         <p className="shell-page__subtitle">Choose the general area you want to date from.</p>
       </div>
-      <LocationStep profileId={profile.id} onSuccess={() => setJustConfirmed(true)} />
+      <LocationStep
+        onSuccess={() => {
+          setJustConfirmed(true);
+          account.refresh();
+        }}
+      />
     </div>
   );
 }

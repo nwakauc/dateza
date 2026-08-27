@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 import { clearFindDeckMemory } from "./findDeckMemory.ts";
 
 /**
@@ -22,6 +21,7 @@ const ownerProfile = {
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   options: {},
 };
 
@@ -163,7 +163,6 @@ function findStackCard(): HTMLElement {
 
 describe("Find (FE-05, rich swipe)", () => {
   beforeEach(() => {
-    markLocationConfirmed(ownerProfile.id);
     clearFindDeckMemory();
   });
 

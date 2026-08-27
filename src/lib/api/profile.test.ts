@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getCurrentProfile, updateProfileLocation, updateProfilePlace } from "./profile.ts";
+import { getCurrentProfile, getProfileLocation, updateProfileLocation, updateProfilePlace } from "./profile.ts";
 
 /**
  * Fixtures below are the real response bodies captured against DateZA
@@ -255,6 +255,27 @@ describe("updateProfilePlace against the D8N place-write contract", () => {
       captured_at: "2026-08-27T04:00:00Z",
       place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
     });
+  });
+});
+
+describe("getProfileLocation", () => {
+  it("reads authoritative configured state without coordinates", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        location: {
+          configured: true,
+          accuracy_meters: 5000,
+          source: "place",
+          captured_at: "2026-08-27T04:00:00Z",
+          place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+        },
+      }),
+    );
+    const result = await getProfileLocation();
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/v1/profile/location");
+    expect(result.configured).toBe(true);
+    expect(result.place?.display_path).toBe("Sea Point, Cape Town, Western Cape");
+    expect(result).not.toHaveProperty("latitude");
   });
 });
 

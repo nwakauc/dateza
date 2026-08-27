@@ -3,9 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocationStep } from "./LocationStep.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { hasConfirmedLocation } from "../../lib/locationConfirmationStore.ts";
-
-const PROFILE_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
 const westernCape = {
   id: 11,
@@ -95,7 +92,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    render(<LocationStep onSuccess={vi.fn()} />);
 
     expect(await screen.findByRole("button", { name: /use my current location/i })).toBeInTheDocument();
     expect(getCurrentPosition).not.toHaveBeenCalled();
@@ -110,7 +107,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    render(<LocationStep onSuccess={vi.fn()} />);
 
     expect(await screen.findByRole("button", { name: "Western Cape" })).toBeInTheDocument();
     expect(urls.some((url) => url.includes("nominatim"))).toBe(false);
@@ -138,7 +135,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
@@ -148,7 +145,6 @@ describe("LocationStep", () => {
       accuracy_meters: 25,
       captured_at: "2026-08-25T02:05:01.000Z",
     });
-    expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
   });
 
   it("does not publish or call onSuccess when the member denies permission, and explains why", async () => {
@@ -165,12 +161,11 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
     expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
-    expect(hasConfirmedLocation(PROFILE_ID)).toBe(false);
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
@@ -187,7 +182,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    render(<LocationStep onSuccess={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
     expect(await screen.findByText(/couldn't work out your location/i)).toBeInTheDocument();
@@ -201,7 +196,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    render(<LocationStep onSuccess={vi.fn()} />);
     const button = await screen.findByRole("button", { name: /use my current location/i });
     fireEvent.click(button);
 
@@ -226,7 +221,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
     expect(await screen.findByText(/must be less than or equal to 90/i)).toBeInTheDocument();
@@ -243,7 +238,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={vi.fn()} />);
+    render(<LocationStep onSuccess={vi.fn()} />);
     const button = await screen.findByRole("button", { name: /use my current location/i });
     await user.click(button);
     await user.click(button);
@@ -269,7 +264,7 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
     expect(await screen.findByText(/couldn't confirm your location/i)).toBeInTheDocument();
@@ -298,11 +293,10 @@ describe("LocationStep", () => {
       return jsonResponse(404, { error: "not_found" });
     });
 
-    render(<LocationStep profileId={PROFILE_ID} onSuccess={onSuccess} />);
+    render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use western cape as dating location/i }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(savedBody).toEqual({ place_id: 11 });
-    expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
   });
 });

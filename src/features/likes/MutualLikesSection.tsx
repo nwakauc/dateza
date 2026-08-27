@@ -11,6 +11,7 @@ type Props = {
   startingId?: string;
   nextCursor: string | null;
   loadingMore: boolean;
+  compact?: boolean;
   onMessage: (match: Match) => void;
   onSeeMore: () => void;
 };
@@ -22,10 +23,24 @@ export function MutualLikesSection({
   startingId,
   nextCursor,
   loadingMore,
+  compact = false,
   onMessage,
   onSeeMore,
 }: Props) {
   if (matches.length === 0) {
+    if (compact) {
+      return (
+        <section className="likes-section likes-section--compact" aria-labelledby="likes-mutual-heading">
+          <div className="likes-section__heading">
+            <h2 id="likes-mutual-heading">Mutual likes</h2>
+            <p>You and these members like each other.</p>
+          </div>
+          <p className="likes-section__note">
+            A match happens when you both like each other. Keep showing up — the right people are still finding you.
+          </p>
+        </section>
+      );
+    }
     return (
       <LikesEmptyState
         icon={<HeartIcon className="shell-empty__icon" filled={false} />}
@@ -40,7 +55,7 @@ export function MutualLikesSection({
   }
 
   return (
-    <section className="likes-section" aria-labelledby="likes-mutual-heading">
+    <section className={`likes-section${compact ? " likes-section--compact" : ""}`} aria-labelledby="likes-mutual-heading">
       <div className="likes-section__heading">
         <h2 id="likes-mutual-heading">Mutual likes</h2>
         <p>You and these members like each other.</p>
@@ -51,6 +66,7 @@ export function MutualLikesSection({
             key={match.id}
             profile={match.profile}
             optionLabel={optionLabel}
+            kind="mutual"
             conversationId={conversationsByMatchId.get(match.id)?.id}
             messaging={startingId === match.id}
             onMessage={() => onMessage(match)}

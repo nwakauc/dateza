@@ -3,9 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DatingPlacePicker } from "./DatingPlacePicker.tsx";
 import { setBearerToken } from "../../../lib/api/tokenStore.ts";
-import { hasConfirmedLocation } from "../../../lib/locationConfirmationStore.ts";
-
-const PROFILE_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
 const westernCape = {
   id: 11,
@@ -96,7 +93,7 @@ describe("DatingPlacePicker", () => {
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
-    render(<DatingPlacePicker profileId={PROFILE_ID} onSaved={onSaved} />);
+    render(<DatingPlacePicker onSaved={onSaved} />);
 
     expect(await screen.findByRole("button", { name: "Western Cape" })).toBeInTheDocument();
     expect(requested.some((item) => item.includes("nominatim"))).toBe(false);
@@ -108,7 +105,6 @@ describe("DatingPlacePicker", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(savedBody).toEqual({ place_id: 31 });
     expect(screen.getByText("Dating from Sea Point, Cape Town, Western Cape")).toBeInTheDocument();
-    expect(hasConfirmedLocation(PROFILE_ID)).toBe(true);
     expect(requested.some((item) => item.includes("nominatim"))).toBe(false);
     expect(onSaved.mock.calls[0]?.[0]).toMatchObject({
       configured: true,
@@ -147,7 +143,7 @@ describe("DatingPlacePicker", () => {
       return Promise.resolve(jsonResponse(404, { error: "not_found" }));
     });
 
-    render(<DatingPlacePicker profileId={PROFILE_ID} onSaved={onSaved} />);
+    render(<DatingPlacePicker onSaved={onSaved} />);
     const useWesternCape = await screen.findByRole("button", { name: /use western cape as dating location/i });
     await user.click(useWesternCape);
 

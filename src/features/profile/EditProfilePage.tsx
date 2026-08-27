@@ -523,7 +523,6 @@ export default function EditProfilePage() {
               <p className="auth-form__hint">Choose the general area you want to date from.</p>
               {account.profile ? (
                 <DatingPlacePicker
-                  profileId={account.profile.id}
                   savedLabel={account.profile.location?.place?.display_path}
                   configuredWithoutPlace={
                     account.profile.location?.configured === true && !account.profile.location.place

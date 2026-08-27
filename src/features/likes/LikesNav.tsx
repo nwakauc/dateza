@@ -3,15 +3,27 @@ import { LIKES_TAB_ITEMS, type LikesTab } from "./likesTabs.ts";
 
 type Props = {
   active: LikesTab;
+  incomingCount: number | undefined;
+  outgoingCount: number | undefined;
   mutualCount: number | undefined;
   onChange: (tab: LikesTab) => void;
 };
 
-export function LikesNav({ active, mutualCount, onChange }: Props) {
+function countFor(tab: LikesTab, incomingCount: number | undefined, outgoingCount: number | undefined, mutualCount: number | undefined): number | undefined {
+  if (tab === "liked_you") return incomingCount;
+  if (tab === "you_liked") return outgoingCount;
+  if (tab === "mutual") return mutualCount;
+  if (tab === "all" && incomingCount != null && outgoingCount != null && mutualCount != null) {
+    return incomingCount + outgoingCount + mutualCount;
+  }
+  return undefined;
+}
+
+export function LikesNav({ active, incomingCount, outgoingCount, mutualCount, onChange }: Props) {
   return (
     <nav className="likes-nav" aria-label="Likes">
       {LIKES_TAB_ITEMS.map((tab) => {
-        const count = tab.id === "mutual" || tab.id === "all" ? mutualCount : undefined;
+        const count = countFor(tab.id, incomingCount, outgoingCount, mutualCount);
         return (
           <button
             key={tab.id}

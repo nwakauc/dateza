@@ -12,6 +12,8 @@ type Props = {
   returnTo: string;
   onRetry: () => void;
   onBlocked: () => void;
+  matchId?: string;
+  onUnmatched?: () => void;
 };
 
 function CompatibilitySummary({ compatibility }: { compatibility: NonNullable<DatezaCompatibility> }) {
@@ -27,7 +29,7 @@ function CompatibilitySummary({ compatibility }: { compatibility: NonNullable<Da
   );
 }
 
-export function ChatProfileRail({ profile, loading, error, returnTo, onRetry, onBlocked }: Props) {
+export function ChatProfileRail({ profile, loading, error, returnTo, onRetry, onBlocked, matchId, onUnmatched }: Props) {
   if (loading) {
     return (
       <aside className="chat-rail chat-rail--loading" aria-label="Loading profile context" aria-busy="true">
@@ -56,7 +58,13 @@ export function ChatProfileRail({ profile, loading, error, returnTo, onRetry, on
     <aside className="chat-rail" aria-label={`About ${name}`}>
       <div className="chat-rail__top">
         <h2>About {name.split(" ")[0] || name}</h2>
-        <ProfileSafetyActions profileId={profile.id} name={name} onBlocked={onBlocked} />
+        <ProfileSafetyActions
+          profileId={profile.id}
+          name={name}
+          matchId={matchId}
+          onBlocked={onBlocked}
+          onUnmatched={onUnmatched}
+        />
       </div>
       {photo ? <img className="chat-rail__photo" src={photo.url} width="320" height="360" alt="" /> : null}
       <div className="chat-rail__identity">

@@ -1,10 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 /**
  * FE-01: verification must never outrank incomplete onboarding. These tests
@@ -21,6 +20,7 @@ const ownerProfile = {
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   options: {},
 };
 
@@ -132,13 +132,6 @@ function renderApp(path: string) {
 }
 
 describe("app-shell routing precedence (FE-01)", () => {
-  // These tests are about onboarding/verification precedence, not the
-  // location guard (covered separately in RequireLocation.test.tsx) — seed
-  // the device as already having confirmed location for the completed-member
-  // fixture so it doesn't intercept the Discover-reaching tests below.
-  beforeEach(() => {
-    markLocationConfirmed(ownerProfile.id);
-  });
 
   it("resumes onboarding for a returning member who visits Discover directly, and never opens the verification modal", async () => {
     setBearerToken("opaque-session-token");

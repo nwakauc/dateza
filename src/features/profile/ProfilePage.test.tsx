@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 const ownerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
@@ -13,6 +12,7 @@ const ownerProfile = {
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   first_name: "Private",
   last_name: "Name",
   display_name: "Thando",
@@ -206,7 +206,6 @@ describe("My profile / How you appear", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.stubGlobal("fetch", vi.fn());
-    markLocationConfirmed(ownerId);
     setBearerToken("opaque-session-token");
   });
 

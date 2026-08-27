@@ -1,16 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 const ownerProfile = {
   id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
   brand: { slug: "dateza", name: "DateZA" },
   status: "active",
   visibility: "visible",
+  location: { configured: true, place: null },
   options: {},
   display_name: "Thando",
   profile_completion: {
@@ -161,17 +161,19 @@ function baseHandler(extra?: (url: string, method: string) => Response | undefin
     if (url.endsWith("/api/v1/conversations")) {
       return Promise.resolve(jsonResponse(200, { conversations: [], next_cursor: null }));
     }
+    if (url.includes("/api/v1/likes/incoming") && method === "GET") {
+      return Promise.resolve(jsonResponse(200, { likes: [], next_cursor: null }));
+    }
+    if (url.includes("/api/v1/likes/outgoing") && method === "GET") {
+      return Promise.resolve(jsonResponse(200, { likes: [], next_cursor: null }));
+    }
     return Promise.resolve(jsonResponse(404, { error: "not_found" }));
   };
   return fetchImpl;
 }
 
 describe("Likes hub", () => {
-  beforeEach(() => {
-    markLocationConfirmed(ownerProfile.id);
-  });
-
-  it("loads GET /api/v1/matches and never invents an incoming-likes endpoint", async () => {
+  it("loads matches together with incoming and outgoing likes lists", async () => {
     setBearerToken("opaque-session-token");
     const urls: string[] = [];
     vi.mocked(fetch).mockImplementation((input, init) => {
@@ -186,8 +188,8 @@ describe("Likes hub", () => {
     expect(screen.getByText("Cape Town")).toBeInTheDocument();
     expect(screen.getByText("Matched")).toBeInTheDocument();
     expect(urls.some((url) => url.includes("/api/v1/matches"))).toBe(true);
-    expect(urls.some((url) => /\/api\/v1\/likes(\?|$)/.test(url))).toBe(false);
-    expect(urls.some((url) => url.includes("incoming"))).toBe(false);
+    expect(urls.some((url) => url.includes("/api/v1/likes/incoming"))).toBe(true);
+    expect(urls.some((url) => url.includes("/api/v1/likes/outgoing"))).toBe(true);
     expect(screen.queryByText("78")).not.toBeInTheDocument();
     expect(screen.queryByText(/recent visitors/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /boost profile/i })).not.toBeInTheDocument();
@@ -348,22 +350,48 @@ describe("Likes hub", () => {
     expect(screen.getByText(/chats didn’t refresh/i)).toBeInTheDocument();
   });
 
-  it("switches to honest incoming and outgoing boundaries without fake people", async () => {
+  it("lists incoming likes from GET /likes/incoming", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
-    vi.mocked(fetch).mockImplementation(baseHandler());
+    vi.mocked(fetch).mockImplementation(
+      baseHandler((url, method) => {
+        if (url.includes("/api/v1/likes/incoming") && method === "GET") {
+          return jsonResponse(200, {
+            likes: [{ liked_at: "2026-08-27T08:00:00Z", profile: publicProfile({ id: "p-in", display_name: "Lerato" }) }],
+            next_cursor: null,
+          });
+        }
+        return undefined;
+      }),
+    );
 
     renderLikes();
-    expect(await screen.findByText("Maya")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: /liked you/i }));
+    await user.click(await screen.findByRole("tab", { name: /liked you/i }));
     expect(await screen.findByRole("heading", { name: /people who liked you/i })).toBeInTheDocument();
-    expect(screen.getByText(/incoming likes aren’t available yet/i)).toBeInTheDocument();
-    expect(screen.queryByText("Maya")).not.toBeInTheDocument();
+    expect(screen.getByText("Lerato")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /like lerato back/i })).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole("tab", { name: /you liked/i }));
+  it("lists outgoing likes from GET /likes/outgoing", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation(
+      baseHandler((url, method) => {
+        if (url.includes("/api/v1/likes/outgoing") && method === "GET") {
+          return jsonResponse(200, {
+            likes: [{ liked_at: "2026-08-27T08:00:00Z", profile: publicProfile({ id: "p-out", display_name: "Sipho" }) }],
+            next_cursor: null,
+          });
+        }
+        return undefined;
+      }),
+    );
+
+    renderLikes();
+    await user.click(await screen.findByRole("tab", { name: /you liked/i }));
     expect(await screen.findByRole("heading", { name: /you liked/i })).toBeInTheDocument();
-    expect(screen.getByText(/sent likes aren’t listed yet/i)).toBeInTheDocument();
+    expect(screen.getByText("Sipho")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^view$/i })).toBeInTheDocument();
   });
 
   it("shows an optimistic empty state when there are no matches", async () => {
@@ -422,7 +450,7 @@ describe("Likes hub", () => {
     expect(await screen.findByRole("tab", { name: /all, 1/i })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("tab", { name: /mutual/i })).toBeInTheDocument();
     expect(screen.getByText("Maya")).toBeInTheDocument();
-    expect(screen.getByText(/incoming likes aren’t listed yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/sent likes aren’t listed yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /people who liked you/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /you liked/i })).toBeInTheDocument();
   });
 });

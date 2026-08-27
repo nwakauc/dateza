@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
+import { unmatchMatch } from "../../lib/api/social.ts";
 import { blockProfile, reportProfile, reportSubmission } from "../../lib/api/safety.ts";
 import { PROFILE_REPORT_REASONS, type ProfileReportReason } from "../../lib/api/safetyTypes.ts";
 import { Modal } from "../verification/Modal.tsx";
@@ -21,14 +22,17 @@ type Props = {
   profileId: string;
   name: string;
   onBlocked: () => void;
+  /** Active Match public UUID. Unmatch is only offered for a current match. */
+  matchId?: string;
+  onUnmatched?: () => void;
 };
 
-export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
+export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUnmatched }: Props) {
   const menuId = useId();
   const reasonFieldId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [dialog, setDialog] = useState<"report" | "block" | undefined>();
+  const [dialog, setDialog] = useState<"report" | "block" | "unmatch" | undefined>();
   const [reason, setReason] = useState<ProfileReportReason | "">("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -93,6 +97,26 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
     }
   }
 
+  async function confirmUnmatch() {
+    if (!matchId || busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await unmatchMatch(matchId);
+      onUnmatched?.();
+      setDialog(undefined);
+    } catch (caught: unknown) {
+      if (caught instanceof ApiError && (caught.status === 404 || caught.code === "match_unavailable")) {
+        onUnmatched?.();
+        setDialog(undefined);
+        return;
+      }
+      setError("We could not end this match. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="profile-safety" ref={rootRef}>
       <button
@@ -108,6 +132,21 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
       </button>
       {open ? (
         <div className="profile-safety__menu" id={menuId} role="menu">
+          {matchId && onUnmatched ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  setDialog("unmatch");
+                }}
+              >
+                Unmatch
+              </button>
+              <div className="profile-safety__separator" role="separator" />
+            </>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -206,6 +245,32 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
               </div>
             </form>
           )}
+        </Modal>
+      ) : null}
+
+      {dialog === "unmatch" ? (
+        <Modal ariaLabel={`End match with ${name}`} onClose={closeDialog}>
+          <div className="profile-safety-dialog">
+            <p className="profile-safety-dialog__eyebrow">Unmatch</p>
+            <h2>End this match?</h2>
+            <p>
+              This ends your match with {name}. You won’t be able to keep chatting. It does not block them, and you may
+              match again later.
+            </p>
+            {error ? (
+              <p className="auth-form__error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <div className="profile-safety-dialog__actions">
+              <button className="auth-form__submit" type="button" onClick={() => void confirmUnmatch()} disabled={busy}>
+                {busy ? "Ending match…" : "End match"}
+              </button>
+              <button className="shell-text-action" type="button" onClick={closeDialog} disabled={busy}>
+                Keep match
+              </button>
+            </div>
+          </div>
         </Modal>
       ) : null}
 

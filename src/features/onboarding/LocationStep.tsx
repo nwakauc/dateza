@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
 import { updateProfileLocation } from "../../lib/api/profile.ts";
-import { markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 import { DatingPlacePicker } from "../profile/edit/DatingPlacePicker.tsx";
 import { onboardingErrorMessage } from "./onboardingErrors.ts";
 
 type Phase = "idle" | "locating" | "saving" | "denied" | "unavailable" | "timeout" | "unsupported" | "error";
 
 type Props = {
-  profileId: string;
   onSuccess: () => void;
 };
 
@@ -35,7 +33,7 @@ function messageFor(phase: Phase, detail: string | undefined): string | undefine
   }
 }
 
-export function LocationStep({ profileId, onSuccess }: Props) {
+export function LocationStep({ onSuccess }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [detail, setDetail] = useState<string | undefined>();
   const busyRef = useRef(false);
@@ -57,7 +55,6 @@ export function LocationStep({ profileId, onSuccess }: Props) {
         setDetail("DateZA couldn't confirm your location yet. Try again.");
         return;
       }
-      markLocationConfirmed(profileId);
       onSuccess();
     } catch (caught) {
       const fieldMessage = caught instanceof ApiError && caught.details ? Object.values(caught.details).flat()[0] : undefined;
@@ -107,7 +104,7 @@ export function LocationStep({ profileId, onSuccess }: Props) {
   return (
     <div className="auth-form">
       <p className="auth-form__hint">Choose the general area you want to date from.</p>
-      <DatingPlacePicker profileId={profileId} disabled={gpsBusy} onSaved={() => onSuccess()} />
+      <DatingPlacePicker disabled={gpsBusy} onSaved={() => onSuccess()} />
 
       {message ? (
         <p className="auth-form__error" role="alert">
