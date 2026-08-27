@@ -1,14 +1,14 @@
 export const EDIT_SECTIONS = [
-  { id: "about", label: "About" },
-  { id: "photos", label: "Photos" },
-  { id: "work", label: "Work & Education" },
-  { id: "lifestyle", label: "Lifestyle" },
-  { id: "dating", label: "Dating" },
-  { id: "interests", label: "Interests" },
-  { id: "languages", label: "Languages" },
-  { id: "prompts", label: "Prompts" },
-  { id: "verification", label: "Verification" },
-  { id: "preview", label: "Preview" },
+  { id: "about", label: "About", shortLabel: "About" },
+  { id: "photos", label: "Photos", shortLabel: "Photos" },
+  { id: "work", label: "Work & Education", shortLabel: "Work" },
+  { id: "lifestyle", label: "Lifestyle", shortLabel: "Lifestyle" },
+  { id: "dating", label: "Dating", shortLabel: "Dating" },
+  { id: "interests", label: "Interests", shortLabel: "Interests" },
+  { id: "languages", label: "Languages", shortLabel: "Languages" },
+  { id: "prompts", label: "Prompts", shortLabel: "Prompts" },
+  { id: "verification", label: "Verification", shortLabel: "Verify" },
+  { id: "preview", label: "Preview", shortLabel: "Preview" },
 ] as const;
 
 export type EditSectionId = (typeof EDIT_SECTIONS)[number]["id"];

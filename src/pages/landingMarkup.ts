@@ -23,7 +23,7 @@ export const landingMarkup = `
         <span class="dz-hero-sub" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:40px;color:#1C1720">Right here.</span>
         <svg width="46" height="40" viewBox="0 0 46 40" style="animation:dz-pulse 2.6s ease-in-out infinite"><path d="M23 36S6 26 6 15.2C6 8.8 11 4.5 16.2 4.5c2.5 0 4.7 1 5.8 2.6 1.1-1.6 3.3-2.6 5.8-2.6C33 4.5 38 8.8 38 15.2 38 26 23 36 23 36z" fill="none" stroke="#E8375A" stroke-width="2.5"></path></svg>
       </div>
-      <p class="dz-hero-desc" style="margin:0;font-size:17.5px;line-height:1.65;color:#5F5566;max-width:400px;text-wrap:pretty">Real South Africans. RealMe verified. Smarter matches based on what actually matters to you.</p>
+      <p class="dz-hero-desc" style="margin:0;font-size:17.5px;line-height:1.65;color:#5F5566;max-width:400px;text-wrap:pretty">Real South Africans. Contact verified. Better matches from what you said actually matters.</p>
       <div class="dz-hero-ctas" style="display:flex;gap:14px;align-items:center">
         <a href="/sign-up" class="dz-btn-primary-lg" style="background:#1C1720;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;text-decoration:none;cursor:pointer;display:inline-block">Start Matching →</a>
         <a href="/sign-up" class="dz-btn-waiting" style="background:#E8375A;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 10px 26px rgba(232,55,90,.32);text-decoration:none;cursor:pointer;display:inline-block">Girls are waiting</a>
@@ -68,7 +68,7 @@ export const landingMarkup = `
       </div>
       <div style="position:absolute;bottom:96px;right:24px;background:#fff;border:1px solid #F0EAEE;border-radius:18px;padding:15px 19px;box-shadow:0 16px 44px rgba(28,23,32,.14);display:flex;gap:12px;align-items:center;z-index:3;animation:dz-float 5s ease-in-out .8s infinite">
         <span style="width:38px;height:38px;border-radius:12px;background:#22A06B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg></span>
-        <div><div style="font-size:13px;font-weight:700">RealMe Verified</div><div style="font-size:11px;color:#7A6F80">Real person. Verified identity.</div></div>
+        <div><div style="font-size:13px;font-weight:700">Verified contact</div><div style="font-size:11px;color:#7A6F80">Email or phone confirmed.</div></div>
       </div>
       <div style="position:absolute;bottom:14px;left:110px;background:#fff;border:1px solid #F0EAEE;border-radius:999px;padding:11px 18px;box-shadow:0 14px 36px rgba(28,23,32,.13);display:flex;gap:10px;align-items:center;z-index:3">
         <span style="width:26px;height:26px;border-radius:50%;background:#FFF0F3;color:#E8375A;display:flex;align-items:center;justify-content:center;font-size:12px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M12 21s-6.7-4.35-9.33-8.2C1.02 10.68 1.6 7.4 4.1 5.7 6.2 4.3 8.9 4.7 10.5 6.6L12 8.3l1.5-1.7c1.6-1.9 4.3-2.3 6.4-.9 2.5 1.7 3.08 5 1.43 7.1C18.7 16.65 12 21 12 21z"/></svg></span>
@@ -99,7 +99,7 @@ export const landingMarkup = `
     <div style="flex:1;display:flex;flex-direction:column;gap:13px">
       <span style="font-size:11.5px;font-weight:800;letter-spacing:2px;color:#E8375A"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-0.15em;flex:none"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></svg> DISCOVERY</span>
       <div class="dz-h2-sm" style="font-family:'Instrument Serif',serif;font-size:31px;line-height:1.12">10 people worth meeting. <em>Every day.</em></div>
-      <p style="margin:0;font-size:14px;line-height:1.6;color:#5F5566">AI-curated matches based on compatibility and what you said matters — reasons included.</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#5F5566">Curated matches based on compatibility and what you said matters.</p>
       <span style="align-self:flex-start;font-size:13px;font-weight:700;color:#E8375A">Check today's ten →</span>
     </div>
     <div class="dz-df-thumb" style="position:relative;width:150px;height:190px;flex:none">
@@ -129,8 +129,8 @@ export const landingMarkup = `
   <div style="display:flex;flex-direction:column;gap:18px">
     <span style="display:inline-flex;align-self:flex-start;align-items:center;gap:7px;background:#F0EBFF;color:#6C4FE0;font-size:11.5px;font-weight:800;letter-spacing:1.5px;padding:8px 14px;border-radius:999px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-0.15em;flex:none"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></svg> AI MATCHMAKING</span>
     <div class="dz-h2" style="font-family:'Instrument Serif',serif;font-size:44px;line-height:1.06">Compatibility that goes <em style="color:#6C4FE0">beyond photos.</em></div>
-    <p class="dz-desktop-only" style="margin:0;font-size:15px;line-height:1.7;color:#5F5566;max-width:440px">Our AI learns what matters to you and surfaces people you're more likely to genuinely connect with. You stay in control — it just does the homework.</p>
-    <p class="dz-mobile-only" style="margin:0;font-size:14px;line-height:1.6;color:#5F5566;max-width:440px">Our AI learns what matters to you and surfaces people you're more likely to connect with.</p>
+      <p class="dz-desktop-only" style="margin:0;font-size:15px;line-height:1.7;color:#5F5566;max-width:440px">DateZA scores compatibility from what you both said matters — values, lifestyle, and how you like to date. You stay in control. It just does the homework.</p>
+    <p class="dz-mobile-only" style="margin:0;font-size:14px;line-height:1.6;color:#5F5566;max-width:440px">Compatibility from what you both said matters — values, lifestyle, and how you like to date.</p>
     <div class="dz-ai-progress" style="display:flex;flex-direction:column;gap:10px;max-width:410px;font-size:13px;font-weight:600;color:#4A414F">
       <div style="display:flex;align-items:center;justify-content:space-between"><span style="width:120px">Values</span><div style="flex:1;margin:0 14px;height:6px;border-radius:4px;background:#ECE7F2"><div style="width:96%;height:100%;border-radius:4px;background:#22A06B"></div></div><span style="color:#22A06B">96%</span></div>
       <div style="display:flex;align-items:center;justify-content:space-between"><span style="width:120px">Family plans</span><div style="flex:1;margin:0 14px;height:6px;border-radius:4px;background:#ECE7F2"><div style="width:95%;height:100%;border-radius:4px;background:#22A06B"></div></div><span style="color:#22A06B">95%</span></div>
@@ -185,28 +185,28 @@ export const landingMarkup = `
 
 <div class="dz-section dz-realme" id="safety" style="margin:0 64px 64px;background:#F2FAF6;border:1px solid #DBF0E5;border-radius:34px;padding:52px 58px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center">
   <div style="display:flex;flex-direction:column;gap:16px">
-    <span style="display:inline-flex;align-self:flex-start;align-items:center;gap:8px;background:#22A06B;color:#fff;font-size:11.5px;font-weight:800;letter-spacing:1.5px;padding:8px 15px;border-radius:999px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> REALME</span>
+      <span style="display:inline-flex;align-self:flex-start;align-items:center;gap:8px;background:#22A06B;color:#fff;font-size:11.5px;font-weight:800;letter-spacing:1.5px;padding:8px 15px;border-radius:999px"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> SAFETY</span>
     <div class="dz-h2" style="font-family:'Instrument Serif',serif;font-size:42px;line-height:1.08">Real people should meet <em style="color:#22A06B">real people.</em></div>
-    <p style="margin:0;font-size:14.5px;line-height:1.7;color:#4A5B51;max-width:440px">We built trust into dating. Every RealMe member passes selfie verification and liveness checks — so the face on the profile is the person at the table.</p>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;color:#2E6B4F">
-      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Selfie verification</span>
-      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Liveness checks</span>
-      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Trust signals</span>
+    <p style="margin:0;font-size:14.5px;line-height:1.7;color:#4A5B51;max-width:440px">Trust on DateZA today: verified contact, private dating location, and block and report that stay in your control. RealMe selfie checks are coming soon.</p>
+    <div class="dz-realme-chips" style="display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;color:#2E6B4F">
+      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Verified contact</span>
       <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Report &amp; block</span>
       <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Privacy controls</span>
+      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">Private location</span>
+      <span style="background:#fff;border:1px solid #DBF0E5;padding:9px 15px;border-radius:999px">RealMe — coming soon</span>
     </div>
   </div>
   <div style="display:flex;justify-content:center">
     <div class="dz-realme-card" style="background:#fff;border-radius:26px;padding:28px;box-shadow:0 22px 55px rgba(34,160,107,.16);display:flex;flex-direction:column;gap:16px;width:330px">
       <div style="display:flex;align-items:center;gap:14px">
-        <a href="/dating-safely" style="display:block;color:inherit;text-decoration:none;cursor:pointer;width:64px;height:64px;border-radius:50%;overflow:hidden"><img class="dz-img" src="/images/people/verify-selfie.webp" alt="Selfie verification in progress" loading="lazy"></a>
-        <div><div style="font-size:15px;font-weight:700">Verifying selfie…</div><div style="font-size:12px;color:#7A6F80">Matches profile photos</div></div>
+        <a href="/dating-safely" style="display:block;color:inherit;text-decoration:none;cursor:pointer;width:64px;height:64px;border-radius:50%;overflow:hidden"><img class="dz-img" src="/images/people/verify-selfie.webp" alt="A DateZA member" loading="lazy"></a>
+        <div><div style="font-size:15px;font-weight:700">Verified contact</div><div style="font-size:12px;color:#7A6F80">Email or phone confirmed</div></div>
       </div>
-      <div style="height:8px;border-radius:5px;background:#EDF6F1"><div style="width:82%;height:100%;border-radius:5px;background:#22A06B"></div></div>
+      <div style="height:8px;border-radius:5px;background:#EDF6F1"><div style="width:100%;height:100%;border-radius:5px;background:#22A06B"></div></div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600;color:#2E6B4F">
-        <span><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> Real person detected</span>
-        <span><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> Face matches profile</span>
-        <span style="color:#9AA69F"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><circle cx="12" cy="12" r="9"/></svg> Issuing RealMe badge…</span>
+        <span><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> Contact verified</span>
+        <span><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><path d="M20 6 9 17l-5-5"/></svg> Block and report stay free</span>
+        <span style="color:#9AA69F"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-0.125em;flex:none"><circle cx="12" cy="12" r="9"/></svg> RealMe selfie checks — coming soon</span>
       </div>
     </div>
   </div>
@@ -246,7 +246,7 @@ export const landingMarkup = `
     <div class="dz-h2" style="font-family:'Instrument Serif',serif;font-size:42px;line-height:1.08">Technology that brings the right people together.</div>
     <div style="display:flex;flex-direction:column;gap:16px">
       <div style="display:flex;gap:14px"><span style="width:26px;height:26px;border-radius:8px;background:#F5B62E;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none">1</span><div><b style="font-size:14.5px">Tell us about you</b><div style="font-size:13px;color:#5F5566;line-height:1.55;margin-top:3px">Create your profile and share what matters most.</div></div></div>
-      <div style="display:flex;gap:14px"><span style="width:26px;height:26px;border-radius:8px;background:#6C4FE0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none">2</span><div><b style="font-size:14.5px">We do the homework</b><div style="font-size:13px;color:#5F5566;line-height:1.55;margin-top:3px">AI matching surfaces people you'll genuinely connect with.</div></div></div>
+      <div style="display:flex;gap:14px"><span style="width:26px;height:26px;border-radius:8px;background:#6C4FE0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none">2</span><div><b style="font-size:14.5px">We do the homework</b><div style="font-size:13px;color:#5F5566;line-height:1.55;margin-top:3px">Compatibility matching surfaces people who share what you said matters.</div></div></div>
       <div style="display:flex;gap:14px"><span style="width:26px;height:26px;border-radius:8px;background:#E8375A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none">3</span><div><b style="font-size:14.5px">Start something real</b><div style="font-size:13px;color:#5F5566;line-height:1.55;margin-top:3px">Chat, vibe and build something that could last.</div></div></div>
     </div>
     <a href="/how-it-works" style="align-self:flex-start;font-size:13.5px;font-weight:700;color:#E8375A;text-decoration:none;cursor:pointer">Learn more about how it works →</a>
@@ -257,7 +257,7 @@ export const landingMarkup = `
   <svg width="120" height="90" viewBox="0 0 120 90" style="position:absolute;top:30px;left:80px;opacity:.85"><path d="M10 74 C 30 36, 60 26, 74 42 C 82 52, 70 62, 62 54 C 54 46, 70 28, 106 20" fill="none" stroke="#F5B62E" stroke-width="2.5" stroke-linecap="round"></path></svg>
   <svg width="56" height="50" viewBox="0 0 46 40" style="position:absolute;bottom:40px;right:100px;animation:dz-pulse 2.6s ease-in-out infinite"><path d="M23 36S6 26 6 15.2C6 8.8 11 4.5 16.2 4.5c2.5 0 4.7 1 5.8 2.6 1.1-1.6 3.3-2.6 5.8-2.6C33 4.5 38 8.8 38 15.2 38 26 23 36 23 36z" fill="none" stroke="#E8375A" stroke-width="2.5"></path></svg>
   <div class="dz-cta-title" style="font-family:'Instrument Serif',serif;font-size:64px;line-height:1.05;color:#fff">Your person is out there.<br><em style="color:#FF6B8A">Right here.</em></div>
-  <p style="margin:22px auto 0;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.7);max-width:440px">Join free, get RealMe verified, and meet your ten for today.</p>
+  <p style="margin:22px auto 0;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.7);max-width:440px">Join free and meet your ten for today.</p>
   <div class="dz-cta-actions" style="display:flex;justify-content:center;gap:14px;margin-top:32px">
     <a href="/sign-up" style="background:#E8375A;color:#fff;padding:18px 40px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 14px 40px rgba(232,55,90,.45);text-decoration:none;cursor:pointer;display:inline-block">Join DateZA Free →</a>
     <a href="/get-the-app" style="border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:600;text-decoration:none;cursor:pointer;display:inline-block">Get the app</a>

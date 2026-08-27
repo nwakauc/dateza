@@ -1641,12 +1641,13 @@ button.settings-row:hover {
   }
 
   .dz-phone-frame {
-    width: clamp(96px, 27vw, 215px) !important;
+    width: clamp(110px, 38vw, 180px) !important;
   }
 
   .dz-phone-screen {
     height: auto !important;
-    aspect-ratio: 199 / 430;
+    aspect-ratio: 199 / 340;
+    max-height: 280px;
   }
 
   /* Text-heavy "match" screen doesn't scale like the photo screens —
@@ -1815,8 +1816,11 @@ button.settings-row:hover {
   }
 
   .dz-ai-progress > div > span:first-child {
-    width: 76px !important;
-    flex: none;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .dz-ai-progress > div > div {
@@ -1830,6 +1834,8 @@ button.settings-row:hover {
   .dz-pair-photo {
     width: 92px !important;
     height: 92px !important;
+    flex: none;
+    border-radius: 50% !important;
   }
 
   .dz-pair-connector svg:first-child,
@@ -1843,7 +1849,21 @@ button.settings-row:hover {
   }
 
   .dz-realme {
+    margin-left: 24px !important;
+    margin-right: 24px !important;
     margin-bottom: 40px !important;
+  }
+
+  .dz-realme-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .dz-realme-chips > span {
+    flex: 1 1 calc(50% - 8px);
+    text-align: center;
+    box-sizing: border-box;
   }
 
   .dz-realme-card {
@@ -3006,7 +3026,8 @@ main.public-status a.public-status__home:hover {
   font-weight: 700;
 }
 
-.onboard-chip:has(:focus-visible) {
+.onboard-chip:has(:focus-visible),
+button.onboard-chip:focus-visible {
   outline: 2px solid #1c1720;
   outline-offset: 2px;
 }
@@ -4221,6 +4242,13 @@ main.public-status a.public-status__home:hover {
   font-size: 0.75rem;
 }
 
+.incoming-opener__new {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--dz-pink);
+  font-weight: 800;
+}
+
 .incoming-opener__quote {
   margin: 10px 0;
   padding: 10px 12px;
@@ -4969,6 +4997,7 @@ main.public-status a.public-status__home:hover {
   position: absolute;
   top: 12px;
   right: 12px;
+  z-index: 2;
   width: 44px;
   height: 44px;
   border: 0;
@@ -8635,10 +8664,10 @@ main.public-status a.public-status__home:hover {
 .message-bubble--own time { color: rgba(255,255,255,.75); }
 .chat-first-message { display: grid; gap: 4px; margin: auto; color: #766972; text-align: center; }
 .chat-first-message svg { width: 28px; height: 28px; margin: 0 auto 5px; color: #e8a9b8; }
-.chat-composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px; border-top: 1px solid rgba(28, 23, 32, 0.08); }
+.chat-composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px; border-top: 1px solid rgba(28, 23, 32, 0.08); min-width: 0; max-width: 100%; box-sizing: border-box; }
 .chat-composer__error { margin: 0; padding: 8px 14px 0; color: #9f1738; font-size: 0.78rem; font-weight: 700; }
-.chat-composer textarea { flex: 1; min-height: 44px; max-height: 120px; resize: vertical; padding: 11px 13px; border: 1px solid #d9cfd5; border-radius: 12px; font: inherit; }
-.chat-composer button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #e8375a; color: #fff; font: 800 0.85rem Outfit, sans-serif; cursor: pointer; }
+.chat-composer textarea { flex: 1; min-width: 0; min-height: 44px; max-height: 120px; resize: vertical; padding: 11px 13px; border: 1px solid #d9cfd5; border-radius: 12px; font: inherit; font-size: 16px; }
+.chat-composer button { flex: none; min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #e8375a; color: #fff; font: 800 0.85rem Outfit, sans-serif; cursor: pointer; }
 .chat-composer button:disabled { opacity: .5; cursor: not-allowed; }
 
 .shell a:focus-visible, .shell button:focus-visible, .shell summary:focus-visible, .shell textarea:focus-visible { outline: 3px solid rgba(109, 85, 122, 0.55); outline-offset: 3px; }
@@ -8681,7 +8710,7 @@ main.public-status a.public-status__home:hover {
   .shell-page__header--with-action { align-items: flex-start; }
   .shell-page__title { font-family: "Instrument Serif", serif; font-size: 2rem; font-weight: 400; letter-spacing: -0.01em; }
   .shell-page__eyebrow { margin-bottom: 2px; }
-  .chats-layout { min-height: calc(100dvh - 258px); height: calc(100dvh - 258px); border-radius: 0; box-shadow: none; margin: 0 -16px; }
+  .chats-layout { min-height: calc(100dvh - 258px); height: calc(100dvh - 258px); border-radius: 0; box-shadow: none; margin: 0; width: 100%; max-width: 100%; overflow: hidden; }
   .shell-page--chats .shell-page__header { margin-bottom: 12px; }
   .chat-composer { padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
 }
@@ -8786,7 +8815,7 @@ main.public-status a.public-status__home:hover {
 
 .edit-profile__tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   margin: 0 0 16px;
   padding: 4px 0 12px;
@@ -8797,6 +8826,7 @@ main.public-status a.public-status__home:hover {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
 }
 
 .edit-profile__tabs::-webkit-scrollbar {
@@ -8807,14 +8837,14 @@ main.public-status a.public-status__home:hover {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 8px 14px;
+  min-height: 34px;
+  padding: 6px 12px;
   border: 1px solid #e4dbe0;
   border-radius: 999px;
   background: #fff;
   color: var(--dz-soft);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -9688,6 +9718,30 @@ main.public-status a.public-status__home:hover {
   cursor: pointer;
 }
 
+.chats-list__note {
+  margin: 0 16px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff7f4;
+}
+
+.chats-list__note p {
+  margin: 0 0 8px;
+  color: #5f5566;
+  font-size: 0.875rem;
+}
+
+.chats-list__note button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dz-pink-dark);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .chats-list__empty {
   display: grid;
   place-items: center;
@@ -9820,6 +9874,8 @@ main.public-status a.public-status__home:hover {
   display: flex;
   min-width: 0;
   min-height: 0;
+  max-width: 100%;
+  overflow: hidden;
   flex: 1;
   flex-direction: column;
 }
@@ -10096,11 +10152,12 @@ main.public-status a.public-status__home:hover {
 .shell-page--chats .chat-composer textarea {
   min-height: 46px;
   max-height: 130px;
+  min-width: 0;
   padding: 12px 15px;
   border-color: #e1d8dd;
   border-radius: 16px;
   background: #faf8f9;
-  font-size: 0.83rem;
+  font-size: 16px;
   resize: none;
 }
 
@@ -10370,8 +10427,11 @@ main.public-status a.public-status__home:hover {
   .shell-page--chats .chats-layout {
     display: block;
     width: 100%;
+    max-width: 100%;
     height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
     min-height: 0;
+    margin: 0;
+    overflow: hidden;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -10424,6 +10484,8 @@ main.public-status a.public-status__home:hover {
 
   .shell-page--chats:has(.chats-layout--selected) .chats-layout {
     height: 100dvh;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .chat-header__back {
@@ -10447,8 +10509,8 @@ main.public-status a.public-status__home:hover {
   }
 
   .chat-match-context {
-    margin: 10px 12px 0;
-    padding: 10px 12px;
+    margin: 8px 12px 0;
+    padding: 8px 12px;
   }
 
   .chat-match-context small {
@@ -10460,7 +10522,27 @@ main.public-status a.public-status__home:hover {
   }
 
   .message-thread {
-    padding: 18px 14px;
+    padding: 12px 14px;
+  }
+
+  .message-thread .chat-inline-state {
+    margin: 8px auto 0;
+    padding: 8px 12px 16px;
+    gap: 4px;
+  }
+
+  .message-thread .chat-inline-state__heart {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .message-thread .chat-inline-state strong {
+    font-size: 1.15rem;
+  }
+
+  .message-thread .chat-inline-state p {
+    font-size: 0.8rem;
   }
 
   .shell-page--chats .message-bubble {
@@ -10469,6 +10551,7 @@ main.public-status a.public-status__home:hover {
 
   .shell-page--chats .chat-composer {
     padding: 10px 12px max(10px, env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
   }
 }
 

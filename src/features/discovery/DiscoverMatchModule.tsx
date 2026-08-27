@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startConversation } from "../../lib/api/social.ts";
 import { HeartIcon } from "../shell/icons.tsx";
@@ -14,10 +14,12 @@ type Props = {
 export function DiscoverMatchModule({ name, photoUrl, selfPhotoUrl, matchId, onKeepDiscovering }: Props) {
   const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const [messageError, setMessageError] = useState(false);
 
   async function message() {
-    if (!matchId || starting) return;
+    if (!matchId || startingRef.current) return;
+    startingRef.current = true;
     setStarting(true);
     setMessageError(false);
     try {
@@ -25,6 +27,7 @@ export function DiscoverMatchModule({ name, photoUrl, selfPhotoUrl, matchId, onK
       navigate(`/chats?conversation=${conversation.id}`);
     } catch {
       setMessageError(true);
+      startingRef.current = false;
       setStarting(false);
     }
   }

@@ -89,7 +89,7 @@ export function ConversationList({
       {!loading && openers.length > 0 ? (
         <section className="chats-openers" aria-labelledby="incoming-openers-title">
           <div className="chats-openers__heading">
-            <h2 id="incoming-openers-title">Waiting for you</h2>
+            <h2 id="incoming-openers-title">New openers</h2>
             <span>{openers.length}</span>
           </div>
           {openers.map((opener) => (

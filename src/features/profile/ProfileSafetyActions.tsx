@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
-import { blockProfile, reportProfile } from "../../lib/api/safety.ts";
+import { blockProfile, reportProfile, reportSubmission } from "../../lib/api/safety.ts";
 import { PROFILE_REPORT_REASONS, type ProfileReportReason } from "../../lib/api/safetyTypes.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { MoreIcon } from "../shell/icons.tsx";
@@ -34,6 +34,7 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [reported, setReported] = useState(false);
+  const payload = reportSubmission(reason, note);
 
   useEffect(() => {
     if (!open) return;
@@ -55,13 +56,17 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
     setNote("");
   }
 
+  function toggleReason(code: ProfileReportReason) {
+    setReason((current) => (current === code ? "" : code));
+  }
+
   async function submitReport(event: FormEvent) {
     event.preventDefault();
-    if (!reason || busy) return;
+    if (!payload || busy) return;
     setBusy(true);
     setError(undefined);
     try {
-      await reportProfile(profileId, { reason, note: note.trim() || undefined });
+      await reportProfile(profileId, payload);
       setReported(true);
     } catch {
       setError("We could not send that report. Try again.");
@@ -132,9 +137,20 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
             <div className="profile-safety-dialog">
               <p className="profile-safety-dialog__eyebrow">Report</p>
               <h2>Report received</h2>
-              <p>Thanks for letting us know. We received your report and will review it. You can also block {name} if you do not want to see them again.</p>
+              <p>
+                Thanks. Our safety team will review it. You can also block {name} if you do not want to see them
+                again.
+              </p>
+              {error ? (
+                <p className="auth-form__error" role="alert">
+                  {error}
+                </p>
+              ) : null}
               <div className="profile-safety-dialog__actions">
-                <button className="auth-form__submit" type="button" onClick={closeDialog}>
+                <button className="auth-form__submit" type="button" onClick={() => void confirmBlock()} disabled={busy}>
+                  {busy ? "Blocking…" : `Block ${name}`}
+                </button>
+                <button className="shell-text-action" type="button" onClick={closeDialog} disabled={busy}>
                   Done
                 </button>
               </div>
@@ -143,39 +159,36 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
             <form className="profile-safety-dialog" onSubmit={(event) => void submitReport(event)}>
               <p className="profile-safety-dialog__eyebrow">Report</p>
               <h2>Why are you reporting {name}?</h2>
-              <p>Choose the reason that best describes what happened.</p>
+              <p>Choose a reason, write what happened, or both.</p>
               <fieldset className="onboard-fieldset onboard-fieldset--plain">
                 <legend className="onboard-sr-only">Reason</legend>
-                <div className="onboard-choices">
-                  {PROFILE_REPORT_REASONS.map((code) => (
-                    <label
-                      key={code}
-                      className="onboard-choice"
-                      data-selected={reason === code ? "true" : "false"}
-                      htmlFor={`${reasonFieldId}-${code}`}
-                    >
-                      <input
-                        id={`${reasonFieldId}-${code}`}
-                        type="radio"
-                        name="report-reason"
-                        value={code}
-                        checked={reason === code}
-                        onChange={() => setReason(code)}
-                        required
-                      />
-                      {REASON_LABELS[code]}
-                    </label>
-                  ))}
+                <div className="onboard-chips" role="group" aria-label="Report reason">
+                  {PROFILE_REPORT_REASONS.map((code) => {
+                    const selected = reason === code;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        className="onboard-chip"
+                        aria-pressed={selected}
+                        data-selected={selected ? "true" : "false"}
+                        onClick={() => toggleReason(code)}
+                      >
+                        {REASON_LABELS[code]}
+                      </button>
+                    );
+                  })}
                 </div>
               </fieldset>
               <div className="auth-field">
-                <label htmlFor={`${reasonFieldId}-note`}>Anything else we should know? (optional)</label>
+                <label htmlFor={`${reasonFieldId}-note`}>What happened? (optional if you chose a reason)</label>
                 <textarea
                   id={`${reasonFieldId}-note`}
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
                   maxLength={2000}
+                  placeholder="You can report with just this note."
                 />
               </div>
               {error ? (
@@ -184,8 +197,11 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
                 </p>
               ) : null}
               <div className="profile-safety-dialog__actions">
-                <button className="auth-form__submit" type="submit" disabled={!reason || busy} aria-busy={busy}>
+                <button className="auth-form__submit" type="submit" disabled={!payload || busy} aria-busy={busy}>
                   {busy ? "Sending…" : "Send report"}
+                </button>
+                <button className="shell-text-action" type="button" onClick={closeDialog} disabled={busy}>
+                  Cancel
                 </button>
               </div>
             </form>

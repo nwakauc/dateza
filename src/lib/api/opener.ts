@@ -115,6 +115,19 @@ export function declineOpener(openerId: string): Promise<void> {
   return apiRequest(`/api/v1/openers/${encodeURIComponent(openerId)}/decline`, { method: "POST" }).then(() => undefined);
 }
 
+/** After these send failures, offering another send is misleading. */
+export function openerSendClosed(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === "already_liked" ||
+      error.code === "already_hooked" ||
+      error.code === "already_matched" ||
+      error.code === "incoming_hook" ||
+      error.code === "opener_not_configured" ||
+      error.code === "profile_unavailable")
+  );
+}
+
 export function openerSendErrorCopy(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return "We couldn’t send that opener. Try again.";

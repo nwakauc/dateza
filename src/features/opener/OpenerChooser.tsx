@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ConfiguredOpener } from "../../lib/api/openerTypes.ts";
-import { openerSendErrorCopy, sendOpener } from "../../lib/api/opener.ts";
+import { openerSendClosed, openerSendErrorCopy, sendOpener } from "../../lib/api/opener.ts";
 
 const INITIAL_VISIBLE = 3;
 
@@ -18,12 +18,13 @@ export function OpenerChooser({ profileId, name, catalogue, disabled, onSent }: 
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
   const [error, setError] = useState<string | undefined>();
+  const [closed, setClosed] = useState(false);
 
   const shown = expanded ? catalogue : catalogue.slice(0, INITIAL_VISIBLE);
   const hasMore = catalogue.length > INITIAL_VISIBLE;
 
   async function submit() {
-    if (!selected || sending.current || busy || disabled) return;
+    if (!selected || sending.current || busy || disabled || closed) return;
     sending.current = true;
     setBusy(true);
     setError(undefined);
@@ -36,6 +37,7 @@ export function OpenerChooser({ profileId, name, catalogue, disabled, onSent }: 
       sending.current = false;
       setBusy(false);
       setError(openerSendErrorCopy(caught));
+      if (openerSendClosed(caught)) setClosed(true);
     }
   }
 
@@ -47,7 +49,7 @@ export function OpenerChooser({ profileId, name, catalogue, disabled, onSent }: 
     <section id="find-opener-surface" className="find-rail-card opener-chooser" aria-label="Send opener">
       <h2 className="find-rail-card__title">Send {name} an opener</h2>
       <p className="find-rail-card__body">Choose something genuine to start the conversation.</p>
-      <fieldset className="opener-chooser__list" disabled={busy || disabled}>
+      <fieldset className="opener-chooser__list" disabled={busy || disabled || closed}>
         <legend className="sr-only">Choose one opener</legend>
         {shown.map((item) => {
           const checked = selected === item.key;
@@ -79,7 +81,7 @@ export function OpenerChooser({ profileId, name, catalogue, disabled, onSent }: 
         type="button"
         className="opener-chooser__send"
         onClick={() => void submit()}
-        disabled={!selected || busy || disabled}
+        disabled={!selected || busy || disabled || closed}
       >
         {busy ? "Sending…" : "Send opener"}
       </button>

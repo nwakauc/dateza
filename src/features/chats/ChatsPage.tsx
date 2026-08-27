@@ -49,15 +49,26 @@ export default function ChatsPage() {
   );
   const selectedProfileId = selected?.profile.id;
 
-  const load = useCallback(() => {
+  const load = useCallback((wantedConversationId?: string | null) => {
     void Promise.allSettled([listConversations(), listReceivedOpeners(), listMatches()])
-      .then(([conversationResult, openerResult, matchResult]) => {
+      .then(async ([conversationResult, openerResult, matchResult]) => {
         if (conversationResult.status === "rejected") {
           setError(true);
           return;
         }
-        setConversations(conversationResult.value.conversations);
-        setConversationCursor(conversationResult.value.next_cursor);
+        let conversations = conversationResult.value.conversations;
+        let cursor = conversationResult.value.next_cursor;
+        while (wantedConversationId && !conversations.some((item) => item.id === wantedConversationId) && cursor) {
+          try {
+            const next = await listConversations(cursor);
+            conversations = mergeById(conversations, next.conversations);
+            cursor = next.next_cursor;
+          } catch {
+            cursor = null;
+          }
+        }
+        setConversations(conversations);
+        setConversationCursor(cursor);
         if (openerResult.status === "fulfilled") {
           setOpeners(openerResult.value.openers);
           setOpenerCursor(openerResult.value.next_cursor);
@@ -100,9 +111,11 @@ export default function ChatsPage() {
       });
   }, []);
 
+  const wantedConversationOnLoad = useRef(selectedId);
+
   useEffect(() => {
     document.title = "Chats — DateZA";
-    load();
+    load(wantedConversationOnLoad.current);
     return () => {
       document.title = "DateZA — Meet someone who chooses you.";
     };
@@ -116,7 +129,7 @@ export default function ChatsPage() {
   function retry() {
     setLoading(true);
     setError(false);
-    load();
+    load(selectedId);
   }
 
   function selectConversation(id: string) {
@@ -137,7 +150,7 @@ export default function ChatsPage() {
     void loadProfile(profileId);
   }
 
-  const loadMoreConversations = useCallback(async () => {
+  async function loadMoreConversations() {
     if (!conversationCursor || loadingMoreConversations) return;
     setLoadingMoreConversations(true);
     try {
@@ -149,12 +162,7 @@ export default function ChatsPage() {
     } finally {
       setLoadingMoreConversations(false);
     }
-  }, [conversationCursor, loadingMoreConversations]);
-
-  useEffect(() => {
-    if (!selectedId || selected || loading || loadingMoreConversations || !conversationCursor) return;
-    void loadMoreConversations();
-  }, [selectedId, selected, loading, loadingMoreConversations, conversationCursor, loadMoreConversations]);
+  }
 
   async function loadMoreOpeners() {
     if (!openerCursor || loadingMoreOpeners) return;
@@ -254,7 +262,7 @@ export default function ChatsPage() {
               })
               .catch(() => setOpenersError(true));
           }}
-          onOpenersChanged={load}
+          onOpenersChanged={() => load(selectedId)}
           onOpenerReplied={handleOpenerReplied}
         />
         <section className="chats-detail" aria-label={selected ? `Chat with ${selected.profile.display_name || "member"}` : "Selected conversation"}>

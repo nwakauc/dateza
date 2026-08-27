@@ -722,6 +722,25 @@ describe("Find (FE-05, rich swipe)", () => {
     expect(screen.getByRole("button", { name: /^send opener$/i })).toBeEnabled();
   });
 
+  it("treats backend pending and unavailable opener_state as authoritative", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler([findProfile({ id: "p1", display_name: "Maya", opener_state: "pending" })], allowance());
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    const { unmount } = renderApp();
+    expect(await screen.findByText(/opener sent/i)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /opener already sent/i })).toBeDisabled();
+    unmount();
+
+    const unavailable = baseHandler([findProfile({ id: "p1", display_name: "Maya", opener_state: "unavailable" })], allowance());
+    vi.mocked(fetch).mockImplementation(unavailable.fetchImpl);
+    renderApp();
+    expect(await screen.findByText(/an opener isn’t available for this person/i)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /opener unavailable/i })).toBeDisabled();
+  });
+
   it("sends a curated opener and waits without advancing the deck", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");

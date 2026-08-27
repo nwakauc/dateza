@@ -65,12 +65,13 @@ export function IncomingOpener({ opener, onResolved, onReplied }: Props) {
   }
 
   return (
-    <article className="incoming-opener">
+    <article className="incoming-opener" aria-label={`${name} sent you an opener`}>
       <header className="incoming-opener__head">
         {photo ? <img src={photo} alt="" /> : <span className="incoming-opener__face" aria-hidden="true" />}
         <div>
-          <h3>{name} sent you an opener</h3>
+          <h3>{name}</h3>
           <p className="incoming-opener__meta">
+            <span className="incoming-opener__new">New</span>
             <time dateTime={opener.created_at}>{relativeTime(opener.created_at)}</time>
             {expiry ? (
               <>

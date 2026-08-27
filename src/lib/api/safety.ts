@@ -50,6 +50,19 @@ export function unblockProfile(profileId: string): Promise<void> {
   );
 }
 
+/** Map a human report into the D8N payload. Notes-only becomes `other`. */
+export function reportSubmission(
+  reason: ProfileReportReason | "",
+  note: string,
+): { reason: ProfileReportReason; note?: string } | undefined {
+  const trimmed = note.trim();
+  if (!reason && !trimmed) return undefined;
+  return {
+    reason: reason || "other",
+    ...(trimmed ? { note: trimmed } : {}),
+  };
+}
+
 /** POST /api/v1/profiles/:profile_id/report */
 export function reportProfile(
   profileId: string,

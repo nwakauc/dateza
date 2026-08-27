@@ -445,7 +445,7 @@ export default function EditProfilePage() {
                   goSection(section.id);
                 }}
               >
-                {section.label}
+                {section.shortLabel}
               </a>
             ))}
           </nav>

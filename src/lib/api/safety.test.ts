@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { blockProfile, reportProfile } from "./safety.ts";
+import { blockProfile, reportProfile, reportSubmission } from "./safety.ts";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -21,6 +21,15 @@ describe("profile safety APIs", () => {
     });
     const request = vi.mocked(fetch).mock.calls[0]?.[0];
     expect(String(request)).toContain("/api/v1/profiles/p1/report");
+  });
+
+  it("maps a notes-only report onto the documented other reason", () => {
+    expect(reportSubmission("", "  Keeps creating accounts.  ")).toEqual({
+      reason: "other",
+      note: "Keeps creating accounts.",
+    });
+    expect(reportSubmission("harassment", "")).toEqual({ reason: "harassment" });
+    expect(reportSubmission("", "   ")).toBeUndefined();
   });
 
   it("posts a block and treats created:false as success", async () => {

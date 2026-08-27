@@ -325,9 +325,41 @@ describe("rich profile detail", () => {
     await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
     expect(screen.queryByText("harassment")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /send report/i })).toBeDisabled();
-    await user.click(screen.getByRole("radio", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /harassment/i }));
     await user.click(screen.getByRole("button", { name: /send report/i }));
-    expect(await screen.findByText(/we received your report/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /report received/i })).toBeInTheDocument();
+  });
+
+  it("lets a member unselect a report reason and cancel", async () => {
+    const user = userEvent.setup();
+    mockApis();
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
+    await user.click(screen.getByRole("button", { name: /impersonation/i }));
+    expect(screen.getByRole("button", { name: /send report/i })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: /impersonation/i }));
+    expect(screen.getByRole("button", { name: /send report/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+    expect(screen.queryByRole("heading", { name: /why are you reporting/i })).not.toBeInTheDocument();
+  });
+
+  it("sends a notes-only report without a selected reason", async () => {
+    const user = userEvent.setup();
+    mockApis();
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
+    await user.type(screen.getByLabelText(/what happened/i), "Keeps creating new accounts.");
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByRole("heading", { name: /report received/i })).toBeInTheDocument();
+    const reportCall = vi.mocked(fetch).mock.calls.find(([input, init]) =>
+      String(input).includes("/profiles/p1/report") && (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body))).toEqual({
+      reason: "other",
+      note: "Keeps creating new accounts.",
+    });
   });
 
   it("keeps the report form open when sending fails", async () => {
@@ -341,11 +373,11 @@ describe("rich profile detail", () => {
     renderAt("/profile/p1", { from: "discover" });
     await user.click(await screen.findByRole("button", { name: /more actions/i }));
     await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
-    await user.click(screen.getByRole("radio", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /harassment/i }));
     await user.click(screen.getByRole("button", { name: /send report/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/could not send that report/i);
     expect(screen.getByRole("button", { name: /send report/i })).toBeEnabled();
-    expect(screen.queryByText(/we received your report/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /report received/i })).not.toBeInTheDocument();
   });
 
   it("blocks a profile and returns to Discover", async () => {

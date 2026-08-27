@@ -84,6 +84,16 @@ function message(id: string, senderId: string, body: string, createdAt = "2026-0
   return { id, conversation_id: "c1", sender_id: senderId, body, created_at: createdAt };
 }
 
+function receivedOpener() {
+  return {
+    id: "o1",
+    message: "Coffee or tea — what's your usual?",
+    created_at: "2026-08-26T00:00:00Z",
+    expires_at: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
+    sender: publicProfile("s1", "Lerato"),
+  };
+}
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -242,5 +252,85 @@ describe("premium Chats experience", () => {
     await waitFor(() => expect(screen.getAllByText(/no conversations yet/i).length).toBeGreaterThan(0));
     expect(screen.getAllByRole("link", { name: /discover people/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /go to likes/i }).length).toBeGreaterThan(0);
+  });
+
+  it("does not pretend the opener inbox is empty when GET /openers fails", async () => {
+    installHandler((url) => {
+      if (url.endsWith("/api/v1/openers")) return jsonResponse(500, { error: "server_error" });
+      if (url.endsWith("/api/v1/conversations")) return jsonResponse(200, { conversations: [], next_cursor: null });
+    });
+    renderChats();
+
+    expect(await screen.findByText(/openers didn’t load/i)).toBeInTheDocument();
+    expect(screen.queryByText(/when a match becomes a conversation/i)).not.toBeInTheDocument();
+  });
+
+  it("replies to an opener using the backend conversation id", async () => {
+    const user = userEvent.setup();
+    const replyConversation = conversation("c-reply", publicProfile("s1", "Lerato"));
+    installHandler((url, method) => {
+      if (url.endsWith("/api/v1/openers")) return jsonResponse(200, { openers: [receivedOpener()], next_cursor: null });
+      if (url.endsWith("/api/v1/conversations")) return jsonResponse(200, { conversations: [], next_cursor: null });
+      if (url.endsWith("/api/v1/openers/o1/reply") && method === "POST") {
+        return jsonResponse(201, {
+          conversation: { ...replyConversation, last_message: null },
+          message: { id: "msg-reply", conversation_id: "c-reply", sender_id: ownerId, body: "Tea, always.", created_at: "2026-08-26T00:01:00Z" },
+        });
+      }
+      if (url.endsWith("/api/v1/conversations/c-reply/messages")) {
+        return jsonResponse(200, {
+          messages: [{ id: "msg-reply", conversation_id: "c-reply", sender_id: ownerId, body: "Tea, always.", created_at: "2026-08-26T00:01:00Z" }],
+          next_cursor: null,
+        });
+      }
+      if (url.endsWith("/api/v1/profiles/s1")) return jsonResponse(200, { profile: { ...detailProfile(), id: "s1", display_name: "Lerato" } });
+    });
+    renderChats();
+
+    expect(await screen.findByRole("heading", { name: /^lerato$/i })).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/your reply/i), "Tea, always.");
+    await user.click(screen.getByRole("button", { name: /^reply$/i }));
+    expect((await screen.findAllByText("Tea, always.")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: /^new openers$/i })).not.toBeInTheDocument();
+  });
+
+  it("pages conversations until a selected id from the URL is found", async () => {
+    installHandler((url) => {
+      if (url.endsWith("/api/v1/conversations")) {
+        return jsonResponse(200, { conversations: [conversation()], next_cursor: "page-2" });
+      }
+      if (url.includes("/api/v1/conversations?cursor=")) {
+        return jsonResponse(200, {
+          conversations: [conversation("c2", publicProfile("p2", "Aisha"))],
+          next_cursor: null,
+        });
+      }
+      if (url.endsWith("/api/v1/conversations/c2/messages")) {
+        return jsonResponse(200, { messages: [message("msg-a", "p2", "Hello from page two")], next_cursor: null });
+      }
+      if (url.endsWith("/api/v1/profiles/p2")) {
+        return jsonResponse(200, { profile: { ...detailProfile(), id: "p2", display_name: "Aisha" } });
+      }
+    });
+    renderChats("/chats?conversation=c2");
+
+    expect(await screen.findByText("Hello from page two")).toBeInTheDocument();
+  });
+
+  it("removes a conversation after a successful block without keeping a blocked-user cache", async () => {
+    const user = userEvent.setup();
+    installHandler((url, method) => {
+      if (url.endsWith("/api/v1/profiles/p1/block") && method === "POST") {
+        return jsonResponse(201, { blocked: true, created: true });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+
+    expect(await screen.findByText("I’d love that.")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /more actions/i })[0]!);
+    await user.click(screen.getByRole("menuitem", { name: /^block$/i }));
+    await user.click(screen.getByRole("button", { name: /block naledi/i }));
+    await waitFor(() => expect(screen.queryByText("I’d love that.")).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 });
