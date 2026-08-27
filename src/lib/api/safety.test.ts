@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { blockProfile, reportProfile, reportSubmission } from "./safety.ts";
+import { blockProfile, reportMessage, reportProfile, reportSubmission } from "./safety.ts";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -30,6 +30,24 @@ describe("profile safety APIs", () => {
     });
     expect(reportSubmission("harassment", "")).toEqual({ reason: "harassment" });
     expect(reportSubmission("", "   ")).toBeUndefined();
+  });
+
+  it("posts a message report to POST /reports with target_type message", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(201, { report: { status: "received" }, created: true, blocked: false }));
+    await expect(reportMessage("msg-1", { reason: "harassment", note: "Unwanted photo" })).resolves.toEqual({
+      reported: true,
+      created: true,
+    });
+    const call = vi.mocked(fetch).mock.calls[0];
+    expect(String(call?.[0])).toBe("/api/v1/reports");
+    expect(call?.[1]?.body).toBe(
+      JSON.stringify({
+        target_type: "message",
+        target_id: "msg-1",
+        reason: "harassment",
+        details: "Unwanted photo",
+      }),
+    );
   });
 
   it("posts a block and treats created:false as success", async () => {

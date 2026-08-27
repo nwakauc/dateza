@@ -82,3 +82,35 @@ export function reportProfile(
     return { reported: true, created: asBoolean(data.created, true) };
   });
 }
+
+/**
+ * POST /api/v1/reports — content-level report. Message evidence is snapshotted
+ * server-side; the client never sends a media URL.
+ */
+export function reportMessage(
+  messageId: string,
+  body: { reason: ProfileReportReason; note?: string },
+): Promise<ReportResponse> {
+  const payload: {
+    target_type: "message";
+    target_id: string;
+    reason: ProfileReportReason;
+    details?: string;
+  } = {
+    target_type: "message",
+    target_id: messageId,
+    reason: body.reason,
+  };
+  const note = body.note?.trim();
+  if (note) payload.details = note;
+  return apiRequest("/api/v1/reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then((data) => {
+    if (!isRecord(data) || !isRecord(data.report)) {
+      throw new ApiError(502, undefined, "invalid_report_response");
+    }
+    return { reported: true, created: asBoolean(data.created, true) };
+  });
+}

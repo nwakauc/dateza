@@ -150,6 +150,35 @@ export function CameraIcon({ className }: IconProps) {
   );
 }
 
+/** Plus — WhatsApp-style mobile attach control. */
+export function PlusIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+/** Paperclip — WhatsApp-style desktop attach control. */
+export function PaperclipIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21.4 11.6 12.2 20.8a5.4 5.4 0 0 1-7.6-7.6l9.2-9.2a3.6 3.6 0 0 1 5.1 5.1L9.7 18.3a1.8 1.8 0 1 1-2.5-2.5l8.4-8.4" />
+    </svg>
+  );
+}
+
+/** Landscape photo — gallery / library pick. */
+export function GalleryIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <circle cx="8.5" cy="10" r="1.3" />
+      <path d="M3.8 16.2 8 12.5l3.2 3 3.3-4 5.4 4.7" />
+    </svg>
+  );
+}
+
 /** Simple X mark — used for dismiss and "pass" actions. */
 export function CloseIcon({ className }: IconProps) {
   return (
@@ -313,6 +342,24 @@ export function WineIcon({ className }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M8 4h8l1 7a5 5 0 0 1-10 0z" />
       <path d="M12 16v4M9 20h6" />
+    </svg>
+  );
+}
+
+export function VideoIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="6.5" width="12.5" height="11" rx="2" />
+      <path d="M16 10.2 20.5 8v8L16 13.8z" />
+    </svg>
+  );
+}
+
+export function DownloadIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 4v11M8 11l4 4 4-4" />
+      <path d="M5 19h14" />
     </svg>
   );
 }

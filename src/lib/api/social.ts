@@ -1,3 +1,5 @@
+import { parseMessageAttachments } from "./chatMedia.ts";
+import type { SendMessageInput } from "./chatMediaTypes.ts";
 import { apiRequest } from "./client.ts";
 import { ApiError } from "./errors.ts";
 import { parseCompatibility, parsePublicProfile } from "./find.ts";
@@ -9,23 +11,57 @@ import type {
   MatchListResponse,
   Message,
   MessageListResponse,
+  MessagePreview,
 } from "./socialTypes.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
 function nullableString(value: unknown): string | null { return typeof value === "string" ? value : null; }
 
+function parseMessageBody(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return undefined;
+}
+
 export function parseMessage(value: unknown): Message {
-  if (!isRecord(value) || typeof value.id !== "string" || typeof value.conversation_id !== "string" || typeof value.sender_id !== "string" || typeof value.body !== "string" || typeof value.created_at !== "string") throw new ApiError(502, undefined, "invalid_message_response");
-  return { id: value.id, conversation_id: value.conversation_id, sender_id: value.sender_id, body: value.body, created_at: value.created_at };
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.conversation_id !== "string" || typeof value.sender_id !== "string" || typeof value.created_at !== "string") {
+    throw new ApiError(502, undefined, "invalid_message_response");
+  }
+  const body = parseMessageBody(value.body);
+  if (body === undefined) throw new ApiError(502, undefined, "invalid_message_response");
+  return {
+    id: value.id,
+    conversation_id: value.conversation_id,
+    sender_id: value.sender_id,
+    body,
+    created_at: value.created_at,
+    attachments: parseMessageAttachments(value.attachments),
+  };
+}
+
+function parseMessagePreview(value: unknown): MessagePreview | null {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.created_at !== "string") return null;
+  const body = parseMessageBody(value.body);
+  if (body === undefined) return null;
+  return {
+    id: value.id,
+    sender_id: nullableString(value.sender_id),
+    body,
+    created_at: value.created_at,
+    attachments: parseMessageAttachments(value.attachments),
+  };
 }
 
 export function parseConversation(value: unknown): Conversation {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.match_id !== "string" || (value.status !== "active" && value.status !== "closed") || typeof value.created_at !== "string") throw new ApiError(502, undefined, "invalid_conversation_response");
-  let lastMessage = null;
-  if (isRecord(value.last_message) && typeof value.last_message.id === "string" && typeof value.last_message.body === "string" && typeof value.last_message.created_at === "string") {
-    lastMessage = { id: value.last_message.id, sender_id: nullableString(value.last_message.sender_id), body: value.last_message.body, created_at: value.last_message.created_at };
-  }
-  return { id: value.id, match_id: value.match_id, status: value.status, created_at: value.created_at, profile: parsePublicProfile(value.profile), last_message: lastMessage };
+  return {
+    id: value.id,
+    match_id: value.match_id,
+    status: value.status,
+    created_at: value.created_at,
+    profile: parsePublicProfile(value.profile),
+    last_message: value.last_message == null ? null : parseMessagePreview(value.last_message),
+  };
 }
 
 export function listMatches(cursor?: string): Promise<MatchListResponse> {
@@ -105,8 +141,27 @@ export function listMessages(conversationId: string, cursor?: string): Promise<M
   });
 }
 
-export function sendMessage(conversationId: string, body: string): Promise<Message> {
-  return apiRequest(`/api/v1/conversations/${encodeURIComponent(conversationId)}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) }).then((data) => {
+function sendMessagePayload(input: string | SendMessageInput): Record<string, unknown> {
+  if (typeof input === "string") return { body: input };
+  const payload: Record<string, unknown> = {};
+  const body = input.body?.trim();
+  if (body) payload.body = body;
+  if (input.attachment_uploads && input.attachment_uploads.length > 0) {
+    payload.attachment_uploads = input.attachment_uploads.map((upload) => ({
+      signed_id: upload.signed_id,
+      media_kind: upload.media_kind,
+      ...(upload.poster_signed_id ? { poster_signed_id: upload.poster_signed_id } : {}),
+    }));
+  }
+  return payload;
+}
+
+export function sendMessage(conversationId: string, input: string | SendMessageInput): Promise<Message> {
+  return apiRequest(`/api/v1/conversations/${encodeURIComponent(conversationId)}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sendMessagePayload(input)),
+  }).then((data) => {
     if (!isRecord(data)) throw new ApiError(502, undefined, "invalid_message_response");
     return parseMessage(data.message);
   });

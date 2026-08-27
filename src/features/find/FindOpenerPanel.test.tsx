@@ -264,6 +264,7 @@ describe("D8N Opener", () => {
         sender_id: "viewer",
         body: "Tea, always.",
         created_at: "2026-08-26T00:01:00Z",
+        attachments: [],
       },
     });
     render(

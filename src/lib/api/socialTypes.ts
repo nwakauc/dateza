@@ -1,3 +1,4 @@
+import type { MessageAttachment } from "./chatMediaTypes.ts";
 import type { DatezaCompatibility, PublicProfile } from "./findTypes.ts";
 
 export type Match = { id: string; matched_at: string; profile: PublicProfile };
@@ -21,8 +22,21 @@ export type LikeListResponse = {
   likes: LikeListItem[];
   next_cursor: string | null;
 };
-export type MessagePreview = { id: string; sender_id: string | null; body: string; created_at: string };
+export type MessagePreview = {
+  id: string;
+  sender_id: string | null;
+  body: string;
+  created_at: string;
+  attachments: MessageAttachment[];
+};
 export type Conversation = { id: string; match_id: string; status: "active" | "closed"; created_at: string; profile: PublicProfile; last_message: MessagePreview | null };
 export type ConversationListResponse = { conversations: Conversation[]; next_cursor: string | null };
-export type Message = { id: string; conversation_id: string; sender_id: string; body: string; created_at: string };
+export type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  attachments: MessageAttachment[];
+};
 export type MessageListResponse = { messages: Message[]; next_cursor: string | null };

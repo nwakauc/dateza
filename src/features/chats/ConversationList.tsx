@@ -3,7 +3,7 @@ import type { ReceivedOpener } from "../../lib/api/openerTypes.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { IncomingOpener } from "../opener/IncomingOpener.tsx";
 import { ChatIcon } from "../shell/icons.tsx";
-import { conversationTime } from "./chatDisplay.ts";
+import { conversationPreviewLabel, conversationTime } from "./chatDisplay.ts";
 
 type Props = {
   conversations: Conversation[];
@@ -128,7 +128,7 @@ export function ConversationList({
                     {preview ? <time dateTime={preview.created_at}>{conversationTime(preview.created_at)}</time> : null}
                   </span>
                   <span>
-                    {preview?.body || "Start the conversation"}
+                    {conversationPreviewLabel(preview)}
                     {conversation.status === "closed" ? <em className="conversation-row__closed">Closed</em> : null}
                   </span>
                 </span>

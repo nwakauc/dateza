@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "../../lib/api/socialTypes.ts";
+import type { Conversation, Message, MessagePreview } from "../../lib/api/socialTypes.ts";
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const shortDateFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
@@ -42,6 +42,7 @@ export function conversationWithPreview(conversation: Conversation, message: Mes
       sender_id: message.sender_id,
       body: message.body,
       created_at: message.created_at,
+      attachments: message.attachments,
     },
   };
 }
@@ -60,8 +61,24 @@ export function replaceConversationPreview(
             sender_id: message.sender_id,
             body: message.body,
             created_at: message.created_at,
+            attachments: message.attachments,
           },
         }
       : conversation,
   );
+}
+
+export function conversationPreviewLabel(preview: MessagePreview | null): string {
+  if (!preview) return "Start the conversation";
+  const text = preview.body.trim();
+  if (text) return text;
+  const kinds = preview.attachments.filter((item) => !item.deleted).map((item) => item.media_kind);
+  if (kinds.includes("video") && kinds.includes("image")) return "Photo and video";
+  if (kinds.includes("video")) return "Video";
+  if (kinds.includes("image")) return "Photo";
+  return "Photo or video";
+}
+
+export function messageHasContent(message: Pick<Message, "body" | "attachments">): boolean {
+  return message.body.trim().length > 0 || message.attachments.some((item) => !item.deleted);
 }
