@@ -18,6 +18,7 @@ import type { FieldOption, ProfilePreferences } from "../../lib/api/profileTypes
 import { listBlockedProfiles, unblockProfile } from "../../lib/api/safety.ts";
 import type { BlockedProfile } from "../../lib/api/safetyTypes.ts";
 import { useSignOut } from "../auth/useSignOut.ts";
+import { MultiChoiceField } from "../onboarding/ChoiceFields.tsx";
 import {
   EVERYONE_UI_CODE,
   interestedChipSelected,
@@ -538,31 +539,23 @@ export default function SettingsPage() {
               </div>
             ) : draft ? (
               <div className="settings-preferences">
-                <fieldset>
-                  <legend>Interested in</legend>
-                  <div className="settings-choice-row">
-                    {displayInterestedOptions.map((option) => {
-                      const selected = interestedChipSelected(draft.interested_in, option.code, interestedCodes);
-                      return (
-                        <button
-                          key={option.code}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => setDraft((current) => current ? {
-                            ...current,
-                            interested_in: toggleInterestedIn(
-                              current.interested_in,
-                              option.code === EVERYONE_UI_CODE ? EVERYONE_UI_CODE : option.code,
-                              interestedCodes,
-                            ),
-                          } : current)}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+                <MultiChoiceField
+                  legend="Interested in"
+                  name="settings-interested-in"
+                  options={displayInterestedOptions}
+                  values={draft.interested_in}
+                  onChange={(codes) => setDraft((current) => (current ? { ...current, interested_in: codes } : current))}
+                  isSelected={(code) => interestedChipSelected(draft.interested_in, code, interestedCodes)}
+                  onToggle={(code) => setDraft((current) => current ? {
+                    ...current,
+                    interested_in: toggleInterestedIn(
+                      current.interested_in,
+                      code === EVERYONE_UI_CODE ? EVERYONE_UI_CODE : code,
+                      interestedCodes,
+                    ),
+                  } : current)}
+                  disabled={savePhase === "saving"}
+                />
                 <fieldset>
                   <legend>Age range</legend>
                   <div className="settings-age-fields">

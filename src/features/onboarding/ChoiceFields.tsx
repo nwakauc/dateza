@@ -1,24 +1,20 @@
 import type { FieldOption } from "../../lib/api/profileTypes.ts";
 
+type ChoiceOption = FieldOption & { hint?: string };
+
 type Props = {
   legend: string;
   name: string;
-  options: Array<FieldOption & { hint?: string }>;
+  options: ChoiceOption[];
   value: string;
   onChange: (code: string) => void;
   disabled: boolean;
   describedBy?: string;
   error?: string;
-  layout?: "chips" | "cards" | "segmented";
-  compact?: boolean;
   hideLegend?: boolean;
-};
-
-const GROUP_CLASS_NAME: Record<"chips" | "cards" | "segmented" | "choices", string> = {
-  chips: "onboard-chips",
-  cards: "onboard-cards",
-  segmented: "onboard-segmented",
-  choices: "onboard-choices",
+  required?: boolean;
+  /** Optional answers can be taken back off a profile once chosen. */
+  clearable?: boolean;
 };
 
 export function SingleChoiceField({
@@ -30,51 +26,28 @@ export function SingleChoiceField({
   disabled,
   describedBy,
   error,
-  layout = "chips",
-  compact = false,
   hideLegend = false,
+  required = false,
+  clearable = false,
 }: Props) {
   const errorId = `${name}-error`;
-  const resolvedLayout = layout !== "chips" ? layout : compact ? "chips" : "choices";
 
   return (
     <fieldset className="onboard-fieldset onboard-fieldset--plain" disabled={disabled}>
       <legend className={hideLegend ? "onboard-sr-only" : undefined}>{legend}</legend>
       <div
-        className={GROUP_CLASS_NAME[resolvedLayout]}
+        className="onboard-segmented"
         role="radiogroup"
+        aria-label={legend}
         aria-describedby={describedBy}
       >
         {options.map((option) => {
           const checked = value === option.code;
           const inputId = `${name}-${option.code}`;
-          if (layout === "segmented") {
-            return (
-              <label
-                key={option.code}
-                className="onboard-segment"
-                data-selected={checked ? "true" : "false"}
-                htmlFor={inputId}
-              >
-                <input
-                  id={inputId}
-                  type="radio"
-                  name={name}
-                  value={option.code}
-                  checked={checked}
-                  required={!value}
-                  onChange={() => onChange(option.code)}
-                />
-                {option.label}
-              </label>
-            );
-          }
           return (
             <label
               key={option.code}
-              className={
-                layout === "cards" ? "onboard-card" : compact ? "onboard-chip" : "onboard-choice"
-              }
+              className="onboard-segment"
               data-selected={checked ? "true" : "false"}
               htmlFor={inputId}
             >
@@ -84,17 +57,24 @@ export function SingleChoiceField({
                 name={name}
                 value={option.code}
                 checked={checked}
-                required={!value}
+                required={required && !value}
                 onChange={() => onChange(option.code)}
               />
-              <span className="onboard-choice__text">
-                <span className="onboard-choice__label">{option.label}</span>
-                {option.hint ? <span className="onboard-choice__hint">{option.hint}</span> : null}
-              </span>
+              {option.label}
             </label>
           );
         })}
       </div>
+      {clearable && value ? (
+        <button
+          type="button"
+          className="onboard-clear"
+          aria-label={`Clear ${legend}`}
+          onClick={() => onChange("")}
+        >
+          Clear
+        </button>
+      ) : null}
       {error ? (
         <p className="auth-form__hint" id={errorId} role="alert">
           {error}
@@ -113,7 +93,6 @@ type MultiProps = {
   onChange: (codes: string[]) => void;
   disabled: boolean;
   error?: string;
-  compact?: boolean;
   hideLegend?: boolean;
   isSelected?: (code: string) => boolean;
   onToggle?: (code: string) => void;
@@ -128,7 +107,6 @@ export function MultiChoiceField({
   onChange,
   disabled,
   error,
-  compact = false,
   hideLegend = false,
   isSelected,
   onToggle,
@@ -156,14 +134,14 @@ export function MultiChoiceField({
           {hint}
         </p>
       ) : null}
-      <div className={compact ? "onboard-chips" : "onboard-choices"}>
+      <div className="onboard-segmented">
         {options.map((option) => {
           const checked = isSelected ? isSelected(option.code) : values.includes(option.code);
           const inputId = `${name}-${option.code}`;
           return (
             <label
               key={option.code}
-              className={compact ? "onboard-chip" : "onboard-choice"}
+              className="onboard-segment"
               data-selected={checked ? "true" : "false"}
               htmlFor={inputId}
             >

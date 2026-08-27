@@ -1,5 +1,12 @@
 import type { FieldOption } from "../../lib/api/profileTypes.ts";
 
+/**
+ * Past this many options a wrapped pill group stops being scannable and a
+ * native picker is the better control. Only genuinely large catalogues
+ * (countries, languages) exceed it.
+ */
+export const MAX_PILL_OPTIONS = 12;
+
 /** Broadest values ProfilePreference currently accepts (18–120, 1–500 km). */
 export const BROAD_PREFERENCE_DEFAULTS = {
   min_age: 18,

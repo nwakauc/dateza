@@ -78,7 +78,6 @@ export function PreferencesForm({
         onToggle={(code) => onInterestedIn(toggleInterestedIn(interestedIn, code, genderCodes))}
         isSelected={(code) => interestedChipSelected(interestedIn, code, genderCodes)}
         disabled={pending}
-        compact
         hideLegend
         error={fieldError(details, "interested_in")}
       />

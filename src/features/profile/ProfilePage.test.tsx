@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -216,14 +216,16 @@ describe("My profile / How you appear", () => {
 
     expect(await screen.findByText("How you appear")).toBeInTheDocument();
     expect(screen.getByText(/close to what other people see/i)).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Thando, 26" })).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { name: "Thando, 26" });
+    expect(heading).toBeInTheDocument();
     expect(screen.getByText(/I'm passionate about living intentionally/i)).toBeInTheDocument();
     expect(screen.getByText(/looking for something meaningful/i)).toBeInTheDocument();
     expect(screen.getByText("Hiking")).toBeInTheDocument();
     expect(screen.getByText(/english and isizulu/i)).toBeInTheDocument();
     expect(screen.getByText(/good conversations and even better dessert/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /edit profile/i })).toHaveAttribute("href", "/profile/edit");
-    expect(screen.getByRole("link", { name: /manage photos/i })).toHaveAttribute("href", "/profile/edit#photos");
+    const preview = within(heading.closest("article")!);
+    expect(preview.getByRole("link", { name: /edit profile/i })).toHaveAttribute("href", "/profile/edit");
+    expect(preview.getByRole("link", { name: /manage photos/i })).toHaveAttribute("href", "/profile/edit#photos");
     expect(screen.getAllByText("72%").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /add 2 more photos/i })[0]).toHaveAttribute("href", "/profile/edit#photos");
     expect(screen.queryByRole("button", { name: /^like$/i })).not.toBeInTheDocument();

@@ -53,7 +53,7 @@ export function OptionsForm({
               value={selected[0] ?? ""}
               onChange={(code) => onToggle(group.key, code, "single")}
               disabled={pending}
-              compact
+              required
               hideLegend={hideLegend}
             />
           );
@@ -68,7 +68,6 @@ export function OptionsForm({
             onChange={() => undefined}
             onToggle={(code) => onToggle(group.key, code, "multiple")}
             disabled={pending}
-            compact
             hideLegend={hideLegend}
           />
         );

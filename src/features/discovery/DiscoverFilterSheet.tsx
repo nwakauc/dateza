@@ -25,6 +25,31 @@ function toggleCode(list: string[], code: string): string[] {
   return list.includes(code) ? list.filter((item) => item !== code) : [...list, code];
 }
 
+type PillItem = { key: string; label: string; on: boolean; onSelect: () => void };
+
+function FilterPills({ legend, items }: { legend: string; items: PillItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <fieldset className="discover-filter__fieldset">
+      <legend>{legend}</legend>
+      <div className="onboard-segmented">
+        {items.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className="onboard-segment"
+            data-selected={item.on ? "true" : "false"}
+            aria-pressed={item.on}
+            onClick={item.onSelect}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function ChipRow({
   legend,
   options,
@@ -36,27 +61,16 @@ function ChipRow({
   selected: string[];
   onToggle: (code: string) => void;
 }) {
-  if (options.length === 0) return null;
   return (
-    <fieldset className="discover-filter__fieldset">
-      <legend>{legend}</legend>
-      <div className="discover-filter__chips">
-        {options.map((option) => {
-          const on = selected.includes(option.code);
-          return (
-            <button
-              key={option.code}
-              type="button"
-              className={`discover-filter__chip${on ? " discover-filter__chip--on" : ""}`}
-              aria-pressed={on}
-              onClick={() => onToggle(option.code)}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-    </fieldset>
+    <FilterPills
+      legend={legend}
+      items={options.map((option) => ({
+        key: option.code,
+        label: option.label,
+        on: selected.includes(option.code),
+        onSelect: () => onToggle(option.code),
+      }))}
+    />
   );
 }
 
@@ -122,25 +136,16 @@ export function DiscoverFilterSheet({ open, filters, configuration, onChange, on
               }}
             />
           </label>
-          <fieldset className="discover-filter__fieldset">
-            <legend>Distance</legend>
-            <div className="discover-filter__chips">
-              {DISTANCE_OPTIONS.map((km) => {
-                const on = filters.maxDistanceKm === km;
-                return (
-                  <button
-                    key={km}
-                    type="button"
-                    className={`discover-filter__chip${on ? " discover-filter__chip--on" : ""}`}
-                    aria-pressed={on}
-                    onClick={() => onChange({ ...filters, maxDistanceKm: on ? null : km })}
-                  >
-                    Within {km} km
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+          <FilterPills
+            legend="Distance"
+            items={DISTANCE_OPTIONS.map((km) => ({
+              key: String(km),
+              label: `${km} km`,
+              on: filters.maxDistanceKm === km,
+              onSelect: () =>
+                onChange({ ...filters, maxDistanceKm: filters.maxDistanceKm === km ? null : km }),
+            }))}
+          />
         </section>
 
         <section className="discover-filter__group" aria-labelledby="discover-filter-connection">
@@ -152,25 +157,19 @@ export function DiscoverFilterSheet({ open, filters, configuration, onChange, on
             onToggle={(code) => onChange({ ...filters, relationshipIntents: toggleCode(filters.relationshipIntents, code) })}
           />
           {intents.length === 0 ? <ComingSoon label="Relationship intent" /> : null}
-          <fieldset className="discover-filter__fieldset">
-            <legend>Compatibility</legend>
-            <div className="discover-filter__chips">
-              {COMPAT_OPTIONS.map((score) => {
-                const on = filters.minCompatibility === score;
-                return (
-                  <button
-                    key={score}
-                    type="button"
-                    className={`discover-filter__chip${on ? " discover-filter__chip--on" : ""}`}
-                    aria-pressed={on}
-                    onClick={() => onChange({ ...filters, minCompatibility: on ? null : score })}
-                  >
-                    {score}%+ match
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+          <FilterPills
+            legend="Compatibility"
+            items={COMPAT_OPTIONS.map((score) => ({
+              key: String(score),
+              label: `${score}%+ match`,
+              on: filters.minCompatibility === score,
+              onSelect: () =>
+                onChange({
+                  ...filters,
+                  minCompatibility: filters.minCompatibility === score ? null : score,
+                }),
+            }))}
+          />
           {interests.length > 0 ? (
             <ChipRow
               legend="Interests"
@@ -222,34 +221,38 @@ export function DiscoverFilterSheet({ open, filters, configuration, onChange, on
 
         <section className="discover-filter__group" aria-labelledby="discover-filter-trust">
           <h3 id="discover-filter-trust">Trust</h3>
-          <label className="discover-filter__toggle">
-            <input
-              type="checkbox"
-              checked={filters.verifiedOnly}
-              onChange={(event) => onChange({ ...filters, verifiedOnly: event.target.checked })}
-            />
-            Verified contact
-          </label>
+          <FilterPills
+            legend="Show only"
+            items={[
+              {
+                key: "verified",
+                label: "Verified contact",
+                on: filters.verifiedOnly,
+                onSelect: () => onChange({ ...filters, verifiedOnly: !filters.verifiedOnly }),
+              },
+            ]}
+          />
         </section>
 
         <section className="discover-filter__group" aria-labelledby="discover-filter-activity">
           <h3 id="discover-filter-activity">Activity</h3>
-          <label className="discover-filter__toggle">
-            <input
-              type="checkbox"
-              checked={filters.online}
-              onChange={(event) => onChange({ ...filters, online: event.target.checked })}
-            />
-            Online now
-          </label>
-          <label className="discover-filter__toggle">
-            <input
-              type="checkbox"
-              checked={filters.newHere}
-              onChange={(event) => onChange({ ...filters, newHere: event.target.checked })}
-            />
-            New here
-          </label>
+          <FilterPills
+            legend="Show only"
+            items={[
+              {
+                key: "online",
+                label: "Online now",
+                on: filters.online,
+                onSelect: () => onChange({ ...filters, online: !filters.online }),
+              },
+              {
+                key: "new-here",
+                label: "New here",
+                on: filters.newHere,
+                onSelect: () => onChange({ ...filters, newHere: !filters.newHere }),
+              },
+            ]}
+          />
           <ComingSoon label="Presence beyond today's picks" />
         </section>
 

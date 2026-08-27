@@ -480,15 +480,14 @@ export default function EditProfilePage() {
                 disabled={saving}
                 required={false}
               />
-              <div className="edit-profile__grid">
-                <SelectField
-                  id="edit-gender"
-                  label={field("gender")?.label ?? "Gender"}
+              <div className="edit-profile__choices">
+                <SingleChoiceField
+                  legend={field("gender")?.label ?? "Gender"}
+                  name="edit-gender"
+                  options={genderChoices(field("gender")?.options ?? [])}
                   value={draft.gender}
                   onChange={(value) => patch({ gender: value })}
-                  options={genderChoices(field("gender")?.options ?? [])}
-                  allowEmpty={false}
-                  placeholder="Select"
+                  disabled={saving}
                 />
                 {interestedField ? (
                   <div>
@@ -501,7 +500,6 @@ export default function EditProfilePage() {
                       onToggle={(code) => patch({ interestedIn: toggleInterestedIn(draft.interestedIn, code, genderCodes) })}
                       isSelected={(code) => interestedChipSelected(draft.interestedIn, code, genderCodes)}
                       disabled={saving}
-                      compact
                     />
                     <PrivacyNote>This stays private. It only shapes who DateZA shows you.</PrivacyNote>
                   </div>
@@ -537,7 +535,7 @@ export default function EditProfilePage() {
                   value={draft.selections.relationship_intent?.[0] ?? ""}
                   onChange={(code) => toggleSelection("relationship_intent", code, "single")}
                   disabled={saving}
-                  layout="segmented"
+                  clearable
                 />
               ) : null}
               <div className="auth-field">
@@ -622,7 +620,7 @@ export default function EditProfilePage() {
                 value={draft.smoking}
                 onChange={(code) => patch({ smoking: code })}
                 disabled={saving}
-                layout="segmented"
+                clearable
               />
               <SingleChoiceField
                 legend={field("drinking")?.label ?? "Drinking"}
@@ -631,15 +629,17 @@ export default function EditProfilePage() {
                 value={draft.drinking}
                 onChange={(code) => patch({ drinking: code })}
                 disabled={saving}
-                layout="segmented"
+                clearable
               />
               {field("fitness") ? (
-                <SelectField
-                  id="edit-fitness"
-                  label={field("fitness")!.label}
+                <SingleChoiceField
+                  legend={field("fitness")!.label}
+                  name="edit-fitness"
+                  options={field("fitness")!.options}
                   value={draft.fitness}
                   onChange={(value) => patch({ fitness: value })}
-                  options={field("fitness")!.options}
+                  disabled={saving}
+                  clearable
                 />
               ) : null}
               <div className="auth-field">

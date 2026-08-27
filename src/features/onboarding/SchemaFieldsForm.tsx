@@ -3,7 +3,7 @@ import type { ConfiguredField } from "../../lib/api/profileTypes.ts";
 import { BirthdateField } from "./BirthdateField.tsx";
 import { SingleChoiceField } from "./ChoiceFields.tsx";
 import { fieldError } from "./onboardingErrors.ts";
-import { countryChoices, genderChoices, lifestyleChoices } from "./presentation.ts";
+import { MAX_PILL_OPTIONS, countryChoices, genderChoices, lifestyleChoices } from "./presentation.ts";
 
 type Props = {
   fields: ConfiguredField[];
@@ -93,7 +93,7 @@ export function SchemaFieldsForm({
               onChange={(code) => onChange(field.key, code)}
               disabled={pending}
               describedBy={describedBy}
-              compact
+              required={field.required}
               error={fieldError(details, field.key)}
             />
           );
@@ -108,8 +108,8 @@ export function SchemaFieldsForm({
               value={values[field.key] ?? ""}
               onChange={(code) => onChange(field.key, code)}
               disabled={pending}
-              layout="segmented"
               describedBy={describedBy}
+              required={field.required}
               error={fieldError(details, field.key)}
             />
           );
@@ -141,6 +141,27 @@ export function SchemaFieldsForm({
                 </p>
               ) : null}
             </div>
+          );
+        }
+        if (
+          field.input_type === "select" &&
+          field.options.length > 0 &&
+          field.options.length <= MAX_PILL_OPTIONS
+        ) {
+          return (
+            <SingleChoiceField
+              key={field.key}
+              legend={field.label}
+              name={field.key}
+              options={field.options}
+              value={values[field.key] ?? ""}
+              onChange={(code) => onChange(field.key, code)}
+              disabled={pending}
+              describedBy={describedBy}
+              required={field.required}
+              clearable={!field.required}
+              error={fieldError(details, field.key)}
+            />
           );
         }
         return (

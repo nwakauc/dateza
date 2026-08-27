@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -158,8 +158,9 @@ describe("SettingsPage", () => {
     expect((await screen.findAllByText("t•••••@example.com")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Verified contact").length).toBeGreaterThan(0);
     expect(screen.getByText("72%")).toBeInTheDocument();
+    const page = within(screen.getByRole("heading", { name: "Account", level: 2 }).closest("section")!);
     expect(screen.getByRole("link", { name: "Add 2 more photos" })).toHaveAttribute("href", "/profile/edit#photos");
-    expect(screen.getByRole("link", { name: /Edit profile/ })).toHaveAttribute("href", "/profile/edit");
+    expect(page.getByRole("link", { name: /edit profile/i })).toHaveAttribute("href", "/profile/edit");
   });
 
   it("deep-links to a focused section and persists preference changes", async () => {
@@ -169,7 +170,7 @@ describe("SettingsPage", () => {
 
     const distance = await screen.findByRole("slider", { name: "Maximum dating distance in kilometres" });
     expect(distance).toHaveValue("50");
-    await user.click(screen.getByRole("button", { name: "Women" }));
+    await user.click(screen.getByRole("checkbox", { name: "Women" }));
     await user.clear(screen.getByLabelText("From"));
     await user.type(screen.getByLabelText("From"), "25");
     await user.click(screen.getByRole("button", { name: "Save changes" }));

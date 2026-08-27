@@ -839,31 +839,6 @@ button.settings-row:hover {
   font-weight: 800;
 }
 
-.settings-choice-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.settings-choice-row button {
-  min-height: 38px;
-  padding: 0 16px;
-  border: 1px solid #dfd5d9;
-  border-radius: 999px;
-  background: #fff;
-  color: #4d434d;
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 700;
-}
-
-.settings-choice-row button[aria-pressed="true"] {
-  border-color: #e8375a;
-  background: #fdeef1;
-  color: #b41f42;
-}
-
 .settings-age-fields {
   display: flex;
   align-items: end;
@@ -2987,30 +2962,45 @@ main.public-status a.public-status__home:hover {
   outline-offset: 2px;
 }
 
+/* The one control DateZA uses for "pick from this set": a rounded holder of
+   pills. 3px padding around a 42px row is 48px tall, so a 24px radius is an
+   exact pill on a single row and stays a soft container once options wrap. */
 .onboard-segmented {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 3px;
   padding: 3px;
   border: 1px solid #e4dbe0;
-  border-radius: 999px;
+  border-radius: 24px;
   background: #fff;
 }
 
 .onboard-segment {
   position: relative;
-  flex: 1;
+  /* Grow to share the row, wrap to the next row rather than squashing: the
+     default min-width:auto keeps a label from collapsing below its content. */
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  padding: 6px 8px;
+  padding: 6px 14px;
+  border: 0;
   border-radius: 999px;
+  background: transparent;
   color: #5f5566;
+  font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
   text-align: center;
   cursor: pointer;
+  appearance: none;
   touch-action: manipulation;
+}
+
+.onboard-segment:hover:not([data-selected="true"]) {
+  background: rgba(232, 55, 90, 0.06);
+  color: #1c1720;
 }
 
 .onboard-segment input {
@@ -3031,6 +3021,41 @@ main.public-status a.public-status__home:hover {
 .onboard-segment:has(:focus-visible) {
   outline: 2px solid #1c1720;
   outline-offset: 2px;
+}
+
+.onboard-fieldset:disabled .onboard-segmented {
+  opacity: 0.55;
+}
+
+.onboard-fieldset:disabled .onboard-segment,
+.onboard-fieldset:disabled .onboard-segment input {
+  cursor: not-allowed;
+}
+
+/* Optional answers can be taken back off a profile. Only rendered once the
+   member has actually chosen something. */
+.onboard-clear {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: #7a6f80;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.onboard-clear:hover {
+  color: #c22447;
+}
+
+.onboard-clear:focus-visible {
+  outline: 2px solid #1c1720;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .onboard-photos {
@@ -6632,7 +6657,6 @@ main.public-status a.public-status__home:hover {
 .discover-heading__filter:focus-visible,
 .discovery-card__photo:focus-visible,
 .discovery-card__like:focus-visible,
-.discover-filter__chip:focus-visible,
 .discover-filter__clear:focus-visible {
   outline: 2px solid var(--dz-pink);
   outline-offset: 2px;
@@ -7296,37 +7320,6 @@ main.public-status a.public-status__home:hover {
   margin-bottom: 8px;
   font-size: 0.875rem;
   font-weight: 700;
-}
-
-.discover-filter__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.discover-filter__chip {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--dz-line);
-  border-radius: 999px;
-  background: #fff;
-  font: inherit;
-  font-size: 0.8125rem;
-  cursor: pointer;
-}
-
-.discover-filter__chip--on {
-  border-color: var(--dz-pink);
-  background: #fff0f3;
-  color: var(--dz-pink-dark);
-}
-
-.discover-filter__toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  font-size: 0.9375rem;
 }
 
 .discover-filter__soon {
@@ -8817,6 +8810,25 @@ main.public-status a.public-status__home:hover {
   min-width: 0;
 }
 
+/* Pill groups wrap to as many rows as their options need, so they stay
+   full-width and stacked instead of being squeezed into paired columns. */
+.edit-profile__choices {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin: 0 0 14px;
+  min-width: 0;
+}
+
+.edit-profile .onboard-fieldset {
+  margin: 0;
+  min-width: 0;
+}
+
+.edit-profile .onboard-fieldset legend {
+  font-size: 0.9375rem;
+}
+
 .edit-profile .auth-field,
 .edit-profile .auth-field input,
 .edit-profile .auth-field select,
@@ -9344,16 +9356,6 @@ main.public-status a.public-status__home:hover {
 
   .edit-profile .auth-field textarea {
     min-height: 120px;
-  }
-
-  .edit-profile .onboard-segmented {
-    flex-wrap: wrap;
-    border-radius: 18px;
-  }
-
-  .edit-profile .onboard-segment {
-    flex: 1 1 calc(50% - 2px);
-    min-width: 0;
   }
 
   .edit-profile__save.is-dirty {
