@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { sendMessage } from "../../lib/api/social.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
@@ -14,13 +14,15 @@ export function FindConversationPreview({ conversation, online = false }: Props)
   const photo = conversation.profile.photos[0]?.url;
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
   const [error, setError] = useState<string | undefined>();
   const [lastBody, setLastBody] = useState(conversation.last_message?.body);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || busy) return;
+    if (!body || sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError(undefined);
     try {
@@ -30,6 +32,7 @@ export function FindConversationPreview({ conversation, online = false }: Props)
     } catch {
       setError("That message didn’t send. Try again.");
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -59,7 +62,7 @@ export function FindConversationPreview({ conversation, online = false }: Props)
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Message…"
-          maxLength={1000}
+          maxLength={2000}
         />
         <button type="submit" aria-label="Send message" disabled={busy || draft.trim().length === 0}>
           <PaperPlaneIcon className="find-quick-reply__icon" />

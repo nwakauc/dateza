@@ -9,11 +9,14 @@ import type {
   CurrentProfileResponse,
   FieldOption,
   OwnerProfile,
+  OwnerProfileLocation,
+  OwnerProfilePlace,
   ProfileCompletion,
   ProfileCompletionSection,
   ProfileCompletionSuggestion,
   ProfileConfiguration,
   ProfileConfigurationResponse,
+  ProfileLocationPlace,
   ProfileLocationStatus,
   ProfileLocationUpdateBody,
   ProfileOnboardingStatus,
@@ -225,6 +228,27 @@ function parseOwnerProfile(value: unknown): OwnerProfile {
     contact_verified: parseOwnerContactVerified(value.verification),
     publication_completion: isRecord(value.publication_completion) ? parseCompletion(value.publication_completion) : null,
     profile_completion: parseProfileCompletion(value.profile_completion),
+    location: parseOwnerLocation(value.location),
+  };
+}
+
+function parseOwnerPlace(value: unknown): OwnerProfilePlace | null {
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.display_path !== "string") {
+    return null;
+  }
+  return { name: value.name, display_path: value.display_path };
+}
+
+function parseOwnerLocation(value: unknown): OwnerProfileLocation | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value) || typeof value.configured !== "boolean") {
+    return undefined;
+  }
+  return {
+    configured: value.configured,
+    place: parseOwnerPlace(value.place),
   };
 }
 
@@ -494,6 +518,14 @@ export function unpublishCurrentProfile(): Promise<void> {
   return apiRequest("/api/v1/profile/publication", { method: "DELETE" }).then(() => undefined);
 }
 
+function parseLocationPlace(value: unknown): ProfileLocationPlace | null {
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.display_path !== "string") {
+    return null;
+  }
+  const id = typeof value.id === "number" && Number.isInteger(value.id) ? value.id : null;
+  return { id, name: value.name, display_path: value.display_path };
+}
+
 function parseLocationStatus(value: unknown): ProfileLocationStatus {
   if (!isRecord(value) || typeof value.configured !== "boolean") {
     throw new ApiError(502, undefined, "invalid_location_response");
@@ -503,17 +535,31 @@ function parseLocationStatus(value: unknown): ProfileLocationStatus {
     accuracy_meters: asNumberOrNull(value.accuracy_meters),
     source: asStringOrNull(value.source),
     captured_at: asStringOrNull(value.captured_at),
+    place: parseLocationPlace(value.place),
   };
 }
 
 /**
- * PUT /api/v1/profile/location — persists the member's precise device
- * location for distance-based matching. D8N never echoes coordinates back
- * (confirmed against staging 2026-08-25); the response only confirms
- * whether a usable fix is now on file.
+ * PUT /api/v1/profile/location — device GPS write used by onboarding until
+ * backend T10 hardens precision. D8N never echoes coordinates back
+ * (confirmed against staging 2026-08-25).
  */
 export function updateProfileLocation(body: ProfileLocationUpdateBody): Promise<ProfileLocationStatus> {
   return apiRequest("/api/v1/profile/location", jsonInit("PUT", body)).then((data) => {
+    if (!isRecord(data)) {
+      throw new ApiError(502, undefined, "invalid_location_response");
+    }
+    return parseLocationStatus(data.location);
+  });
+}
+
+/**
+ * PUT /api/v1/profile/place — member-selected dating area. Body is
+ * `{ place_id }` only; the server resolves the Place centroid. Response
+ * `location.place` is the authoritative saved label.
+ */
+export function updateProfilePlace(placeId: number): Promise<ProfileLocationStatus> {
+  return apiRequest("/api/v1/profile/place", jsonInit("PUT", { place_id: placeId })).then((data) => {
     if (!isRecord(data)) {
       throw new ApiError(502, undefined, "invalid_location_response");
     }

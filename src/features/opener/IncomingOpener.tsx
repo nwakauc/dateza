@@ -2,11 +2,15 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { declineOpener, openerDeclineErrorCopy, openerReplyErrorCopy, replyToOpener } from "../../lib/api/opener.ts";
 import type { ReceivedOpener } from "../../lib/api/openerTypes.ts";
+import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
+import { conversationWithPreview } from "../chats/chatDisplay.ts";
+import { openerExpiryCopy } from "./openerExpiry.ts";
 
 type Props = {
   opener: ReceivedOpener;
   onResolved: () => void;
+  onReplied: (openerId: string, conversation: Conversation) => void;
 };
 
 function relativeTime(iso: string): string {
@@ -20,13 +24,14 @@ function relativeTime(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-export function IncomingOpener({ opener, onResolved }: Props) {
+export function IncomingOpener({ opener, onResolved, onReplied }: Props) {
   const navigate = useNavigate();
   const name = opener.sender.display_name ?? "Someone";
   const photo = opener.sender.photos[0]?.url;
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState<"reply" | "decline" | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const expiry = openerExpiryCopy(opener.expires_at);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -36,6 +41,7 @@ export function IncomingOpener({ opener, onResolved }: Props) {
     setError(undefined);
     try {
       const result = await replyToOpener(opener.id, message);
+      onReplied(opener.id, conversationWithPreview(result.conversation, result.message));
       navigate(`/chats?conversation=${result.conversation.id}`);
     } catch (caught) {
       setError(openerReplyErrorCopy(caught));
@@ -64,7 +70,15 @@ export function IncomingOpener({ opener, onResolved }: Props) {
         {photo ? <img src={photo} alt="" /> : <span className="incoming-opener__face" aria-hidden="true" />}
         <div>
           <h3>{name} sent you an opener</h3>
-          <time dateTime={opener.created_at}>{relativeTime(opener.created_at)}</time>
+          <p className="incoming-opener__meta">
+            <time dateTime={opener.created_at}>{relativeTime(opener.created_at)}</time>
+            {expiry ? (
+              <>
+                <span aria-hidden="true"> · </span>
+                <time dateTime={opener.expires_at}>{expiry}</time>
+              </>
+            ) : null}
+          </p>
         </div>
         <ProfileSafetyActions profileId={opener.sender.id} name={name} onBlocked={onResolved} />
       </header>

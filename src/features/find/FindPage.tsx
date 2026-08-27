@@ -8,7 +8,7 @@ import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
-import { openerSendAllowed } from "../../lib/api/openerTypes.ts";
+import { openerActionLabel, openerSendAllowed } from "../../lib/api/openerTypes.ts";
 import { listConversations } from "../../lib/api/social.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { BoltIcon, ChevronDownIcon, LightbulbIcon, SearchIcon } from "../shell/icons.tsx";
@@ -91,7 +91,7 @@ export default function FindPage() {
   const [actionError, setActionError] = useState<string | undefined>();
   const [matchedProfile, setMatchedProfile] = useState<FindProfile | undefined>();
   const [matchedId, setMatchedId] = useState<string | null>(null);
-  const [sentOpeners, setSentOpeners] = useState<Record<string, string>>({});
+  const [sentOpeners, setSentOpeners] = useState<Record<string, { text: string; expiresAt: string }>>({});
   const [tipOpen, setTipOpen] = useState(false);
   const [allowanceOpen, setAllowanceOpen] = useState(false);
 
@@ -466,7 +466,7 @@ export default function FindPage() {
             disabled={actionsDisabled}
             passLabel={interaction === "passed" ? "Passed" : "Pass"}
             likeLabel={interaction === "matched" ? "It's a match!" : interaction === "liked" ? "Liked" : "Like"}
-            openerLabel="Send opener"
+            openerLabel={openerActionLabel(active.opener_state)}
             openerSoon={false}
             openerDisabled={!openerSendAllowed(active.opener_state)}
             onPass={() => requestAction("passed")}
@@ -519,7 +519,8 @@ export default function FindPage() {
           catalogue={configuration?.openers ?? []}
           catalogueLoading={configurationLoading}
           catalogueFailed={configurationFailed}
-          sentText={sentOpeners[active.id]}
+          sentText={sentOpeners[active.id]?.text}
+          expiresAt={sentOpeners[active.id]?.expiresAt}
           conversation={!matchedProfile && conversation?.profile.id === active.id ? conversation : undefined}
           online={active.online}
           notifications={notifications}
@@ -531,8 +532,8 @@ export default function FindPage() {
             setConfigurationFailed(false);
             loadConfiguration();
           }}
-          onOpenerSent={(text) => {
-            setSentOpeners((current) => ({ ...current, [active.id]: text }));
+          onOpenerSent={(text, expiresAt) => {
+            setSentOpeners((current) => ({ ...current, [active.id]: { text, expiresAt } }));
             setActive((current) => (current && current.id === active.id ? { ...current, opener_state: "pending" } : current));
           }}
         />

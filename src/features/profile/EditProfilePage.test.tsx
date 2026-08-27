@@ -184,6 +184,15 @@ function methodOf(init?: RequestInit): string {
   return init?.method ?? "GET";
 }
 
+function placesListResponse(url: string): Response | undefined {
+  if (url !== "/api/v1/places" && !url.startsWith("/api/v1/places?")) {
+    return undefined;
+  }
+  return jsonResponse(200, {
+    places: [{ id: 11, kind: "region", name: "Western Cape", code: "western-cape", has_children: true }],
+  });
+}
+
 function renderApp(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -201,6 +210,8 @@ describe("Edit profile", () => {
   it("populates existing owner values and hides company from preview", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: completeOnboarding }));
@@ -237,6 +248,8 @@ describe("Edit profile", () => {
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = methodOf(init);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       calls.push(`${method} ${url}`);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile/configuration")) {
@@ -282,6 +295,8 @@ describe("Edit profile", () => {
   it("deep-links photos from profile completion", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: completeOnboarding }));
@@ -306,6 +321,8 @@ describe("Edit profile", () => {
   it("does not show a save bar until the draft is dirty", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: completeOnboarding }));
@@ -325,5 +342,50 @@ describe("Edit profile", () => {
     renderApp("/profile/edit");
     await screen.findByDisplayValue("Thando");
     expect(screen.queryByRole("button", { name: /save changes/i })).not.toBeInTheDocument();
+  });
+
+  it("saves dating location through PUT /profile/place and shows the server label", async () => {
+    const user = userEvent.setup();
+    let savedBody: Record<string, unknown> | undefined;
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      const method = methodOf(init);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(jsonResponse(200, { configuration, onboarding: completeOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/place") && method === "PUT") {
+        savedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: {
+              configured: true,
+              accuracy_meters: 8000,
+              source: "place",
+              captured_at: "2026-08-27T04:00:00Z",
+              place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+            },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      }
+      if (url.endsWith("/api/v1/profile/prompts")) return Promise.resolve(jsonResponse(200, { prompts: ownerProfile.prompts }));
+      if (url.endsWith("/api/v1/profile/preferences")) {
+        return Promise.resolve(jsonResponse(200, { preferences: { min_age: 21, max_age: 40, max_distance_km: 50, interested_in: ["man"] } }));
+      }
+      if (url.endsWith("/api/v1/profile/photos")) return Promise.resolve(jsonResponse(200, { photos: [] }));
+      if (url.endsWith("/api/v1/notifications")) return Promise.resolve(jsonResponse(200, { notifications: [], unread_count: 0 }));
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/profile/edit");
+    expect(await screen.findByRole("heading", { name: /choose a province or region/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /use western cape as dating location/i }));
+    expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
+    expect(savedBody).toEqual({ place_id: 11 });
   });
 });

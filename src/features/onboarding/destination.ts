@@ -11,10 +11,10 @@ const BASICS_KEYS = ["display_name", "birthdate", "gender"] as const;
 const WHERE_KEYS = ["country_code", "city"] as const;
 /** Not a profile field D8N accepts via PATCH /profile — this is the same
  * top-level "location" key completion.missing uses for a still-unset
- * ProfileLocation (see LocationStep.tsx, which saves it via its own
- * PUT /profile/location). Mapping it into a screen here just lets it reuse
- * the same "resume at the first still-missing screen" logic as every other
- * profile screen. */
+ * ProfileLocation. LocationStep saves via PUT /profile/place (dating area)
+ * or PUT /profile/location (device GPS, until backend T10). Mapping it into
+ * a screen here reuses the same "resume at the first still-missing screen"
+ * logic as every other profile screen. */
 const LOCATION_KEYS = ["location"] as const;
 const ABOUT_KEYS = ["bio"] as const;
 const LIFESTYLE_KEYS = ["smoking", "drinking"] as const;

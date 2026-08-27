@@ -16,6 +16,7 @@ type Props = {
   catalogueFailed?: boolean;
   openerState: OpenerState | undefined;
   sentText?: string;
+  expiresAt?: string;
   conversation?: Conversation;
   onSent: (text: string, expiresAt: string) => void;
   onRetryCatalogue?: () => void;
@@ -30,12 +31,22 @@ export function OpenerSurface({
   catalogueFailed,
   openerState,
   sentText,
+  expiresAt,
   conversation,
   onSent,
   onRetryCatalogue,
 }: Props) {
   if (openerState === "pending") {
-    return <OpenerWaiting name={name} sentText={sentText} />;
+    return <OpenerWaiting name={name} sentText={sentText} expiresAt={expiresAt} />;
+  }
+
+  if (openerState === "unavailable") {
+    return (
+      <section id={OPENER_SURFACE_ID} className="find-rail-card" aria-label="Opener unavailable">
+        <h2 className="find-rail-card__title">Opener unavailable</h2>
+        <p className="find-rail-card__body">An opener isn’t available for this person.</p>
+      </section>
+    );
   }
 
   if (openerState === "hooked" && conversation) {

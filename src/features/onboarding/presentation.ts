@@ -7,6 +7,13 @@ import type { FieldOption } from "../../lib/api/profileTypes.ts";
  */
 export const MAX_PILL_OPTIONS = 12;
 
+/**
+ * Email / Phone style: a single-row pill holder. Past three options the set
+ * wraps, the last chip stretches, and the holder stops looking like a control.
+ * Larger sets use a chip cloud instead.
+ */
+export const MAX_SEGMENTED_OPTIONS = 3;
+
 /** Broadest values ProfilePreference currently accepts (18–120, 1–500 km). */
 export const BROAD_PREFERENCE_DEFAULTS = {
   min_age: 18,

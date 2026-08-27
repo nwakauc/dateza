@@ -17,11 +17,20 @@ export function parseOpenerState(value: unknown): OpenerState | undefined {
   return undefined;
 }
 
-/** Send is offered unless D8N already has a live outgoing opener or an
- *  unlocked conversation. `unavailable` is not a client-side lock: like is
- *  independent, and the POST is the authority (409/404 copy on failure). */
+/** Send is offered only when D8N says the viewer may send.
+ *  `pending` = live outgoing opener; `hooked` = match/conversation exists;
+ *  `unavailable` = one-per-pair already spent, incoming live opener, or already
+ *  liked — D8N collapses those for privacy, so the client must not offer send.
+ *  Missing `opener_state` stays sendable so POST remains the authority. */
 export function openerSendAllowed(state: OpenerState | undefined): boolean {
-  return state !== "pending" && state !== "hooked";
+  return state !== "pending" && state !== "hooked" && state !== "unavailable";
+}
+
+export function openerActionLabel(state: OpenerState | undefined): string {
+  if (state === "pending") return "Opener already sent";
+  if (state === "hooked") return "Conversation already open";
+  if (state === "unavailable") return "Opener unavailable";
+  return "Send opener";
 }
 
 export type ConfiguredOpener = {

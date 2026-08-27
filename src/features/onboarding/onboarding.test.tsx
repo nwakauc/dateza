@@ -154,6 +154,15 @@ function requestUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
+function placesListResponse(url: string): Response | undefined {
+  if (url !== "/api/v1/places" && !url.startsWith("/api/v1/places?")) {
+    return undefined;
+  }
+  return jsonResponse(200, {
+    places: [{ id: 11, kind: "region", name: "Western Cape", code: "western-cape", has_children: true }],
+  });
+}
+
 function renderApp(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -564,6 +573,8 @@ describe("onboarding location screen", () => {
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) {
         return Promise.resolve(jsonResponse(200, meBody));
       }
@@ -1000,6 +1011,8 @@ describe("onboarding location step", () => {
     });
     vi.mocked(fetch).mockImplementation((input) => {
       const url = requestUrl(input);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: publicationOnboarding }));
@@ -1020,7 +1033,7 @@ describe("onboarding location step", () => {
     expect(screen.queryByRole("button", { name: /publish profile/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/dateza needs your location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
     expect(publishCalls).toBe(0);
   });
@@ -1038,6 +1051,8 @@ describe("onboarding location step", () => {
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = init?.method ?? "GET";
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding }));

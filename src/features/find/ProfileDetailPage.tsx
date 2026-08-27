@@ -55,7 +55,7 @@ export default function ProfileDetailPage() {
   const [interaction, setInteraction] = useState<"idle" | "liked" | "passed">("idle");
   const [busy, setBusy] = useState(false);
   const [matchId, setMatchId] = useState<string | null>(null);
-  const [sentText, setSentText] = useState<string | undefined>();
+  const [sentOpener, setSentOpener] = useState<{ text: string; expiresAt: string } | undefined>();
   const [conversation, setConversation] = useState<Conversation | undefined>();
   const photoRetryRef = useRef(false);
 
@@ -232,10 +232,11 @@ export default function ProfileDetailPage() {
           catalogueLoading={configurationLoading}
           catalogueFailed={configurationFailed}
           openerState={profile.opener_state}
-          sentText={sentText}
+          sentText={sentOpener?.text}
+          expiresAt={sentOpener?.expiresAt}
           conversation={conversation?.profile.id === profile.id ? conversation : undefined}
-          onSent={(text) => {
-            setSentText(text);
+          onSent={(text, expiresAt) => {
+            setSentOpener({ text, expiresAt });
             setProfile((current) => (current ? { ...current, opener_state: "pending" } : current));
           }}
           onRetryCatalogue={() => {

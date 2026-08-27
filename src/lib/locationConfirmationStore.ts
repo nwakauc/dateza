@@ -5,15 +5,15 @@ function key(profileId: string): string {
 }
 
 /**
- * D8N's `GET /api/v1/profile` does not expose whether ProfileLocation is
- * configured — confirmed against staging 2026-08-25: `completion.percent`
- * and `completion.missing` are both unchanged by a successful
- * `PUT /api/v1/profile/location`. Until D8N exposes that signal, this is
- * the only thing the frontend can know: whether *this device* has already
- * seen a successful save for this profile id. It intentionally defaults to
- * "not confirmed" for any profile it hasn't personally confirmed — the
- * worst case is a member who granted location on another device being
- * asked once more here, never a member being silently skipped.
+ * Narrow refresh/re-entry fallback until backend T6 (`GET /api/v1/profile/location`).
+ *
+ * GET /api/v1/profile already exposes `location.configured` and, for Place
+ * saves, a `place` label. Use that server signal when present. This flag
+ * remains only for payloads that omit `location`, and for GPS-only sessions
+ * that still need this device to remember a successful save across refresh.
+ *
+ * Do not store Place ids, names, or coordinates here. Do not add fields.
+ * Retire this store when T6 lands.
  */
 export function hasConfirmedLocation(profileId: string): boolean {
   try {

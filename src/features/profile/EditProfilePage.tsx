@@ -39,7 +39,7 @@ import { datezaRichness } from "./richProfileGaps.ts";
 import { PromptEditor } from "./PromptEditor.tsx";
 import { promptDraftsFromAnswers, type PromptDraft } from "./promptDrafts.ts";
 import { CharCount, PrivacyNote, SelectField } from "./edit/FieldControls.tsx";
-import { DatingLocationSearch } from "./edit/DatingLocationSearch.tsx";
+import { DatingPlacePicker } from "./edit/DatingPlacePicker.tsx";
 import { EditPhotosSection } from "./edit/EditPhotosSection.tsx";
 import { EditPreviewCard } from "./edit/EditPreviewCard.tsx";
 import { InterestsPicker } from "./edit/InterestsPicker.tsx";
@@ -519,8 +519,20 @@ export default function EditProfilePage() {
                   <input id={cityId} type="text" value={draft.city} maxLength={80} onChange={(event) => patch({ city: event.target.value })} />
                 </div>
               </div>
-              <p className="edit-profile__kicker">Where are you dating from?</p>
-              {account.profile ? <DatingLocationSearch profileId={account.profile.id} onSaved={() => account.refresh()} /> : null}
+              <p className="edit-profile__kicker">Dating location</p>
+              <p className="auth-form__hint">Choose the general area you want to date from.</p>
+              {account.profile ? (
+                <DatingPlacePicker
+                  profileId={account.profile.id}
+                  savedLabel={account.profile.location?.place?.display_path}
+                  configuredWithoutPlace={
+                    account.profile.location?.configured === true && !account.profile.location.place
+                  }
+                  onSaved={() => {
+                    void account.refresh();
+                  }}
+                />
+              ) : null}
               <div className="auth-field">
                 <label htmlFor={bioId}>About me</label>
                 <p className="auth-form__hint">Tell people a little about who you are.</p>
@@ -536,6 +548,7 @@ export default function EditProfilePage() {
                   onChange={(code) => toggleSelection("relationship_intent", code, "single")}
                   disabled={saving}
                   clearable
+                  layout="chips"
                 />
               ) : null}
               <div className="auth-field">
@@ -613,35 +626,40 @@ export default function EditProfilePage() {
                 <h2>Lifestyle</h2>
                 <p>Small details that help the right person recognise you.</p>
               </header>
-              <SingleChoiceField
-                legend={field("smoking")?.label ?? "Smoking"}
-                name="smoking"
-                options={lifestyleChoices("smoking", field("smoking")?.options ?? [])}
-                value={draft.smoking}
-                onChange={(code) => patch({ smoking: code })}
-                disabled={saving}
-                clearable
-              />
-              <SingleChoiceField
-                legend={field("drinking")?.label ?? "Drinking"}
-                name="drinking"
-                options={lifestyleChoices("drinking", field("drinking")?.options ?? [])}
-                value={draft.drinking}
-                onChange={(code) => patch({ drinking: code })}
-                disabled={saving}
-                clearable
-              />
-              {field("fitness") ? (
+              <div className="edit-profile__choices">
                 <SingleChoiceField
-                  legend={field("fitness")!.label}
-                  name="edit-fitness"
-                  options={field("fitness")!.options}
-                  value={draft.fitness}
-                  onChange={(value) => patch({ fitness: value })}
+                  legend={field("smoking")?.label ?? "Smoking"}
+                  name="smoking"
+                  options={lifestyleChoices("smoking", field("smoking")?.options ?? [])}
+                  value={draft.smoking}
+                  onChange={(code) => patch({ smoking: code })}
                   disabled={saving}
                   clearable
+                  layout="chips"
                 />
-              ) : null}
+                <SingleChoiceField
+                  legend={field("drinking")?.label ?? "Drinking"}
+                  name="drinking"
+                  options={lifestyleChoices("drinking", field("drinking")?.options ?? [])}
+                  value={draft.drinking}
+                  onChange={(code) => patch({ drinking: code })}
+                  disabled={saving}
+                  clearable
+                  layout="chips"
+                />
+                {field("fitness") ? (
+                  <SingleChoiceField
+                    legend={field("fitness")!.label}
+                    name="edit-fitness"
+                    options={field("fitness")!.options}
+                    value={draft.fitness}
+                    onChange={(value) => patch({ fitness: value })}
+                    disabled={saving}
+                    clearable
+                    layout="chips"
+                  />
+                ) : null}
+              </div>
               <div className="auth-field">
                 <label htmlFor={heightId}>Height (cm)</label>
                 <input

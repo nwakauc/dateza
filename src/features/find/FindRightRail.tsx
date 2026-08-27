@@ -18,6 +18,7 @@ type Props = {
   catalogueLoading?: boolean;
   catalogueFailed?: boolean;
   sentText?: string;
+  expiresAt?: string;
   conversation?: Conversation;
   online?: boolean;
   notifications: ProductNotification[];
@@ -40,6 +41,7 @@ export function FindRightRail({
   catalogueLoading,
   catalogueFailed,
   sentText,
+  expiresAt,
   conversation,
   online,
   notifications,
@@ -67,6 +69,7 @@ export function FindRightRail({
       catalogueFailed={catalogueFailed}
       openerState={openerState}
       sentText={sentText}
+      expiresAt={expiresAt}
       conversation={conversation}
       onSent={onOpenerSent}
       onRetryCatalogue={onRetryCatalogue}

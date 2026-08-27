@@ -43,6 +43,7 @@ export function OptionSelects({ groups, selections, onSelect, disabled }: Props)
               onChange={(code) => onSelect(group.key, code)}
               disabled={disabled === true}
               clearable
+              layout="chips"
             />
           );
         })}

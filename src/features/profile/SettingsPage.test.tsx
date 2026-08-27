@@ -108,6 +108,22 @@ function installApi() {
     if (url.endsWith("/api/v1/profile/preferences") && method === "PATCH") {
       return Promise.resolve(jsonResponse({}));
     }
+    if (url === "/api/v1/places" || url.startsWith("/api/v1/places?")) {
+      return Promise.resolve(jsonResponse({
+        places: [{ id: 11, kind: "region", name: "Western Cape", code: "western-cape", has_children: true }],
+      }));
+    }
+    if (url.endsWith("/api/v1/profile/place") && method === "PUT") {
+      return Promise.resolve(jsonResponse({
+        location: {
+          configured: true,
+          accuracy_meters: 8000,
+          source: "place",
+          captured_at: "2026-08-27T04:00:00Z",
+          place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+        },
+      }));
+    }
     if (url.endsWith("/api/v1/profile/configuration")) {
       return Promise.resolve(jsonResponse({
         configuration: {
@@ -186,6 +202,22 @@ describe("SettingsPage", () => {
         max_distance_km: 50,
         interested_in: ["man", "woman"],
       });
+    });
+  });
+
+  it("saves dating location through PUT /profile/place from Settings", async () => {
+    const fetchMock = installApi();
+    const user = userEvent.setup();
+    renderSettings("/settings#preferences");
+
+    await user.click(await screen.findByRole("button", { name: /use western cape as dating location/i }));
+    expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
+    expect(await screen.findByText("Dating location updated.")).toBeInTheDocument();
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input, init]) =>
+        requestUrl(input).endsWith("/api/v1/profile/place") && requestMethod(input, init) === "PUT");
+      expect(call).toBeDefined();
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ place_id: 11 });
     });
   });
 

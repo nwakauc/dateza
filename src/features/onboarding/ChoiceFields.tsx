@@ -1,6 +1,17 @@
 import type { FieldOption } from "../../lib/api/profileTypes.ts";
+import { MAX_SEGMENTED_OPTIONS } from "./presentation.ts";
 
 type ChoiceOption = FieldOption & { hint?: string };
+
+/** `auto` uses the Email/Phone holder for 2–3 options and chips for larger sets. */
+export type ChoiceLayout = "auto" | "chips" | "segmented";
+
+function controlLayout(optionCount: number, layout: ChoiceLayout): "segmented" | "chips" {
+  if (layout === "chips" || layout === "segmented") {
+    return layout;
+  }
+  return optionCount > 0 && optionCount <= MAX_SEGMENTED_OPTIONS ? "segmented" : "chips";
+}
 
 type Props = {
   legend: string;
@@ -15,6 +26,7 @@ type Props = {
   required?: boolean;
   /** Optional answers can be taken back off a profile once chosen. */
   clearable?: boolean;
+  layout?: ChoiceLayout;
 };
 
 export function SingleChoiceField({
@@ -29,14 +41,16 @@ export function SingleChoiceField({
   hideLegend = false,
   required = false,
   clearable = false,
+  layout = "auto",
 }: Props) {
   const errorId = `${name}-error`;
+  const compact = controlLayout(options.length, layout) === "segmented";
 
   return (
     <fieldset className="onboard-fieldset onboard-fieldset--plain" disabled={disabled}>
       <legend className={hideLegend ? "onboard-sr-only" : undefined}>{legend}</legend>
       <div
-        className="onboard-segmented"
+        className={compact ? "onboard-segmented" : "onboard-chips"}
         role="radiogroup"
         aria-label={legend}
         aria-describedby={describedBy}
@@ -47,7 +61,7 @@ export function SingleChoiceField({
           return (
             <label
               key={option.code}
-              className="onboard-segment"
+              className={compact ? "onboard-segment" : "onboard-chip"}
               data-selected={checked ? "true" : "false"}
               htmlFor={inputId}
             >
@@ -96,6 +110,7 @@ type MultiProps = {
   hideLegend?: boolean;
   isSelected?: (code: string) => boolean;
   onToggle?: (code: string) => void;
+  layout?: ChoiceLayout;
 };
 
 export function MultiChoiceField({
@@ -110,9 +125,11 @@ export function MultiChoiceField({
   hideLegend = false,
   isSelected,
   onToggle,
+  layout = "auto",
 }: MultiProps) {
   const hintId = `${name}-hint`;
   const errorId = `${name}-error`;
+  const compact = controlLayout(options.length, layout) === "segmented";
 
   function toggle(code: string) {
     if (onToggle) {
@@ -134,14 +151,14 @@ export function MultiChoiceField({
           {hint}
         </p>
       ) : null}
-      <div className="onboard-segmented">
+      <div className={compact ? "onboard-segmented" : "onboard-chips"}>
         {options.map((option) => {
           const checked = isSelected ? isSelected(option.code) : values.includes(option.code);
           const inputId = `${name}-${option.code}`;
           return (
             <label
               key={option.code}
-              className="onboard-segment"
+              className={compact ? "onboard-segment" : "onboard-chip"}
               data-selected={checked ? "true" : "false"}
               htmlFor={inputId}
             >

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../../lib/api/errors.ts";
 import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import { listConversations, listMatches, startConversation } from "../../lib/api/social.ts";
 import type { Conversation, Match } from "../../lib/api/socialTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
+import { mergeById } from "../chats/chatDisplay.ts";
 import { DiscoverMatchModule } from "../discovery/DiscoverMatchModule.tsx";
 import { buildOptionLabelLookup } from "../find/optionLabels.ts";
 import { HeartIcon } from "../shell/icons.tsx";
@@ -33,6 +34,7 @@ export default function LikesPage() {
   const [conversationsFailed, setConversationsFailed] = useState(false);
   const [configuration, setConfiguration] = useState<ProfileConfiguration | undefined>();
   const [starting, setStarting] = useState<string>();
+  const startingRef = useRef<string>();
   const [actionError, setActionError] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -87,6 +89,8 @@ export default function LikesPage() {
   }
 
   async function message(match: Match) {
+    if (startingRef.current) return;
+    startingRef.current = match.id;
     setStarting(match.id);
     setActionError(false);
     const existing = conversations.find((item) => item.match_id === match.id);
@@ -100,6 +104,7 @@ export default function LikesPage() {
     } catch {
       setActionError(true);
     } finally {
+      startingRef.current = undefined;
       setStarting(undefined);
     }
   }
@@ -109,7 +114,7 @@ export default function LikesPage() {
     setLoadingMore(true);
     void listMatches(nextCursor)
       .then((result) => {
-        setMatches((current) => [...current, ...result.matches]);
+        setMatches((current) => mergeById(current, result.matches));
         setNextCursor(result.next_cursor);
       })
       .catch(() => setActionError(true))

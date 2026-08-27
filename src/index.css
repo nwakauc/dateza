@@ -2865,11 +2865,20 @@ main.public-status a.public-status__home:hover {
 }
 
 .onboard-choice[data-selected="true"],
-.onboard-card[data-selected="true"] {
-  border-color: #e8375a;
-  background: #fff0f3;
-  color: #c22447;
+.onboard-choice:has(:checked),
+.onboard-card[data-selected="true"],
+.onboard-card:has(:checked) {
+  border-color: var(--dz-pink);
+  background: var(--dz-pink);
+  color: #fff;
   font-weight: 700;
+}
+
+.onboard-choice[data-selected="true"] .onboard-choice__hint,
+.onboard-choice:has(:checked) .onboard-choice__hint,
+.onboard-card[data-selected="true"] .onboard-choice__hint,
+.onboard-card:has(:checked) .onboard-choice__hint {
+  color: rgba(255, 255, 255, 0.88);
 }
 
 /* Keyboard focus gets its own dark ring, distinct from the pink selected
@@ -2954,19 +2963,29 @@ main.public-status a.public-status__home:hover {
 
 .onboard-chip {
   position: relative;
+  box-sizing: border-box;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border: 1px solid #e4dbe0;
   border-radius: 999px;
   background: #fff;
   color: #1c1720;
+  font: inherit;
   font-size: 0.9375rem;
   font-weight: 600;
+  text-align: center;
   cursor: pointer;
+  appearance: none;
   touch-action: manipulation;
+}
+
+.onboard-chip:hover:not([data-selected="true"]):not(:has(:checked)) {
+  border-color: #cbb8c0;
+  color: #1c1720;
 }
 
 .onboard-chip input {
@@ -2979,10 +2998,11 @@ main.public-status a.public-status__home:hover {
   cursor: pointer;
 }
 
-.onboard-chip[data-selected="true"] {
-  border-color: #e8375a;
-  background: #fff0f3;
-  color: #c22447;
+.onboard-chip[data-selected="true"],
+.onboard-chip:has(:checked) {
+  border-color: var(--dz-pink);
+  background: var(--dz-pink);
+  color: #fff;
   font-weight: 700;
 }
 
@@ -2991,16 +3011,16 @@ main.public-status a.public-status__home:hover {
   outline-offset: 2px;
 }
 
-/* The one control DateZA uses for "pick from this set": a rounded holder of
-   pills. 3px padding around a 42px row is 48px tall, so a 24px radius is an
-   exact pill on a single row and stays a soft container once options wrap. */
+/* Email / Phone language: a single-row pill holder. Do not wrap — a wrapped
+   last option stretches full-width and reads as a pale bar. Larger sets use
+   .onboard-chips instead. */
 .onboard-segmented {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 3px;
-  padding: 3px;
+  padding: 4px;
   border: 1px solid #e4dbe0;
-  border-radius: 24px;
+  border-radius: 999px;
   background: #fff;
 }
 
@@ -3027,7 +3047,7 @@ main.public-status a.public-status__home:hover {
   touch-action: manipulation;
 }
 
-.onboard-segment:hover:not([data-selected="true"]) {
+.onboard-segment:hover:not([data-selected="true"]):not(:has(:checked)) {
   background: rgba(232, 55, 90, 0.06);
   color: #1c1720;
 }
@@ -3042,9 +3062,11 @@ main.public-status a.public-status__home:hover {
   cursor: pointer;
 }
 
-.onboard-segment[data-selected="true"] {
-  background: #e8375a;
+.onboard-segment[data-selected="true"],
+.onboard-segment:has(:checked) {
+  background: var(--dz-pink);
   color: #fff;
+  font-weight: 700;
 }
 
 .onboard-segment:has(:focus-visible) {
@@ -3052,12 +3074,15 @@ main.public-status a.public-status__home:hover {
   outline-offset: 2px;
 }
 
-.onboard-fieldset:disabled .onboard-segmented {
+.onboard-fieldset:disabled .onboard-segmented,
+.onboard-fieldset:disabled .onboard-chips {
   opacity: 0.55;
 }
 
 .onboard-fieldset:disabled .onboard-segment,
-.onboard-fieldset:disabled .onboard-segment input {
+.onboard-fieldset:disabled .onboard-segment input,
+.onboard-fieldset:disabled .onboard-chip,
+.onboard-fieldset:disabled .onboard-chip input {
   cursor: not-allowed;
 }
 
@@ -4158,6 +4183,12 @@ main.public-status a.public-status__home:hover {
   line-height: 1.4;
 }
 
+.opener-waiting__expiry {
+  margin: 0;
+  color: #9a8f98;
+  font-size: 0.8rem;
+}
+
 .incoming-opener {
   padding: 14px 0;
   border-bottom: 1px solid #eadfe4;
@@ -4184,7 +4215,8 @@ main.public-status a.public-status__home:hover {
   font-size: 0.95rem;
 }
 
-.incoming-opener__head time {
+.incoming-opener__meta {
+  margin: 2px 0 0;
   color: #9a8f98;
   font-size: 0.75rem;
 }
@@ -8789,8 +8821,8 @@ main.public-status a.public-status__home:hover {
 
 .edit-profile__tabs a.is-active {
   border-color: var(--dz-pink);
-  background: #fff0f3;
-  color: var(--dz-pink-dark);
+  background: var(--dz-pink);
+  color: #fff;
 }
 
 .edit-profile__block {
@@ -8981,8 +9013,8 @@ main.public-status a.public-status__home:hover {
 
 .edit-interests__chip--on {
   border-color: var(--dz-pink);
-  background: #fff0f3;
-  color: var(--dz-pink-dark);
+  background: var(--dz-pink);
+  color: #fff;
 }
 
 .edit-interests__search input {
@@ -10450,4 +10482,158 @@ main.public-status a.public-status__home:hover {
     scroll-behavior: auto;
     transition: none;
   }
+}
+
+.place-picker {
+  display: grid;
+  gap: 12px;
+}
+
+.place-picker__saved {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7f1f3;
+  color: #1c1720;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.place-picker__nav {
+  display: grid;
+  gap: 8px;
+}
+
+.place-picker__heading {
+  margin: 0;
+  color: #1c1720;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.place-picker__heading:focus {
+  outline: none;
+}
+
+.place-picker__heading:focus-visible {
+  outline: 2px solid #e8375a;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.place-picker__back,
+.place-picker__retry {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #c22447;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.place-picker__back:hover:not(:disabled),
+.place-picker__back:focus-visible,
+.place-picker__retry:hover:not(:disabled),
+.place-picker__retry:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.place-picker__choose-parent {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #1c1720;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.place-picker__choose-parent:hover:not(:disabled),
+.place-picker__choose-parent:focus-visible {
+  background: #3a3238;
+}
+
+.place-picker__choose-parent:disabled,
+.place-picker__open:disabled,
+.place-picker__use:disabled,
+.place-picker__back:disabled,
+.place-picker__retry:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.place-picker__hint {
+  margin: 0;
+  color: #6b5c68;
+  font-size: 0.875rem;
+}
+
+.place-picker__error-block {
+  display: grid;
+  gap: 8px;
+}
+
+.place-picker__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-picker__item {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.place-picker__open,
+.place-picker__use {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #e4dbe0;
+  border-radius: 14px;
+  background: #fff;
+  color: #1c1720;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.place-picker__open {
+  flex: 1;
+}
+
+.place-picker__open--leaf {
+  width: 100%;
+}
+
+.place-picker__use {
+  flex: 0 0 auto;
+  min-width: 72px;
+  text-align: center;
+  color: #c22447;
+}
+
+.place-picker__open:hover:not(:disabled),
+.place-picker__open:focus-visible,
+.place-picker__use:hover:not(:disabled),
+.place-picker__use:focus-visible {
+  border-color: #e8375a;
+}
+
+.place-picker__gps-label {
+  margin: 0 0 8px;
+  color: #6b5c68;
+  font-size: 0.875rem;
+  font-weight: 600;
 }

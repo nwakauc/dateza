@@ -12,9 +12,15 @@ type Props = {
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
+  openersError: boolean;
+  loadingMoreOpeners: boolean;
+  openersHasMore: boolean;
   onSelect: (id: string) => void;
   onLoadMore: () => void;
+  onLoadMoreOpeners: () => void;
+  onRetryOpeners: () => void;
   onOpenersChanged: () => void;
+  onOpenerReplied: (openerId: string, conversation: Conversation) => void;
 };
 
 function ConversationAvatar({ conversation, name }: { conversation: Conversation; name: string }) {
@@ -35,11 +41,17 @@ export function ConversationList({
   loading,
   loadingMore,
   hasMore,
+  openersError,
+  loadingMoreOpeners,
+  openersHasMore,
   onSelect,
   onLoadMore,
+  onLoadMoreOpeners,
+  onRetryOpeners,
   onOpenersChanged,
+  onOpenerReplied,
 }: Props) {
-  const empty = !loading && conversations.length === 0 && openers.length === 0;
+  const empty = !loading && conversations.length === 0 && openers.length === 0 && !openersError;
 
   return (
     <aside className="chats-list" aria-label="Conversations">
@@ -65,6 +77,15 @@ export function ConversationList({
         </div>
       ) : null}
 
+      {!loading && openersError ? (
+        <div className="chats-list__note" role="alert">
+          <p>Openers didn’t load. Your chats are still here.</p>
+          <button type="button" onClick={onRetryOpeners}>
+            Try openers again
+          </button>
+        </div>
+      ) : null}
+
       {!loading && openers.length > 0 ? (
         <section className="chats-openers" aria-labelledby="incoming-openers-title">
           <div className="chats-openers__heading">
@@ -72,8 +93,18 @@ export function ConversationList({
             <span>{openers.length}</span>
           </div>
           {openers.map((opener) => (
-            <IncomingOpener key={opener.id} opener={opener} onResolved={onOpenersChanged} />
+            <IncomingOpener
+              key={opener.id}
+              opener={opener}
+              onResolved={onOpenersChanged}
+              onReplied={onOpenerReplied}
+            />
           ))}
+          {openersHasMore ? (
+            <button className="chats-list__more" type="button" onClick={onLoadMoreOpeners} disabled={loadingMoreOpeners}>
+              {loadingMoreOpeners ? "Loading…" : "Load more openers"}
+            </button>
+          ) : null}
         </section>
       ) : null}
 

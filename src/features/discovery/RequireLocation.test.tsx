@@ -7,11 +7,9 @@ import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { hasConfirmedLocation, markLocationConfirmed } from "../../lib/locationConfirmationStore.ts";
 
 /**
- * D8N's GET /api/v1/profile does not expose whether ProfileLocation is
- * configured, so this guard can only act on what this device has itself
- * confirmed (see locationConfirmationStore.ts) — these tests cover accounts
- * published before location capture existed, reaching /discover directly
- * without ever going through the onboarding LocationStep in this session.
+ * Discover's location gate prefers GET /profile `location.configured` when
+ * present. These tests also cover the localStorage fallback used when that
+ * field is omitted (T6 will retire that fallback).
  */
 
 const PROFILE_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -86,13 +84,33 @@ function renderApp(path = "/discover") {
   );
 }
 
-function mockDiscoveryBackend(onDiscoveryCall: () => void) {
+function mockDiscoveryBackend(onDiscoveryCall: () => void, profile: Record<string, unknown> = ownerProfile) {
   vi.mocked(fetch).mockImplementation((input, init) => {
     const url = requestUrl(input);
     const method = init?.method ?? "GET";
     if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
     if (url.endsWith("/api/v1/profile")) {
-      return Promise.resolve(jsonResponse(200, { profile: ownerProfile, onboarding: completeOnboarding }));
+      return Promise.resolve(jsonResponse(200, { profile, onboarding: completeOnboarding }));
+    }
+    if (url === "/api/v1/places" || url.startsWith("/api/v1/places?")) {
+      return Promise.resolve(
+        jsonResponse(200, {
+          places: [{ id: 11, kind: "region", name: "Western Cape", code: "western-cape", has_children: true }],
+        }),
+      );
+    }
+    if (url.endsWith("/api/v1/profile/place") && method === "PUT") {
+      return Promise.resolve(
+        jsonResponse(200, {
+          location: {
+            configured: true,
+            accuracy_meters: 8000,
+            source: "place",
+            captured_at: "2026-08-27T04:00:00Z",
+            place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+          },
+        }),
+      );
     }
     if (url.endsWith("/api/v1/profile/location") && method === "PUT") {
       return Promise.resolve(
@@ -175,7 +193,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     await screen.findByRole("heading", { name: /where are you dating from/i });
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/dateza needs your location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
     expect(discoveryCalls).toBe(0);
   });
 
@@ -190,5 +208,29 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /where are you dating from/i })).not.toBeInTheDocument();
     expect(discoveryCalls).toBe(1);
+  });
+
+  it("skips the gate when GET /profile reports location.configured without a local flag", async () => {
+    setBearerToken("opaque-session-token");
+    let discoveryCalls = 0;
+    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: true } });
+
+    renderApp();
+
+    expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /where are you dating from/i })).not.toBeInTheDocument();
+    expect(discoveryCalls).toBe(1);
+  });
+
+  it("still prompts when the server says location is not configured, even if this device has a local flag", async () => {
+    setBearerToken("opaque-session-token");
+    markLocationConfirmed(PROFILE_ID);
+    let discoveryCalls = 0;
+    mockDiscoveryBackend(() => (discoveryCalls += 1), { ...ownerProfile, location: { configured: false } });
+
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
+    expect(discoveryCalls).toBe(0);
   });
 });

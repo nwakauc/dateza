@@ -1,4 +1,5 @@
 import type { FieldOption, ProfileConfiguration } from "../../lib/api/profileTypes.ts";
+import { MAX_SEGMENTED_OPTIONS } from "../onboarding/presentation.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { customFilterCount, EMPTY_DISCOVER_FILTERS, type DiscoverFilters } from "./discoverFilters.ts";
 
@@ -29,15 +30,16 @@ type PillItem = { key: string; label: string; on: boolean; onSelect: () => void 
 
 function FilterPills({ legend, items }: { legend: string; items: PillItem[] }) {
   if (items.length === 0) return null;
+  const compact = items.length <= MAX_SEGMENTED_OPTIONS;
   return (
     <fieldset className="discover-filter__fieldset">
       <legend>{legend}</legend>
-      <div className="onboard-segmented">
+      <div className={compact ? "onboard-segmented" : "onboard-chips"}>
         {items.map((item) => (
           <button
             key={item.key}
             type="button"
-            className="onboard-segment"
+            className={compact ? "onboard-segment" : "onboard-chip"}
             data-selected={item.on ? "true" : "false"}
             aria-pressed={item.on}
             onClick={item.onSelect}

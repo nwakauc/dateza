@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startConversation } from "../../lib/api/social.ts";
 import { HeartIcon, SparkleIcon } from "../shell/icons.tsx";
@@ -14,10 +14,12 @@ type Props = {
 export function FindMatchPanel({ name, photoUrl, selfPhotoUrl, matchId, onKeepFinding }: Props) {
   const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const [error, setError] = useState(false);
 
   async function startChat() {
-    if (!matchId || starting) return;
+    if (!matchId || startingRef.current) return;
+    startingRef.current = true;
     setStarting(true);
     setError(false);
     try {
@@ -25,6 +27,7 @@ export function FindMatchPanel({ name, photoUrl, selfPhotoUrl, matchId, onKeepFi
       navigate(`/chats?conversation=${conversation.id}`);
     } catch {
       setError(true);
+      startingRef.current = false;
       setStarting(false);
     }
   }

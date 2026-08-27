@@ -46,7 +46,7 @@ import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
-import { DatingLocationSearch } from "./edit/DatingLocationSearch.tsx";
+import { DatingPlacePicker } from "./edit/DatingPlacePicker.tsx";
 import { hrefForCompletionKey } from "./completionLinks.ts";
 
 const SECTION_IDS = [
@@ -586,12 +586,22 @@ export default function SettingsPage() {
                   <div className="settings-location-summary">
                     <MapPinIcon />
                     <span>
-                      <strong>Change dating location</strong>
-                      <small>DateZA stores your matching location securely. D8N does not yet return the saved area for display.</small>
+                      <strong>Dating location</strong>
+                      <small>Choose the general area you want to date from.</small>
                     </span>
                   </div>
                   {account.profile ? (
-                    <DatingLocationSearch profileId={account.profile.id} onSaved={() => setLocationSaved(true)} />
+                    <DatingPlacePicker
+                      profileId={account.profile.id}
+                      savedLabel={account.profile.location?.place?.display_path}
+                      configuredWithoutPlace={
+                        account.profile.location?.configured === true && !account.profile.location.place
+                      }
+                      onSaved={() => {
+                        setLocationSaved(true);
+                        void account.refresh();
+                      }}
+                    />
                   ) : null}
                   {locationSaved ? <p className="settings-saved" role="status">Dating location updated.</p> : null}
                 </fieldset>

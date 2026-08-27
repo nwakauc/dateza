@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startConversation } from "../../lib/api/social.ts";
 import { Modal } from "../verification/Modal.tsx";
@@ -21,10 +21,12 @@ type Props = {
 export function MatchModal({ name, photoUrl, selfPhotoUrl, matchId, continueLabel, onContinue }: Props) {
   const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const [messageError, setMessageError] = useState(false);
 
   async function message() {
-    if (!matchId || starting) return;
+    if (!matchId || startingRef.current) return;
+    startingRef.current = true;
     setStarting(true);
     setMessageError(false);
     try {
@@ -32,6 +34,7 @@ export function MatchModal({ name, photoUrl, selfPhotoUrl, matchId, continueLabe
       navigate(`/chats?conversation=${conversation.id}`);
     } catch {
       setMessageError(true);
+      startingRef.current = false;
       setStarting(false);
     }
   }

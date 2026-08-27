@@ -150,6 +150,13 @@ export type OwnerProfile = {
   contact_verified: boolean | null;
   publication_completion: Completion | null;
   profile_completion: ProfileCompletion | null;
+  /**
+   * Owner dating-location summary from GET /api/v1/profile.
+   * Absent when the payload omitted `location` (older fixtures). Not the
+   * future T6 `GET /api/v1/profile/location` contract — no coordinates,
+   * source, or Place id on this read.
+   */
+  location?: OwnerProfileLocation;
 };
 
 export type CurrentProfileResponse = {
@@ -192,14 +199,36 @@ export type ProfileLocationUpdateBody = {
   captured_at: string;
 };
 
+export type OwnerProfilePlace = {
+  name: string;
+  display_path: string;
+};
+
+export type OwnerProfileLocation = {
+  configured: boolean;
+  place: OwnerProfilePlace | null;
+};
+
+/**
+ * Place summary on `PUT /api/v1/profile/place`. GET /profile's nested
+ * `location.place` does not include `id`.
+ */
+export type ProfileLocationPlace = {
+  id: number | null;
+  name: string;
+  display_path: string;
+};
+
 /**
  * Confirmed against DateZA staging `PUT /api/v1/profile/location`
- * (2026-08-25): the response never echoes coordinates back, only whether
- * D8N accepted and stored a usable fix.
+ * (2026-08-25) and D8N `PUT /api/v1/profile/place`: the response never
+ * echoes coordinates, only whether a usable dating location is on file
+ * and, for a Place save, a human-readable `place` label.
  */
 export type ProfileLocationStatus = {
   configured: boolean;
   accuracy_meters: number | null;
   source: string | null;
   captured_at: string | null;
+  place: ProfileLocationPlace | null;
 };

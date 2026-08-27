@@ -57,7 +57,7 @@ const PROFILE_SCREEN_COPY: Record<ProfileScreen, { title: string; intro: string 
   },
   location: {
     title: "Where are you dating from?",
-    intro: "Your location helps us show you people within the distance you choose.",
+    intro: "Choose the general area you want to date from.",
   },
   about: {
     title: "Tell us a little about yourself",
@@ -134,11 +134,12 @@ export default function OnboardingPage() {
     setOptionSelections(nextProfile?.options ?? {});
     setOptionsScreen(optionsScreenForMissing(nextOnboarding.completion.missing));
     setProfileId(nextProfile?.id);
-    // D8N doesn't expose whether ProfileLocation is configured (see
-    // locationConfirmationStore.ts), so a refresh mid-"publication" step
-    // resumes from this device's own local record of having already
-    // granted it, rather than asking again every time.
-    setLocationConfirmed(nextProfile ? hasConfirmedLocation(nextProfile.id) : false);
+    // Prefer GET /profile `location.configured` when present. localStorage is
+    // only a refresh fallback when that field is omitted (retire with T6).
+    setLocationConfirmed(
+      nextProfile?.location?.configured === true ||
+        (nextProfile?.location === undefined && nextProfile ? hasConfirmedLocation(nextProfile.id) : false),
+    );
   }, []);
 
   useEffect(() => {
@@ -510,15 +511,13 @@ export default function OnboardingPage() {
   }
 
   if (step === "publication") {
-    // D8N has no "location" step of its own and never blocks publication on
-    // it (confirmed against staging 2026-08-25), so DateZA inserts this
-    // screen client-side, ahead of publishing, rather than relying on the
-    // server's step sequencing.
+    // Insert a dating-location screen before publish when the server has not
+    // confirmed a configured location and this device has no fallback flag.
     if (!locationConfirmed && profileId) {
       return (
         <OnboardingShell
           title="Where are you dating from?"
-          intro="Your location helps us show you people within the distance you choose."
+          intro="Choose the general area you want to date from."
           percent={percent}
         >
           <LocationStep profileId={profileId} onSuccess={() => setLocationConfirmed(true)} />

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getCurrentProfile, updateProfileLocation } from "./profile.ts";
+import { getCurrentProfile, updateProfileLocation, updateProfilePlace } from "./profile.ts";
 
 /**
  * Fixtures below are the real response bodies captured against DateZA
@@ -176,6 +176,7 @@ describe("getCurrentProfile against real staging response shapes", () => {
     expect(result.profile?.languages_spoken).toEqual([]);
     expect(result.profile?.prompts).toEqual([]);
     expect(result.profile?.profile_completion).toBeNull();
+    expect(result.profile?.location).toEqual({ configured: false, place: null });
   });
 });
 
@@ -224,6 +225,58 @@ describe("updateProfileLocation against the real staging response shape", () => 
       accuracy_meters: 25,
       source: "device",
       captured_at: "2026-08-25T14:40:00Z",
+      place: null,
+    });
+  });
+});
+
+describe("updateProfilePlace against the D8N place-write contract", () => {
+  it("sends place_id and reads the saved place label from the response", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        location: {
+          configured: true,
+          accuracy_meters: 5000,
+          source: "place",
+          captured_at: "2026-08-27T04:00:00Z",
+          place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+        },
+      }),
+    );
+
+    const result = await updateProfilePlace(31);
+
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/v1/profile/place");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({ place_id: 31 });
+    expect(result).toEqual({
+      configured: true,
+      accuracy_meters: 5000,
+      source: "place",
+      captured_at: "2026-08-27T04:00:00Z",
+      place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+    });
+  });
+});
+
+describe("owner location parsing from GET /profile", () => {
+  it("reads a Place label when the owner payload includes one, without inventing an id", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        profile: {
+          ...realProfileAfterTwoPhotos.profile,
+          location: {
+            configured: true,
+            place: { name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+          },
+        },
+        onboarding: realProfileAfterTwoPhotos.onboarding,
+      }),
+    );
+
+    const result = await getCurrentProfile();
+    expect(result.profile?.location).toEqual({
+      configured: true,
+      place: { name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
     });
   });
 });

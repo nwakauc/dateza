@@ -28,6 +28,24 @@ export function mergeById<T extends { id: string }>(current: T[], incoming: T[])
   return [...current, ...incoming.filter((item) => !seen.has(item.id))];
 }
 
+export function upsertConversation(conversations: Conversation[], conversation: Conversation): Conversation[] {
+  return [conversation, ...conversations.filter((item) => item.id !== conversation.id)];
+}
+
+/** Reply create path omits `last_message`; use the companion message from the same response. */
+export function conversationWithPreview(conversation: Conversation, message: Message): Conversation {
+  if (conversation.last_message) return conversation;
+  return {
+    ...conversation,
+    last_message: {
+      id: message.id,
+      sender_id: message.sender_id,
+      body: message.body,
+      created_at: message.created_at,
+    },
+  };
+}
+
 export function replaceConversationPreview(
   conversations: Conversation[],
   conversationId: string,
