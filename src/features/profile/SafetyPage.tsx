@@ -27,9 +27,10 @@ type ActionRowProps = {
   onClick?: () => void;
   to?: string;
   status?: string;
+  expanded?: boolean;
 };
 
-function SafetyActionRow({ icon, title, description, onClick, to, status }: ActionRowProps) {
+function SafetyActionRow({ icon, title, description, onClick, to, status, expanded }: ActionRowProps) {
   const content = (
     <>
       <span className="safety-action__icon">{icon}</span>
@@ -42,7 +43,13 @@ function SafetyActionRow({ icon, title, description, onClick, to, status }: Acti
     </>
   );
   if (to) return <Link className="safety-action" to={to}>{content}</Link>;
-  if (onClick) return <button className="safety-action" type="button" onClick={onClick}>{content}</button>;
+  if (onClick) {
+    return (
+      <button className="safety-action" type="button" onClick={onClick} aria-expanded={expanded}>
+        {content}
+      </button>
+    );
+  }
   return <div className="safety-action safety-action--static">{content}</div>;
 }
 
@@ -54,7 +61,7 @@ const GUIDE_SECTIONS = [
   ["Money and scams", "Never send money. Be wary of investment, cryptocurrency, emergency or financial-help requests."],
   ["Sexual boundaries and consent", "Consent must be freely given, specific and ongoing. You can change your mind at any time."],
   ["After the date", "Check in with someone you trust. If you feel unsafe, stop contact and use the block or report controls."],
-  ["Reporting concerns", "Open the member’s profile or conversation menu to report behaviour privately to DateZA."],
+  ["Reporting concerns", "Open the member’s profile and choose Report. From a chat, open their profile first. Reports stay private."],
 ] as const;
 
 export default function SafetyPage() {
@@ -62,6 +69,7 @@ export default function SafetyPage() {
   const { verification } = useSession();
   const [blockedProfiles, setBlockedProfiles] = useState<BlockedProfile[]>();
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [blockedError, setBlockedError] = useState<string>();
   const [unblockingId, setUnblockingId] = useState<string>();
   const [visibilityPhase, setVisibilityPhase] = useState<"idle" | "saving" | "error">("idle");
@@ -172,8 +180,26 @@ export default function SafetyPage() {
               <p>Quick actions to protect yourself and manage your experience.</p>
             </div>
             <div className="safety-action-list">
-              <SafetyActionRow icon={<UsersIcon />} title="Blocked users" description="View and manage people you've blocked." onClick={() => setBlockedOpen((value) => !value)} />
-              <SafetyActionRow icon={<ShieldIcon />} title="Report a member" description="Report from a member's profile or conversation." to="/chats" />
+              <SafetyActionRow
+                icon={<UsersIcon />}
+                title="Blocked users"
+                description="View and manage people you've blocked."
+                onClick={() => {
+                  setReportOpen(false);
+                  setBlockedOpen((value) => !value);
+                }}
+                expanded={blockedOpen}
+              />
+              <SafetyActionRow
+                icon={<ShieldIcon />}
+                title="Report a member"
+                description="Open their profile, then choose Report."
+                onClick={() => {
+                  setBlockedOpen(false);
+                  setReportOpen((value) => !value);
+                }}
+                expanded={reportOpen}
+              />
               <SafetyActionRow icon={<ShieldIcon />} title="Mute conversations" description="Conversation muting isn't available yet." status="Unavailable" />
               <SafetyActionRow
                 icon={<EyeIcon />}
@@ -184,6 +210,20 @@ export default function SafetyPage() {
               />
             </div>
             {visibilityPhase === "error" ? <p className="safety-inline-error" role="alert">We couldn&apos;t update your profile visibility. Nothing changed. Try again.</p> : null}
+          </section>
+
+          <section className="safety-report" id="report" hidden={!reportOpen} aria-labelledby="report-title">
+            <div className="safety-section__heading">
+              <h2 id="report-title">How to report someone</h2>
+              <p>Reporting happens from that person&apos;s profile — not from this page.</p>
+            </div>
+            <p>Open their profile and choose <strong>Report</strong>. DateZA reviews reports privately. We don&apos;t tell the other person who reported them.</p>
+            <p>If you already have a match or chat, open that conversation, go to their profile, then choose Report.</p>
+            <p>DateZA can&apos;t look someone up from the Safety centre. Start from people you&apos;ve already seen.</p>
+            <div className="safety-report__actions">
+              <Link className="shell-primary-action" to="/discover">Go to Discover</Link>
+              <Link className="shell-text-action" to="/find">Go to Find</Link>
+            </div>
           </section>
 
           <section className="safety-blocked" id="blocked" hidden={!blockedOpen} aria-labelledby="blocked-title">
@@ -253,7 +293,7 @@ export default function SafetyPage() {
             <ul>
               <li className={verified ? "is-complete" : ""}><CheckCircleIcon /><span><strong>{VERIFIED_CONTACT_LABEL}</strong><small>{verified ? "Your sign-in contact is verified." : "Complete contact verification in Settings."}</small></span></li>
               <li className={profileVisible ? "is-complete" : ""}><CheckCircleIcon /><span><strong>Profile visibility</strong><small>{profileVisible ? "Your profile can appear to others." : "Your profile is currently hidden."}</small></span></li>
-              <li className="is-complete"><CheckCircleIcon /><span><strong>Block and report</strong><small>Available from profiles and conversations.</small></span></li>
+              <li className="is-complete"><CheckCircleIcon /><span><strong>Block and report</strong><small>Available from a member&apos;s profile. From a chat, open their profile first.</small></span></li>
             </ul>
           </section>
           <section>

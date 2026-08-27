@@ -86,6 +86,27 @@ describe("SafetyPage", () => {
       urlOf(input).endsWith("/api/v1/profiles/blocked-1/block") && methodOf(input, init) === "DELETE")).toBe(true);
   });
 
+  it("explains how to report from a profile instead of sending the member to chats", async () => {
+    installApi();
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={["/settings/safety"]}><App /></MemoryRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Safety centre" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /report a member/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "How to report someone" })).not.toBeInTheDocument();
+
+    const report = screen.getByRole("button", { name: /report a member/i });
+    expect(report).toHaveAttribute("aria-expanded", "false");
+    await user.click(report);
+
+    expect(report).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByRole("heading", { name: "How to report someone" })).toBeInTheDocument();
+    expect(screen.getByText(/open their profile and choose/i)).toBeInTheDocument();
+    expect(screen.getByText(/can't look someone up from the safety centre/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to Discover" })).toHaveAttribute("href", "/discover");
+    expect(screen.getByRole("link", { name: "Go to Find" })).toHaveAttribute("href", "/find");
+  });
+
   it("keeps safety guidance usable when the block list fails", async () => {
     installApi({ blocks: false });
     const user = userEvent.setup();

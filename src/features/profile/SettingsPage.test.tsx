@@ -157,7 +157,7 @@ describe("SettingsPage", () => {
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect((await screen.findAllByText("t•••••@example.com")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Verified contact").length).toBeGreaterThan(0);
-    expect(screen.getByText("72%")).toBeInTheDocument();
+    expect(await screen.findByText("72%")).toBeInTheDocument();
     const page = within(screen.getByRole("heading", { name: "Account", level: 2 }).closest("section")!);
     expect(screen.getByRole("link", { name: "Add 2 more photos" })).toHaveAttribute("href", "/profile/edit#photos");
     expect(page.getByRole("link", { name: /edit profile/i })).toHaveAttribute("href", "/profile/edit");

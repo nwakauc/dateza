@@ -324,9 +324,28 @@ describe("rich profile detail", () => {
     await user.click(await screen.findByRole("button", { name: /more actions/i }));
     await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
     expect(screen.queryByText("harassment")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send report/i })).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: /harassment/i }));
     await user.click(screen.getByRole("button", { name: /send report/i }));
     expect(await screen.findByText(/we received your report/i)).toBeInTheDocument();
+  });
+
+  it("keeps the report form open when sending fails", async () => {
+    const user = userEvent.setup();
+    mockApis(detailProfile(), (url, method) => {
+      if (url.endsWith("/api/v1/profiles/p1/report") && method === "POST") {
+        return jsonResponse(500, { error: "unavailable" });
+      }
+      return undefined;
+    });
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
+    await user.click(screen.getByRole("radio", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/could not send that report/i);
+    expect(screen.getByRole("button", { name: /send report/i })).toBeEnabled();
+    expect(screen.queryByText(/we received your report/i)).not.toBeInTheDocument();
   });
 
   it("blocks a profile and returns to Discover", async () => {

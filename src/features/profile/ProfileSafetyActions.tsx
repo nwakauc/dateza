@@ -25,6 +25,7 @@ type Props = {
 
 export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
   const menuId = useId();
+  const reasonFieldId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<"report" | "block" | undefined>();
@@ -151,10 +152,10 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
                       key={code}
                       className="onboard-choice"
                       data-selected={reason === code ? "true" : "false"}
-                      htmlFor={`report-${code}`}
+                      htmlFor={`${reasonFieldId}-${code}`}
                     >
                       <input
-                        id={`report-${code}`}
+                        id={`${reasonFieldId}-${code}`}
                         type="radio"
                         name="report-reason"
                         value={code}
@@ -168,9 +169,9 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
                 </div>
               </fieldset>
               <div className="auth-field">
-                <label htmlFor="report-note">Anything else we should know? (optional)</label>
+                <label htmlFor={`${reasonFieldId}-note`}>Anything else we should know? (optional)</label>
                 <textarea
-                  id="report-note"
+                  id={`${reasonFieldId}-note`}
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
@@ -183,7 +184,7 @@ export function ProfileSafetyActions({ profileId, name, onBlocked }: Props) {
                 </p>
               ) : null}
               <div className="profile-safety-dialog__actions">
-                <button className="auth-form__submit" type="submit" disabled={!reason || busy}>
+                <button className="auth-form__submit" type="submit" disabled={!reason || busy} aria-busy={busy}>
                   {busy ? "Sending…" : "Send report"}
                 </button>
               </div>
