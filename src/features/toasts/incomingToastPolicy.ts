@@ -31,6 +31,12 @@ export function shouldToastIncomingNotification(
   return true;
 }
 
+/** Sound may play for a live event even when the toast is suppressed in the open chat. */
+export function shouldPlayIncomingSound(item: ProductNotification, previousIds: ReadonlySet<string>): boolean {
+  if (previousIds.has(item.id)) return false;
+  return TOASTABLE_NOTIFICATION_TYPES.has(item.type);
+}
+
 export function selectIncomingNotificationToasts(
   incoming: ProductNotification[],
   previousIds: ReadonlySet<string>,

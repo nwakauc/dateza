@@ -13,12 +13,15 @@ import { ChatIcon } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { chatMediaErrorMessage, uploadChatMedia } from "./chatMediaActions.ts";
 import { ChatProfileRail } from "./ChatProfileRail.tsx";
+import { useLiveSync } from "../liveSync/LiveSyncContext.ts";
+import { mergeConversationSnapshot, mergeNewestMessagePage, mergeOpenerSnapshot } from "../liveSync/mergeLiveSnapshots.ts";
 import { conversationCanCompose, mergeById, replaceConversationPreview, upsertConversation } from "./chatDisplay.ts";
 import { ConversationList } from "./ConversationList.tsx";
 import { ChatEmptyState, ConversationView, type PendingChatMedia } from "./ConversationView.tsx";
 
 export default function ChatsPage() {
   const account = useOwnAccount();
+  const liveSync = useLiveSync();
   const [params, setParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationCursor, setConversationCursor] = useState<string | null>(null);
@@ -139,32 +142,35 @@ export default function ChatsPage() {
     void Promise.all([loadMessages(selectedId, selected?.relationship_state === "ended"), loadProfile(selectedProfileId)]);
   }, [selectedId, selectedProfileId, selected?.relationship_state, loadMessages, loadProfile]);
 
-  const processPollsRef = useRef(0);
   useEffect(() => {
-    if (!selected || loadedConversationId !== selected.id || !conversationCanCompose(selected)) {
-      processPollsRef.current = 0;
-      return;
-    }
-    const waiting = messages.some((message) =>
-      message.attachments.some(
-        (item) =>
-          !item.deleted &&
-          (item.processing_state === "pending" ||
-            item.processing_state === "processing" ||
-            (item.processing_state === "ready" && !item.display)),
-      ),
-    );
-    if (!waiting) {
-      processPollsRef.current = 0;
-      return;
-    }
-    if (processPollsRef.current >= 12) return;
-    const timer = window.setTimeout(() => {
-      processPollsRef.current += 1;
-      void loadMessages(selected.id);
-    }, 2500);
-    return () => window.clearTimeout(timer);
-  }, [messages, selected, loadedConversationId, loadMessages]);
+    if (!liveSync) return;
+    return liveSync.subscribeChatsInbox((snapshot) => {
+      setConversations((current) => mergeConversationSnapshot(current, snapshot.conversations));
+      if (snapshot.openers) {
+        setOpeners((current) => mergeOpenerSnapshot(current, snapshot.openers ?? []));
+        setOpenersError(false);
+      } else if (snapshot.openersError) {
+        setOpenersError(true);
+      }
+      if (snapshot.matches) setMatches(snapshot.matches);
+    });
+  }, [liveSync]);
+
+  const liveThreadReady = Boolean(selectedId && loadedConversationId === selectedId);
+
+  useEffect(() => {
+    if (!liveSync) return;
+    liveSync.setActiveConversation(liveThreadReady ? selectedId : null);
+    return () => liveSync.setActiveConversation(null);
+  }, [liveSync, liveThreadReady, selectedId]);
+
+  useEffect(() => {
+    if (!liveSync) return;
+    return liveSync.subscribeMessages((conversationId, newestPage) => {
+      if (conversationId !== selectedId) return;
+      setMessages((current) => mergeNewestMessagePage(current, newestPage).messages);
+    });
+  }, [liveSync, selectedId]);
 
   function retry() {
     setLoading(true);

@@ -351,4 +351,17 @@ describe("SettingsPage", () => {
     expect(screen.queryByRole("switch", { name: /sms/i })).not.toBeInTheDocument();
     expect(screen.getByText(/these settings apply to dateza only/i)).toBeInTheDocument();
   });
+
+  it("stores in-app sounds on this device without PATCHing notification preferences", async () => {
+    const fetchMock = installApi();
+    const user = userEvent.setup();
+    renderSettings("/settings#notifications");
+
+    const sounds = await screen.findByRole("switch", { name: "In-app sounds" });
+    expect(sounds).toHaveAttribute("aria-checked", "true");
+    await user.click(sounds);
+    expect(sounds).toHaveAttribute("aria-checked", "false");
+    expect(fetchMock.mock.calls.some(([input, init]) =>
+      requestUrl(input).endsWith("/api/v1/notifications/preferences") && requestMethod(input, init) === "PATCH")).toBe(false);
+  });
 });

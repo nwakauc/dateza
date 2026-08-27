@@ -5,7 +5,7 @@ import { getCurrentProfile } from "../../lib/api/profile.ts";
 import type { OwnerProfile, ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 import { memberDestination } from "../onboarding/destination.ts";
 import { useSession } from "../session/useSession.ts";
-import { IncomingEventToasts } from "../toasts/IncomingEventToasts.tsx";
+import { LiveSyncProvider } from "../liveSync/LiveSyncProvider.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationBanner } from "../verification/VerificationBanner.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
@@ -107,24 +107,25 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
   return (
     <OwnAccountContext.Provider value={account}>
-      <div className="shell">
-        <a className="shell-skip-link" href="#main-content">Skip to main content</a>
-        <TopNav account={account} />
-        <MobileHeader account={account} />
-        <main className="shell-content" id="main-content">
-          {verification.status === "known" && !verification.verified && !verificationOpen ? (
-            <VerificationBanner kind={verification.kind} onVerify={() => setVerificationOpen(true)} />
-          ) : null}
-          {children ?? <Outlet />}
-        </main>
-        <BottomTabBar />
-        <IncomingEventToasts refreshKey={version} onUnreadCount={setUnreadNotifications} onUnreadChats={setUnreadChats} />
-      </div>
-      {verificationOpen && verification.status === "known" ? (
-        <Modal ariaLabel={`Verify your ${verification.kind}`} onClose={closeVerification}>
-          <VerificationFlow onDone={closeVerification} />
-        </Modal>
-      ) : null}
+      <LiveSyncProvider refreshKey={version} onUnreadCount={setUnreadNotifications} onUnreadChats={setUnreadChats}>
+        <div className="shell">
+          <a className="shell-skip-link" href="#main-content">Skip to main content</a>
+          <TopNav account={account} />
+          <MobileHeader account={account} />
+          <main className="shell-content" id="main-content">
+            {verification.status === "known" && !verification.verified && !verificationOpen ? (
+              <VerificationBanner kind={verification.kind} onVerify={() => setVerificationOpen(true)} />
+            ) : null}
+            {children ?? <Outlet />}
+          </main>
+          <BottomTabBar />
+        </div>
+        {verificationOpen && verification.status === "known" ? (
+          <Modal ariaLabel={`Verify your ${verification.kind}`} onClose={closeVerification}>
+            <VerificationFlow onDone={closeVerification} />
+          </Modal>
+        ) : null}
+      </LiveSyncProvider>
     </OwnAccountContext.Provider>
   );
 }

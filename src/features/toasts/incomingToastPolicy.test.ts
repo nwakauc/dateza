@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
-import { selectIncomingNotificationToasts, shouldToastIncomingNotification } from "./incomingToastPolicy.ts";
+import { selectIncomingNotificationToasts, shouldPlayIncomingSound, shouldToastIncomingNotification } from "./incomingToastPolicy.ts";
 
 function notice(overrides: Partial<ProductNotification> = {}): ProductNotification {
   return {
@@ -79,5 +79,17 @@ describe("incoming toast policy", () => {
       { pathname: "/find", search: "" },
     );
     expect(selected.map((item) => item.id)).toEqual(["n-like"]);
+  });
+
+  it("plays sound for a new message even when that conversation is open", () => {
+    const seen = new Set<string>();
+    const openChat = notice({
+      type: "dateza.message_received",
+      payload: { actor: { profile_id: "p1" }, target: { type: "conversation", id: "c1" } },
+    });
+    expect(shouldToastIncomingNotification(openChat, seen, { pathname: "/chats", search: "?conversation=c1" })).toBe(false);
+    expect(shouldPlayIncomingSound(openChat, seen)).toBe(true);
+    expect(shouldPlayIncomingSound(notice({ type: "dateza.welcome" }), seen)).toBe(false);
+    expect(shouldPlayIncomingSound(notice({ id: "n-old" }), new Set(["n-old"]))).toBe(false);
   });
 });

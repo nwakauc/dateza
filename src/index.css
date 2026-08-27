@@ -10387,6 +10387,35 @@ a.likes-card__message {
   outline-offset: 2px;
 }
 
+.chat-thread-wrap {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.message-thread__latest {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  z-index: 2;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #2e252b;
+  color: #fff;
+  font: 700 0.72rem Outfit, sans-serif;
+  box-shadow: 0 10px 24px rgba(46, 37, 43, 0.18);
+  cursor: pointer;
+}
+
+.message-thread__latest:focus-visible {
+  outline: 3px solid rgba(232, 55, 90, 0.45);
+  outline-offset: 2px;
+}
+
 .shell-page--chats .message-bubble {
   max-width: min(74%, 500px);
   padding: 10px 13px 7px;

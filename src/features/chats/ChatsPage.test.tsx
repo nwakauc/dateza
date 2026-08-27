@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { LIVE_SYNC_INBOX_MS, LIVE_SYNC_MESSAGE_MS } from "../liveSync/liveSyncTiming.ts";
 
 const ownerId = "owner-profile";
 const completeOnboarding = {
@@ -498,5 +499,169 @@ describe("premium Chats experience", () => {
     expect(await screen.findByLabelText(/view original from naledi/i)).toBeInTheDocument();
     expect(sentBody).toContain("\"reply_to_message_id\":\"msg-1\"");
     expect(sentBody).toContain("\"body\":\"Saturday works.\"");
+  });
+
+  describe("live conversation and inbox refresh", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("appends a polled message once, including media and reply-to, without touching older history", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      let live = false;
+      const urls: string[] = [];
+      const incoming = message("msg-in", "p1", "Just arrived.", "2026-08-26T09:05:00Z");
+      const photo = {
+        ...message("msg-photo", "p1", "", "2026-08-26T09:06:00Z"),
+        attachments: [{
+          id: "att-1",
+          media_kind: "image",
+          processing_state: "ready",
+          position: 0,
+          view_url: "https://example.test/live.jpg",
+          download_url: "https://example.test/live.jpg",
+          content_type: "image/jpeg",
+          byte_size: 1200,
+          width: 800,
+          height: 600,
+        }],
+      };
+      const quoted = {
+        ...message("msg-quote", "p1", "Replying live", "2026-08-26T09:07:00Z"),
+        reply_to: {
+          id: "msg-1",
+          sender_id: "p1",
+          message_type: "text",
+          body_excerpt: "The trail sounds perfect.",
+          deleted: false,
+        },
+      };
+      installHandler((url) => {
+        urls.push(url);
+        if (url.endsWith("/api/v1/conversations/c1/messages")) {
+          const extra = live ? [quoted, photo, incoming] : [];
+          return jsonResponse(200, {
+            messages: [
+              ...extra,
+              message("msg-2", ownerId, "I’d love that.", "2026-08-26T09:02:00Z"),
+              message("msg-1", "p1", "The trail sounds perfect."),
+            ],
+            next_cursor: "older page",
+          });
+        }
+        if (url.includes("/api/v1/conversations/c1/messages?cursor=")) {
+          return jsonResponse(200, { messages: [message("msg-old", "p1", "Earlier")], next_cursor: null });
+        }
+      });
+      renderChats("/chats?conversation=c1");
+      expect(await screen.findByText("I’d love that.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /load earlier messages/i })).toBeInTheDocument();
+      live = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LIVE_SYNC_MESSAGE_MS);
+      });
+      expect(await screen.findByText("Just arrived.")).toBeInTheDocument();
+      expect(screen.getAllByText("Just arrived.")).toHaveLength(1);
+      expect(document.querySelector('img[src="https://example.test/live.jpg"]')).not.toBeNull();
+      expect(screen.getByText("Replying live")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /load earlier messages/i }));
+      expect(await screen.findByText("Earlier")).toBeInTheDocument();
+      expect(urls.some((url) => url.includes("cursor=older%20page"))).toBe(true);
+    });
+
+    it("does not duplicate an already-sent message when the newest page repeats it", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      let sent = false;
+      installHandler((url, method) => {
+        if (url.endsWith("/api/v1/conversations/c1/messages") && method === "POST") {
+          sent = true;
+          return jsonResponse(201, { message: message("msg-3", ownerId, "Saturday works.", "2026-08-26T09:03:00Z") });
+        }
+        if (url.endsWith("/api/v1/conversations/c1/messages") && method === "GET") {
+          const extras = sent ? [message("msg-3", ownerId, "Saturday works.", "2026-08-26T09:03:00Z")] : [];
+          return jsonResponse(200, {
+            messages: [
+              ...extras,
+              message("msg-2", ownerId, "I’d love that.", "2026-08-26T09:02:00Z"),
+              message("msg-1", "p1", "The trail sounds perfect."),
+            ],
+            next_cursor: null,
+          });
+        }
+      });
+      renderChats("/chats?conversation=c1");
+      const composer = await screen.findByRole("textbox", { name: /message naledi/i });
+      await user.type(composer, "Saturday works.{Enter}");
+      expect((await screen.findAllByText("Saturday works.")).length).toBeGreaterThan(0);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LIVE_SYNC_MESSAGE_MS);
+      });
+      expect(screen.getAllByText("Saturday works.").filter((node) => node.closest(".message-bubble"))).toHaveLength(1);
+    });
+
+    it("refreshes the conversation preview without recreating it", async () => {
+      let live = false;
+      installHandler((url) => {
+        if (url.endsWith("/api/v1/conversations")) {
+          return jsonResponse(200, {
+            conversations: [{
+              ...conversation(),
+              last_message: live
+                ? { id: "preview-2", sender_id: "p1", body: "Just arrived.", created_at: "2026-08-26T09:05:00Z" }
+                : conversation().last_message,
+            }],
+            next_cursor: null,
+          });
+        }
+      });
+      renderChats();
+      expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
+      live = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LIVE_SYNC_INBOX_MS);
+      });
+      expect(await screen.findByText("Just arrived.")).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /naledi/i }).length).toBeGreaterThan(0);
+    });
+
+    it("keeps scroll when reading history and offers New messages ↓ for a polled arrival", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      let live = false;
+      installHandler((url) => {
+        if (url.endsWith("/api/v1/conversations/c1/messages")) {
+          const extras = live ? [message("msg-in", "p1", "Just arrived.", "2026-08-26T09:05:00Z")] : [];
+          return jsonResponse(200, {
+            messages: [
+              ...extras,
+              message("msg-2", ownerId, "I’d love that.", "2026-08-26T09:02:00Z"),
+              message("msg-1", "p1", "The trail sounds perfect."),
+            ],
+            next_cursor: null,
+          });
+        }
+      });
+      renderChats("/chats?conversation=c1");
+      expect(await screen.findByText("I’d love that.")).toBeInTheDocument();
+
+      const thread = document.querySelector(".message-thread");
+      expect(thread).not.toBeNull();
+      Object.defineProperty(thread!, "scrollHeight", { configurable: true, get: () => 1200 });
+      Object.defineProperty(thread!, "clientHeight", { configurable: true, get: () => 400 });
+      Object.defineProperty(thread!, "scrollTop", { configurable: true, writable: true, value: 40 });
+      thread!.dispatchEvent(new Event("scroll"));
+
+      live = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LIVE_SYNC_MESSAGE_MS);
+      });
+      expect(await screen.findByText("Just arrived.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /new messages/i })).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /new messages/i }));
+      expect(screen.queryByRole("button", { name: /new messages/i })).not.toBeInTheDocument();
+    });
   });
 });

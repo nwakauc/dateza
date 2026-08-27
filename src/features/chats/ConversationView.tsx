@@ -21,6 +21,7 @@ import { conversationCanCompose, conversationIsEnded, matchDate, messageTime } f
 import { MessageMedia } from "./MessageMedia.tsx";
 
 const OLDER_SCROLL_PX = 72;
+const NEAR_BOTTOM_PX = 80;
 const LONG_PRESS_MS = 450;
 
 function quoteAuthor(senderId: string, ownerProfileId: string | undefined, counterpartName: string): string {
@@ -293,6 +294,8 @@ export function ConversationView({
   const attachMenuId = useId();
   const [attachForConversationId, setAttachForConversationId] = useState<string | undefined>();
   const [locatedId, setLocatedId] = useState<string>();
+  const [newMessagesAvailable, setNewMessagesAvailable] = useState(false);
+  const newestIdRef = useRef<string>();
   const conversationId = conversation?.id;
   const attachOpen = conversationId !== undefined && attachForConversationId === conversationId && !pendingMedia;
 
@@ -306,19 +309,36 @@ export function ConversationView({
     restoreFromBottomRef.current = null;
   }, [messages]);
 
-  useEffect(() => {
-    if (!conversation || messagesLoading || messagesError || pendingMedia) return;
+  useLayoutEffect(() => {
+    if (!conversation || messagesLoading || messagesError) return;
     const scroller = scrollerRef.current;
     if (!scroller) return;
+    const newestId = messages[0]?.id;
+
     if (activeConversationRef.current !== conversation.id) {
       activeConversationRef.current = conversation.id;
-      pinnedNewestRef.current = false;
+      newestIdRef.current = newestId;
       scroller.style.scrollBehavior = "auto";
       scroller.scrollTop = scroller.scrollHeight;
       scroller.style.scrollBehavior = "";
       pinnedNewestRef.current = true;
+      setNewMessagesAvailable(false);
+      return;
     }
-  }, [conversation, messagesLoading, messagesError, messages.length, pendingMedia]);
+
+    const previousNewest = newestIdRef.current;
+    newestIdRef.current = newestId;
+    if (!newestId || newestId === previousNewest || previousNewest == null) return;
+
+    if (pinnedNewestRef.current) {
+      scroller.style.scrollBehavior = "auto";
+      scroller.scrollTop = scroller.scrollHeight;
+      scroller.style.scrollBehavior = "";
+      setNewMessagesAvailable(false);
+    } else {
+      setNewMessagesAvailable(true);
+    }
+  }, [conversation, messages, messagesLoading, messagesError]);
 
   useEffect(() => {
     if (!locatedId) return;
@@ -371,9 +391,23 @@ export function ConversationView({
     }
   }
 
+  function jumpToLatest() {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    scroller.style.scrollBehavior = "smooth";
+    scroller.scrollTop = scroller.scrollHeight;
+    scroller.style.scrollBehavior = "";
+    pinnedNewestRef.current = true;
+    setNewMessagesAvailable(false);
+  }
+
   function onThreadScroll() {
     const scroller = scrollerRef.current;
-    if (!scroller || !pinnedNewestRef.current || !nextCursor || loadingOlder) return;
+    if (!scroller) return;
+    const fromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    pinnedNewestRef.current = fromBottom < NEAR_BOTTOM_PX;
+    if (pinnedNewestRef.current) setNewMessagesAvailable(false);
+    if (!nextCursor || loadingOlder) return;
     if (scroller.scrollTop > OLDER_SCROLL_PX) return;
     void loadOlder();
   }
@@ -473,6 +507,7 @@ export function ConversationView({
             </div>
           ) : null}
 
+          <div className="chat-thread-wrap">
           <div className="message-thread" ref={scrollerRef} aria-live="polite" onScroll={onThreadScroll}>
             {messagesLoading ? <MessageSkeleton /> : null}
             {messagesError ? (
@@ -536,6 +571,12 @@ export function ConversationView({
                 </article>
               );
             }) : null}
+          </div>
+          {newMessagesAvailable ? (
+            <button className="message-thread__latest" type="button" onClick={jumpToLatest}>
+              New messages ↓
+            </button>
+          ) : null}
           </div>
         </>
       )}

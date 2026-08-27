@@ -28,6 +28,8 @@ import {
   UsersIcon,
 } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { useLiveSync } from "../liveSync/LiveSyncContext.ts";
+import { isInAppSoundEnabled, setInAppSoundEnabled } from "../liveSync/inAppSoundPreference.ts";
 import { resolveNotificationDestination } from "./notificationDestination.ts";
 import {
   actorFromProfile,
@@ -153,8 +155,17 @@ function ChannelSwitch({
   );
 }
 
+function preserveLocalRead(current: ProductNotification[], incoming: ProductNotification[]): ProductNotification[] {
+  const localRead = new Map(current.flatMap((item) => (item.read_at ? [[item.id, item.read_at] as const] : [])));
+  return incoming.map((item) => {
+    const readAt = localRead.get(item.id);
+    return readAt && !item.read_at ? { ...item, read_at: readAt } : item;
+  });
+}
+
 export default function NotificationsPage() {
   const account = useOwnAccount();
+  const liveSync = useLiveSync();
   const navigate = useNavigate();
   const [items, setItems] = useState<ProductNotification[]>([]);
   const [actors, setActors] = useState<Record<string, NotificationActor>>({});
@@ -169,6 +180,12 @@ export default function NotificationsPage() {
   const [prefsSaving, setPrefsSaving] = useState<"product_email_enabled" | "push_enabled" | null>(null);
   const [prefsSaveError, setPrefsSaveError] = useState<string>();
   const [prefsAttempt, setPrefsAttempt] = useState(0);
+  const [inAppSounds, setInAppSounds] = useState(isInAppSoundEnabled);
+  const inboxRevision = liveSync?.inbox?.revision ?? 0;
+  const snapshot = liveSync?.inbox;
+  const displayed = snapshot ? preserveLocalRead(items, snapshot.notifications) : items;
+  const inboxLoading = loading && !snapshot;
+  const inboxError = error && !snapshot;
 
   const load = useCallback(() => {
     void listNotifications()
@@ -186,6 +203,7 @@ export default function NotificationsPage() {
     setError(false);
     setLoading(true);
     load();
+    void liveSync?.refreshNow();
   }
 
   useEffect(() => {
@@ -193,6 +211,17 @@ export default function NotificationsPage() {
     load();
     return () => { document.title = "DateZA — Meet someone who chooses you."; };
   }, [load]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    let cancelled = false;
+    void loadActors(snapshot.notifications).then((next) => {
+      if (!cancelled) setActors(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inboxRevision, snapshot]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +264,7 @@ export default function NotificationsPage() {
     try {
       if (!item.read_at) {
         const updated = await markNotificationRead(item.id);
-        setItems((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+        setItems(displayed.map((entry) => (entry.id === updated.id ? updated : entry)));
         account.refresh();
       }
       const destination = resolveNotificationDestination(item);
@@ -252,17 +281,17 @@ export default function NotificationsPage() {
     try {
       await markAllNotificationsRead();
       const now = new Date().toISOString();
-      setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? now })));
+      setItems(displayed.map((item) => ({ ...item, read_at: item.read_at ?? now })));
       account.refresh();
     } catch { /* Keep unread state unchanged. */ } finally { setMarkingAll(false); }
   }
 
-  const hasUnread = items.some((item) => item.read_at === null);
-  const visible = items.filter((item) => matchesNotificationFilter(item, filter));
+  const hasUnread = displayed.some((item) => item.read_at === null);
+  const visible = displayed.filter((item) => matchesNotificationFilter(item, filter));
   const emptyCopy = filter === "all" ? null : EMPTY_FILTER[filter];
-  const unreadLikes = unreadCountForFilter(items, "likes");
-  const unreadMatches = unreadCountForFilter(items, "matches");
-  const unreadMessages = unreadCountForFilter(items, "messages");
+  const unreadLikes = unreadCountForFilter(displayed, "likes");
+  const unreadMatches = unreadCountForFilter(displayed, "matches");
+  const unreadMessages = unreadCountForFilter(displayed, "messages");
 
   return (
     <div className="shell-page notifications-page">
@@ -304,7 +333,7 @@ export default function NotificationsPage() {
         <div className="onboard-segmented notifications-tabs" role="tablist" aria-label="Filter notifications">
           {NOTIFICATION_FILTERS.map((tab) => {
             const selected = filter === tab.id;
-            const count = unreadCountForFilter(items, tab.id);
+            const count = unreadCountForFilter(displayed, tab.id);
             return (
               <button
                 key={tab.id}
@@ -324,12 +353,12 @@ export default function NotificationsPage() {
         </div>
         <div className="notifications-layout">
           <section className="notifications-feed" aria-label="Notification activity">
-            {loading ? (
+            {inboxLoading ? (
               <div className="notification-skeletons" aria-live="polite" aria-label="Loading notifications">
                 {[0, 1, 2, 3].map((item) => <div className="notification-skeleton" key={item}><span /><div><i /><i /></div></div>)}
               </div>
             ) : null}
-            {error ? (
+            {inboxError ? (
               <div className="shell-empty">
                 <BellIcon className="shell-empty__icon" />
                 <p className="shell-empty__title">We couldn’t load your notifications</p>
@@ -337,7 +366,7 @@ export default function NotificationsPage() {
                 <button className="shell-primary-action" type="button" onClick={retry}>Try again</button>
               </div>
             ) : null}
-            {!loading && !error && items.length === 0 ? (
+            {!inboxLoading && !inboxError && displayed.length === 0 ? (
               <div className="shell-empty">
                 <BellIcon className="shell-empty__icon" />
                 <p className="shell-empty__title">You’re all caught up</p>
@@ -345,14 +374,14 @@ export default function NotificationsPage() {
                 <Link className="shell-primary-action" to="/discover">Discover people</Link>
               </div>
             ) : null}
-            {!loading && !error && items.length > 0 && visible.length === 0 && emptyCopy ? (
+            {!inboxLoading && !inboxError && displayed.length > 0 && visible.length === 0 && emptyCopy ? (
               <div className="shell-empty">
                 <BellIcon className="shell-empty__icon" />
                 <p className="shell-empty__title">{emptyCopy.title}</p>
                 <p className="shell-empty__body">{emptyCopy.body}</p>
               </div>
             ) : null}
-            {!loading && !error && visible.length > 0 ? (
+            {!inboxLoading && !inboxError && visible.length > 0 ? (
               <div className="notification-list" aria-live="polite">
                 {visible.map((item) => {
                   const unread = item.read_at === null;
@@ -424,6 +453,15 @@ export default function NotificationsPage() {
                     checked={prefs.product_email_enabled}
                     disabled={prefsSaving !== null}
                     onChange={(next) => void togglePreference("product_email_enabled", next)}
+                  />
+                  <ChannelSwitch
+                    label="In-app sounds"
+                    icon={<BellIcon />}
+                    checked={inAppSounds}
+                    onChange={(next) => {
+                      setInAppSoundEnabled(next);
+                      setInAppSounds(next);
+                    }}
                   />
                   <ChannelSwitch
                     label="In-app notifications"

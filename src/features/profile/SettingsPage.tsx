@@ -20,6 +20,7 @@ import {
   updateNotificationPreferences,
 } from "../../lib/api/notifications.ts";
 import type { NotificationPreferences } from "../../lib/api/notificationTypes.ts";
+import { isInAppSoundEnabled, setInAppSoundEnabled } from "../liveSync/inAppSoundPreference.ts";
 import { listBlockedProfiles, unblockProfile } from "../../lib/api/safety.ts";
 import type { BlockedProfile } from "../../lib/api/safetyTypes.ts";
 import { useSignOut } from "../auth/useSignOut.ts";
@@ -357,6 +358,7 @@ export default function SettingsPage() {
   const [notificationPrefsSaving, setNotificationPrefsSaving] = useState<"product_email_enabled" | "push_enabled" | null>(null);
   const [notificationPrefsSaveError, setNotificationPrefsSaveError] = useState<string>();
   const [notificationPrefsAttempt, setNotificationPrefsAttempt] = useState(0);
+  const [inAppSounds, setInAppSounds] = useState(isInAppSoundEnabled);
   const activeSection = sectionFromHash(location.hash);
 
   useEffect(() => {
@@ -616,6 +618,15 @@ export default function SettingsPage() {
 
           <SettingsSection id="notifications" title="Notifications" description="Choose how DateZA can reach you. These settings apply to DateZA only." icon={<BellIcon />} active={activeSection === "notifications"}>
             <SettingsRow title="In-app notifications" hint="Updates stay in DateZA and on your notification bell" to="/notifications" />
+            <SettingsToggle
+              title="In-app sounds"
+              hint="A short sound for new likes, matches, messages and openers. This stays on this device and is not a DateZA email or push setting."
+              checked={inAppSounds}
+              onChange={(next) => {
+                setInAppSoundEnabled(next);
+                setInAppSounds(next);
+              }}
+            />
             {notificationPrefsError ? (
               <div className="settings-inline-error" role="alert">
                 <p>{notificationPrefsError}</p>
