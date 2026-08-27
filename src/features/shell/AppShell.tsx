@@ -34,6 +34,7 @@ export default function AppShell() {
   const [photoCount, setPhotoCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
   const [version, setVersion] = useState(0);
   const promptedVerification = useRef<string | null>(null);
   const [verificationOpen, setVerificationOpen] = useState(false);
@@ -100,6 +101,7 @@ export default function AppShell() {
     displayName,
     initial: initialFor(displayName),
     unreadNotifications,
+    unreadChats,
     refresh,
   };
 
@@ -116,7 +118,7 @@ export default function AppShell() {
           <Outlet />
         </main>
         <BottomTabBar />
-        <IncomingEventToasts refreshKey={version} onUnreadCount={setUnreadNotifications} />
+        <IncomingEventToasts refreshKey={version} onUnreadCount={setUnreadNotifications} onUnreadChats={setUnreadChats} />
       </div>
       {verificationOpen && verification.status === "known" ? (
         <Modal ariaLabel={`Verify your ${verification.kind}`} onClose={closeVerification}>

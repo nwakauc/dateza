@@ -992,6 +992,65 @@ describe("onboarding location step", () => {
     stubGeolocation(undefined);
   });
 
+  it("resumes at the dating-location screen when the server next_step is location", async () => {
+    setBearerToken("opaque-session-token");
+    stubGeolocation({
+      getCurrentPosition: (success) => {
+        (success as PositionCallback)(successfulPosition());
+      },
+    });
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      const places = placesListResponse(url);
+      if (places) return Promise.resolve(places);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody));
+      if (url.endsWith("/api/v1/profile/configuration")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            configuration,
+            onboarding: {
+              state: "profile_incomplete",
+              next_step: "location",
+              profile_exists: true,
+              profile_complete: false,
+              profile_published: false,
+              completion: { complete: false, percent: 70, missing: ["location"] },
+            },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: { ...ownerProfileForPublication, location: { configured: false, place: null } },
+            onboarding: {
+              state: "profile_incomplete",
+              next_step: "location",
+              profile_exists: true,
+              profile_complete: false,
+              profile_published: false,
+              completion: { complete: false, percent: 70, missing: ["location"] },
+            },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/location")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: { configured: false, accuracy_meters: null, source: null, captured_at: null },
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp("/onboarding");
+
+    expect(await screen.findByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /use my current location/i })).toBeInTheDocument();
+    expect(screen.queryByText(/onboarding is paused/i)).not.toBeInTheDocument();
+  });
+
   it("shows the location step before publishing, and blocks publish while permission is denied", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");

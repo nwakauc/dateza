@@ -14,6 +14,7 @@ import { CompassIcon, SlidersIcon } from "../shell/icons.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
 import { buildOptionLabelLookup } from "../find/optionLabels.ts";
 import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
+import { useSession } from "../session/useSession.ts";
 import { DiscoveryCard } from "./DiscoveryCard.tsx";
 import { DiscoverDailyPicks, DiscoverEmptySelection, DiscoverFilteredEmpty } from "./DiscoverDailyPicks.tsx";
 import { DiscoverFilterSheet } from "./DiscoverFilterSheet.tsx";
@@ -42,6 +43,8 @@ const PHOTO_REFRESH_BUFFER_MS = 20_000;
  */
 export default function DiscoveryPage() {
   const navigate = useNavigate();
+  const { session } = useSession();
+  const accountId = session.status === "authenticated" ? String(session.user.user_id) : undefined;
   const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
   const [profiles, setProfiles] = useState<DiscoveryProfile[]>([]);
@@ -54,9 +57,15 @@ export default function DiscoveryPage() {
   const [attempt, setAttempt] = useState(0);
   const [activeMatch, setActiveMatch] = useState<ActiveMatch | undefined>();
   const [railMatch, setRailMatch] = useState<ActiveMatch | undefined>();
-  const [filters, setFilters] = useState<DiscoverFilters>(loadDiscoverFilters);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selfPhotoUrl, setSelfPhotoUrl] = useState<string | undefined>();
+  const [filtersAccountId, setFiltersAccountId] = useState(accountId);
+  const [filters, setFilters] = useState<DiscoverFilters>(() => loadDiscoverFilters(accountId));
+
+  if (filtersAccountId !== accountId) {
+    setFiltersAccountId(accountId);
+    setFilters(loadDiscoverFilters(accountId));
+  }
 
   useEffect(() => {
     document.title = "Discover — DateZA";
@@ -91,18 +100,18 @@ export default function DiscoveryPage() {
   }, [attempt]);
 
   useEffect(() => {
-    saveDiscoverFilters(filters);
-  }, [filters]);
+    saveDiscoverFilters(accountId, filters);
+  }, [accountId, filters]);
 
   useEffect(() => {
     if (loading) return;
-    const offset = loadDiscoverScroll();
+    const offset = loadDiscoverScroll(accountId);
     if (offset > 0) window.scrollTo(0, offset);
-  }, [loading]);
+  }, [accountId, loading]);
 
   useEffect(() => {
-    return () => saveDiscoverScroll(window.scrollY);
-  }, []);
+    return () => saveDiscoverScroll(accountId, window.scrollY);
+  }, [accountId]);
 
   useEffect(() => {
     if (profiles.length === 0) return;
@@ -127,7 +136,7 @@ export default function DiscoveryPage() {
   const filteredEmpty = profiles.length > 0 && visible.length === 0;
 
   function openProfile(profileId: string) {
-    saveDiscoverScroll(window.scrollY);
+    saveDiscoverScroll(accountId, window.scrollY);
     const compatibility = profiles.find((candidate) => candidate.id === profileId)?.compatibility ?? null;
     requireVerified("profile", () => navigate(`/profile/${profileId}`, { state: { from: "discover", compatibility } }));
   }

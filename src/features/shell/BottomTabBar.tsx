@@ -17,7 +17,7 @@ export function BottomTabBar() {
           >
             <span className="shell-tabbar__icon-wrap">
               <Icon className="shell-tabbar__icon" />
-              {badge > 0 ? <span className="shell-badge shell-badge--tab">{badge > 9 ? "9+" : badge}</span> : null}
+              {badge > 0 ? <span className="shell-badge shell-badge--tab" aria-label={item.key === "chats" ? `${badge} unread chats` : undefined}>{badge > 9 ? "9+" : badge}</span> : null}
             </span>
             <span className="shell-tabbar__label">{item.label}</span>
           </NavLink>

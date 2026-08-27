@@ -372,6 +372,33 @@ describe("Likes hub", () => {
     expect(screen.getByRole("button", { name: /like lerato back/i })).toBeInTheDocument();
   });
 
+  it("maps profile_unavailable on like-back without telling the member to try again", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation(
+      baseHandler((url, method) => {
+        if (url.includes("/api/v1/likes/incoming") && method === "GET") {
+          return jsonResponse(200, {
+            likes: [{ liked_at: "2026-08-27T08:00:00Z", profile: publicProfile({ id: "p-in", display_name: "Lerato" }) }],
+            next_cursor: null,
+          });
+        }
+        if (url.endsWith("/api/v1/profiles/p-in/likes") && method === "POST") {
+          return jsonResponse(404, { error: "profile_unavailable" });
+        }
+        return undefined;
+      }),
+    );
+
+    renderLikes();
+    await user.click(await screen.findByRole("tab", { name: /liked you/i }));
+    expect(await screen.findByText("Lerato")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /like lerato back/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/isn’t available to like back/i);
+    expect(screen.queryByText(/try again/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Lerato")).not.toBeInTheDocument();
+  });
+
   it("lists outgoing likes from GET /likes/outgoing", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");

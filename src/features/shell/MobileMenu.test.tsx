@@ -15,6 +15,7 @@ const account: OwnAccount = {
   displayName: "Naledi",
   initial: "N",
   unreadNotifications: 0,
+  unreadChats: 0,
   refresh: () => undefined,
 };
 

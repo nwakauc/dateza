@@ -138,7 +138,7 @@ function baseHandler(profiles: unknown[], allowanceBody: unknown, extra?: (url: 
       discoveryCalls += 1;
       return Promise.resolve(jsonResponse(404, { error: "matching_not_configured" }));
     }
-    if (url.endsWith("/api/v1/find")) {
+    if (/\/api\/v1\/find(?:\?|$)/.test(url)) {
       return Promise.resolve(jsonResponse(200, { profiles, next_cursor: null, allowance: allowanceBody }));
     }
     if (url.endsWith("/api/v1/notifications")) {
@@ -576,6 +576,60 @@ describe("Find (FE-05, rich swipe)", () => {
 
     expect(await screen.findByText(/you've seen today's find picks/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /explore discover/i })).toHaveAttribute("href", "/discover");
+  });
+
+  it("still lets the member decide on leftover Find picks after the daily allowance is spent", async () => {
+    setBearerToken("opaque-session-token");
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" })],
+      allowance({ remaining: 0, used: 10, exhausted: true }),
+    );
+    vi.mocked(fetch).mockImplementation(fetchImpl);
+
+    renderApp();
+
+    expect(await screen.findByText("Maya")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^like$/i })).toBeEnabled();
+    expect(screen.getByText(/these are today’s find picks/i)).toBeInTheDocument();
+  });
+
+  it("sends age, distance, and relationship-intent filters on GET /find", async () => {
+    setBearerToken("opaque-session-token");
+    const findUrls: string[] = [];
+    const { fetchImpl } = baseHandler(
+      [findProfile({ id: "p1", display_name: "Maya" })],
+      allowance(),
+      (url) => {
+        if (url.endsWith("/api/v1/profile/preferences")) {
+          return jsonResponse(200, {
+            preferences: { min_age: 25, max_age: 35, max_distance_km: 40, interested_in: ["man"] },
+          });
+        }
+        if (url.endsWith("/api/v1/profile")) {
+          return jsonResponse(200, {
+            profile: {
+              ...ownerProfile,
+              options: { relationship_intent: ["long_term_relationship"] },
+            },
+            onboarding: completeOnboarding,
+          });
+        }
+        return undefined;
+      },
+    );
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      if (/\/api\/v1\/find(?:\?|$)/.test(url)) findUrls.push(url);
+      return fetchImpl(input, init);
+    });
+
+    renderApp();
+    await screen.findByText("Maya");
+
+    expect(findUrls.some((url) => url.includes("min_age=25"))).toBe(true);
+    expect(findUrls.some((url) => url.includes("max_age=35"))).toBe(true);
+    expect(findUrls.some((url) => url.includes("max_distance_km=40"))).toBe(true);
+    expect(findUrls.some((url) => url.includes("relationship_intent=long_term_relationship"))).toBe(true);
   });
 
   it("shows an intentional empty state, distinct from exhausted, when nothing is eligible", async () => {

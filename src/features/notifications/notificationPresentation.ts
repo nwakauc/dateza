@@ -49,6 +49,17 @@ export function matchesNotificationFilter(item: ProductNotification, filter: Not
   return filter === "all" || notificationFilterFor(item.type) === filter;
 }
 
+/** Unread message/opener rows in the current inbox page. Not conversation read receipts — D8N does not expose those. */
+export function countUnreadChatNotifications(items: readonly ProductNotification[]): number {
+  let count = 0;
+  for (const item of items) {
+    if (item.read_at) continue;
+    const kind = notificationKind(item.type);
+    if (kind === "message" || kind === "opener") count += 1;
+  }
+  return count;
+}
+
 export function actorProfileIds(items: ProductNotification[]): string[] {
   const ids = new Set<string>();
   for (const item of items) {

@@ -20,6 +20,7 @@ import { LikesTabs } from "./LikesTabs.tsx";
 import { LikesTips } from "./LikesTips.tsx";
 import { MutualLikesSection } from "./MutualLikesSection.tsx";
 import { parseLikesTab, type LikesTab } from "./likesTabs.ts";
+import { likeBackErrorCopy, likeBackUnavailable } from "./likeBackError.ts";
 
 export default function LikesPage() {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function LikesPage() {
   const [likingId, setLikingId] = useState<string>();
   const likingRef = useRef<string>();
   const [matched, setMatched] = useState<LikeListItem & { matchId: string | null }>();
-  const [actionError, setActionError] = useState(false);
+  const [actionError, setActionError] = useState<string | undefined>();
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export default function LikesPage() {
     if (startingRef.current) return;
     startingRef.current = match.id;
     setStarting(match.id);
-    setActionError(false);
+    setActionError(undefined);
     const existing = conversations.find((item) => item.match_id === match.id);
     try {
       if (existing) {
@@ -132,7 +133,7 @@ export default function LikesPage() {
       const conversation = await startConversation(match.id);
       navigate(`/chats?conversation=${conversation.id}`);
     } catch {
-      setActionError(true);
+      setActionError("That didn’t work. Try again.");
     } finally {
       startingRef.current = undefined;
       setStarting(undefined);
@@ -143,7 +144,7 @@ export default function LikesPage() {
     if (likingRef.current) return;
     likingRef.current = item.profile.id;
     setLikingId(item.profile.id);
-    setActionError(false);
+    setActionError(undefined);
     try {
       const result = await likeProfile(item.profile.id);
       setIncoming((current) => current.filter((entry) => entry.profile.id !== item.profile.id));
@@ -156,8 +157,12 @@ export default function LikesPage() {
           setNextCursor(listed.next_cursor);
         }
       }
-    } catch {
-      setActionError(true);
+    } catch (caught) {
+      if (likeBackUnavailable(caught)) {
+        setIncoming((current) => current.filter((entry) => entry.profile.id !== item.profile.id));
+        setOutgoing((current) => current.filter((entry) => entry.profile.id !== item.profile.id));
+      }
+      setActionError(likeBackErrorCopy(caught));
     } finally {
       likingRef.current = undefined;
       setLikingId(undefined);
@@ -172,7 +177,7 @@ export default function LikesPage() {
         setMatches((current) => mergeById(current, result.matches));
         setNextCursor(result.next_cursor);
       })
-      .catch(() => setActionError(true))
+      .catch(() => setActionError("That didn’t work. Try again."))
       .finally(() => setLoadingMore(false));
   }
 
@@ -282,7 +287,7 @@ export default function LikesPage() {
             />
             {actionError ? (
               <p className="shell-inline-error" role="alert">
-                That didn’t work. Try again.
+                {actionError}
               </p>
             ) : null}
             {conversationsFailed ? (

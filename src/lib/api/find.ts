@@ -211,6 +211,19 @@ function buildQuery(filters: FindFilters): string {
   return query ? `?${query}` : "";
 }
 
+/** Query params D8N Find already supports. Omit empty values so a missing preference stays unfiltered. */
+export function findFiltersFromPreferences(
+  preferences: { min_age: number | null; max_age: number | null; max_distance_km: number | null } | null,
+  relationshipIntent?: string,
+): FindFilters {
+  const filters: FindFilters = {};
+  if (preferences?.min_age != null) filters.min_age = preferences.min_age;
+  if (preferences?.max_age != null) filters.max_age = preferences.max_age;
+  if (preferences?.max_distance_km != null) filters.max_distance_km = preferences.max_distance_km;
+  if (relationshipIntent) filters.relationship_intent = relationshipIntent;
+  return filters;
+}
+
 /** GET /api/v1/find — DateZA's Find surface (see findTypes.ts). Not Discovery. */
 export function getFindProfiles(filters: FindFilters = {}): Promise<FindResponse> {
   return apiRequest(`/api/v1/find${buildQuery(filters)}`).then((data) => {

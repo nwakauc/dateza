@@ -42,7 +42,7 @@ export function TopNav({ account }: Props) {
               >
                 <Icon className="shell-primary-nav__icon" />
                 <span>{item.label}</span>
-                {badge > 0 ? <span className="shell-badge">{badge > 9 ? "9+" : badge}</span> : null}
+                {badge > 0 ? <span className="shell-badge" aria-label={item.key === "chats" ? `${badge} unread chats` : undefined}>{badge > 9 ? "9+" : badge}</span> : null}
               </NavLink>
             );
           })}

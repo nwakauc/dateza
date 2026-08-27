@@ -1,8 +1,11 @@
+import { useOwnAccount } from "./useOwnAccount.ts";
+
 /**
- * D8N exposes Matches and Conversations, but not likes-received counts or
- * conversation read state. Keep those two primary-nav badges at zero rather
- * than deriving misleading counts from different concepts.
+ * Likes-received counts are not on the D8N nav contract, so that badge stays
+ * at zero. Chats uses unread message/opener notification rows — not invented
+ * conversation read receipts, which D8N does not expose.
  */
 export function useBadgeCounts(): { likes: number; chats: number } {
-  return { likes: 0, chats: 0 };
+  const account = useOwnAccount();
+  return { likes: 0, chats: account.unreadChats };
 }

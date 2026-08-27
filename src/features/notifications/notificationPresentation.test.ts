@@ -4,6 +4,7 @@ import {
   actorProfileIds,
   compactRelativeTime,
   countPhrase,
+  countUnreadChatNotifications,
   matchesNotificationFilter,
   notificationCopy,
   notificationFilterFor,
@@ -41,6 +42,17 @@ describe("notification presentation", () => {
     expect(notificationFilterFor("dateza.welcome")).toBe("activity");
     expect(notificationFilterFor("dateza.profile_viewed")).toBe("activity");
     expect(notificationKind("dateza.profile_viewed")).toBe("activity");
+  });
+
+  it("counts unread message and opener rows for the Chats badge without inventing conversation read state", () => {
+    expect(
+      countUnreadChatNotifications([
+        notice({ id: "m1", type: "dateza.message_received" }),
+        notice({ id: "o1", type: "dateza.opener_received" }),
+        notice({ id: "m2", type: "dateza.message_received", read_at: "2026-08-27T09:00:00Z" }),
+        notice({ id: "l1", type: "dateza.like_received" }),
+      ]),
+    ).toBe(2);
   });
 
   it("uses the actor name for likes and matches, and keeps D8N copy when the profile is unavailable", () => {

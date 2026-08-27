@@ -10,6 +10,7 @@ export type OwnAccount = {
   displayName: string;
   initial: string;
   unreadNotifications: number;
+  unreadChats: number;
   refresh: () => void;
 };
 

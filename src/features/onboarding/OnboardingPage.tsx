@@ -485,6 +485,15 @@ export default function OnboardingPage() {
     );
   }
 
+  if (step === "location" && profileId) {
+    const copy = PROFILE_SCREEN_COPY.location;
+    return (
+      <OnboardingShell title={copy.title} intro={copy.intro} percent={percent}>
+        <LocationStep onSuccess={() => void reconcileProfile()} />
+      </OnboardingShell>
+    );
+  }
+
   if (step === "options") {
     const optionsIndex = OPTIONS_SCREEN_ORDER.indexOf(optionsScreen);
     const copy = OPTIONS_SCREEN_COPY[optionsScreen];

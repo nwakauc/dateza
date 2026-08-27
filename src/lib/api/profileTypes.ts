@@ -12,6 +12,7 @@ export type OnboardingStep =
   | "profile"
   | "preferences"
   | "photos"
+  | "location"
   | "options"
   | "publication";
 

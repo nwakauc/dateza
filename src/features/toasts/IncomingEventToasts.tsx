@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { getProfileDetail } from "../../lib/api/find.ts";
 import { listNotifications, parseDatingEventPayload } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
-import { actorFromProfile, notificationCopy, notificationKind } from "../notifications/notificationPresentation.ts";
+import { actorFromProfile, countUnreadChatNotifications, notificationCopy, notificationKind } from "../notifications/notificationPresentation.ts";
 import { resolveNotificationDestination } from "../notifications/notificationDestination.ts";
 import { useToast } from "./useToast.ts";
 import { selectIncomingNotificationToasts } from "./incomingToastPolicy.ts";
@@ -19,22 +19,25 @@ function toneForNotification(type: string): ToastTone {
 
 type Props = {
   onUnreadCount: (count: number) => void;
+  onUnreadChats: (count: number) => void;
   refreshKey: number;
 };
 
-export function IncomingEventToasts({ onUnreadCount, refreshKey }: Props) {
+export function IncomingEventToasts({ onUnreadCount, onUnreadChats, refreshKey }: Props) {
   const location = useLocation();
   const toast = useToast();
   const seenRef = useRef<Set<string> | null>(null);
   const locationRef = useRef(location);
   const toastRef = useRef(toast);
   const unreadRef = useRef(onUnreadCount);
+  const chatsRef = useRef(onUnreadChats);
 
   useEffect(() => {
     locationRef.current = location;
     toastRef.current = toast;
     unreadRef.current = onUnreadCount;
-  }, [location, onUnreadCount, toast]);
+    chatsRef.current = onUnreadChats;
+  }, [location, onUnreadChats, onUnreadCount, toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +74,7 @@ export function IncomingEventToasts({ onUnreadCount, refreshKey }: Props) {
         const result = await listNotifications();
         if (cancelled) return;
         unreadRef.current(result.unread_count);
+        chatsRef.current(countUnreadChatNotifications(result.notifications));
         const seen = seenRef.current;
         if (seen == null) {
           seenRef.current = new Set(result.notifications.map((item) => item.id));

@@ -89,6 +89,7 @@ const ONBOARDING_STEPS = new Set([
   "profile",
   "preferences",
   "photos",
+  "location",
   "options",
   "publication",
 ]);

@@ -165,6 +165,27 @@ describe("getCurrentProfile against real staging response shapes", () => {
     expect(result.onboarding.next_step).toBe("preferences");
   });
 
+  it("accepts next_step location instead of treating it as an invalid onboarding payload", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        profile: realProfileAfterTwoPhotos.profile,
+        onboarding: {
+          ...realProfileAfterTwoPhotos.onboarding,
+          next_step: "location",
+          completion: {
+            complete: false,
+            percent: 60,
+            missing: ["location", "options.relationship_intent"],
+          },
+        },
+      }),
+    );
+
+    const result = await getCurrentProfile();
+
+    expect(result.onboarding.next_step).toBe("location");
+  });
+
   it("does not throw on null lifestyle/occupation fields carried straight through from the server", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(200, realProfileAfterTwoPhotos));
 

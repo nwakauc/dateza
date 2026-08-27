@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../../lib/api/errors.ts";
-import { getFindProfiles, getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
-import type { FindAllowance, FindProfile, ProfileDetail } from "../../lib/api/findTypes.ts";
+import { findFiltersFromPreferences, getFindProfiles, getProfileDetail, likeProfile, passProfile } from "../../lib/api/find.ts";
+import type { FindAllowance, FindFilters, FindProfile, ProfileDetail } from "../../lib/api/findTypes.ts";
 import { listNotifications } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
-import { getProfileConfiguration } from "../../lib/api/profile.ts";
+import { getProfileConfiguration, getProfilePreferences } from "../../lib/api/profile.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { openerActionLabel, openerSendAllowed } from "../../lib/api/openerTypes.ts";
 import { listConversations } from "../../lib/api/social.ts";
 import { conversationCanCompose } from "../chats/chatDisplay.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
+import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { BoltIcon, ChevronDownIcon, LightbulbIcon, SearchIcon } from "../shell/icons.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
 import { ProfileStandOutPrompt } from "../profile/ProfileStandOutPrompt.tsx";
@@ -70,6 +71,8 @@ function formatResetTime(resetsAt: string): string | undefined {
 
 export default function FindPage() {
   const navigate = useNavigate();
+  const account = useOwnAccount();
+  const relationshipIntent = account.profile?.options.relationship_intent?.[0];
   const { pendingReason, requireVerified, dismiss } = useVerificationGate();
 
   const [active, setActive] = useState<FindProfile | undefined>();
@@ -107,6 +110,8 @@ export default function FindPage() {
   const queueRef = useRef(queue);
   const nextCursorRef = useRef(nextCursor);
   const loadingMoreRef = useRef(loadingMore);
+  const filtersRef = useRef<FindFilters>({});
+  const allowanceRef = useRef<FindAllowance | undefined>(undefined);
 
   useEffect(() => {
     queueRef.current = queue;
@@ -117,6 +122,9 @@ export default function FindPage() {
   useEffect(() => {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
+  useEffect(() => {
+    allowanceRef.current = allowance;
+  }, [allowance]);
 
   const loadConfiguration = useCallback(() => {
     getProfileConfiguration()
@@ -133,11 +141,20 @@ export default function FindPage() {
 
   useEffect(() => {
     document.title = "Find — DateZA";
+    if (account.loading) return;
     let cancelled = false;
     const preferredId = rememberedFindActiveId();
-    getFindProfiles()
-      .then((result) => {
+    const intent = relationshipIntent;
+    void getProfilePreferences()
+      .then((preferences) => findFiltersFromPreferences(preferences, intent))
+      .catch(() => findFiltersFromPreferences(null, intent))
+      .then((filters) => {
         if (cancelled) return;
+        filtersRef.current = filters;
+        return getFindProfiles(filters);
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
         const profiles = orderFindProfiles(result.profiles, preferredId);
         setActive(profiles[0]);
         setQueue(profiles.slice(1));
@@ -174,7 +191,7 @@ export default function FindPage() {
       cancelled = true;
       document.title = "DateZA — Meet someone who chooses you.";
     };
-  }, [attempt, loadConfiguration]);
+  }, [account.loading, attempt, loadConfiguration, relationshipIntent]);
 
   useEffect(
     () => () => {
@@ -219,16 +236,18 @@ export default function FindPage() {
   }
 
   async function fetchMore() {
-    if (loadingMoreRef.current || !nextCursorRef.current) {
+    if (loadingMoreRef.current || !nextCursorRef.current || allowanceRef.current?.exhausted) {
       return;
     }
     setLoadingMore(true);
     try {
-      const result = await getFindProfiles({ cursor: nextCursorRef.current });
-      setQueue((current) => [...current, ...result.profiles]);
-      setNextCursor(result.next_cursor);
+      const result = await getFindProfiles({ ...filtersRef.current, cursor: nextCursorRef.current });
+      setNextCursor(result.allowance.exhausted ? null : result.next_cursor);
       setAllowance(result.allowance);
-      if (result.profiles.length > 0) setSeenAny(true);
+      if (result.profiles.length > 0) {
+        setQueue((current) => [...current, ...result.profiles]);
+        setSeenAny(true);
+      }
       return result.profiles;
     } catch {
       return [];
@@ -423,7 +442,11 @@ export default function FindPage() {
         <div>
           <p className="shell-page__eyebrow">Find</p>
           <h1 className="shell-page__title">Meet someone new</h1>
-          <p className="shell-page__subtitle">Take your time, find your person.</p>
+          <p className="shell-page__subtitle">
+            {allowance && allowance.remaining === 0
+              ? "These are today’s Find picks. Like or pass, then come back tomorrow."
+              : "Take your time, find your person."}
+          </p>
         </div>
         {allowance && !exhausted && allowance.remaining > 0 ? (
           <div className="find-allowance">
