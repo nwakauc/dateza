@@ -1,4 +1,5 @@
 import type { FindProfile, PublicProfile } from "../../lib/api/findTypes.ts";
+import { formatPlace, formatPlaceWithDistance } from "../profile/placeLabel.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
 
 const MAX_CARD_CHIPS = 3;
@@ -8,14 +9,11 @@ const FAMILY_OPTION_KEYS = ["family_plans", "wants_children", "children_intent"]
 const FAITH_OPTION_KEYS = ["faith_importance", "religion_importance"] as const;
 
 export function placeLine(profile: PublicProfile): string | undefined {
-  return profile.city ?? profile.country_code ?? undefined;
+  return formatPlace(profile.city, profile.country_code);
 }
 
 export function locationLine(profile: FindProfile): string | undefined {
-  const place = placeLine(profile);
-  const distance = profile.distance_km != null ? `${profile.distance_km} km away` : undefined;
-  if (place && distance) return `${place} • ${distance}`;
-  return place ?? distance;
+  return formatPlaceWithDistance(profile.city, profile.country_code, profile.distance_km);
 }
 
 function firstLabeled(profile: PublicProfile, keys: readonly string[], optionLabel: OptionLabelLookup): string | undefined {

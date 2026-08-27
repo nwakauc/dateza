@@ -1,6 +1,12 @@
 import { apiRequest } from "./client.ts";
 import { ApiError } from "./errors.ts";
-import type { BlockedProfile, BlockResponse, ProfileReportReason, ReportResponse } from "./safetyTypes.ts";
+import type {
+  BlockedProfile,
+  BlockResponse,
+  ContentReportTarget,
+  ProfileReportReason,
+  ReportResponse,
+} from "./safetyTypes.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -84,21 +90,22 @@ export function reportProfile(
 }
 
 /**
- * POST /api/v1/reports — content-level report. Message evidence is snapshotted
- * server-side; the client never sends a media URL.
+ * POST /api/v1/reports — content-level report. Evidence is snapshotted
+ * server-side; the client never sends a media URL or message body.
  */
-export function reportMessage(
-  messageId: string,
+export function reportContent(
+  targetType: ContentReportTarget,
+  targetId: string,
   body: { reason: ProfileReportReason; note?: string },
 ): Promise<ReportResponse> {
   const payload: {
-    target_type: "message";
+    target_type: ContentReportTarget;
     target_id: string;
     reason: ProfileReportReason;
     details?: string;
   } = {
-    target_type: "message",
-    target_id: messageId,
+    target_type: targetType,
+    target_id: targetId,
     reason: body.reason,
   };
   const note = body.note?.trim();
@@ -113,4 +120,11 @@ export function reportMessage(
     }
     return { reported: true, created: asBoolean(data.created, true) };
   });
+}
+
+export function reportMessage(
+  messageId: string,
+  body: { reason: ProfileReportReason; note?: string },
+): Promise<ReportResponse> {
+  return reportContent("message", messageId, body);
 }

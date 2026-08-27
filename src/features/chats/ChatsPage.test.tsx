@@ -215,6 +215,54 @@ describe("premium Chats experience", () => {
     expect(reportBody).toContain("\"target_id\":\"msg-1\"");
   });
 
+  it("reports a conversation through POST /reports", async () => {
+    const user = userEvent.setup();
+    let reportBody = "";
+    installHandler((url, method, init) => {
+      if (url.endsWith("/api/v1/reports") && method === "POST") {
+        reportBody = String(init?.body);
+        return jsonResponse(201, { report: { status: "received" }, created: true, blocked: false });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+    expect(await screen.findByText("I’d love that.")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /more actions/i })[0]!);
+    await user.click(screen.getByRole("menuitem", { name: /report this conversation/i }));
+    await user.click(screen.getByRole("button", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByRole("heading", { name: /report received/i })).toBeInTheDocument();
+    expect(JSON.parse(reportBody)).toEqual({
+      target_type: "conversation",
+      target_id: "c1",
+      reason: "harassment",
+    });
+  });
+
+  it("reports an incoming opener through POST /reports", async () => {
+    const user = userEvent.setup();
+    let reportBody = "";
+    installHandler((url, method, init) => {
+      if (url.endsWith("/api/v1/openers")) return jsonResponse(200, { openers: [receivedOpener()], next_cursor: null });
+      if (url.endsWith("/api/v1/conversations")) return jsonResponse(200, { conversations: [], next_cursor: null });
+      if (url.endsWith("/api/v1/reports") && method === "POST") {
+        reportBody = String(init?.body);
+        return jsonResponse(201, { report: { status: "received" }, created: true, blocked: false });
+      }
+    });
+    renderChats();
+    expect(await screen.findByRole("heading", { name: /^lerato$/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /report this opener/i }));
+    await user.click(screen.getByRole("button", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByRole("heading", { name: /report received/i })).toBeInTheDocument();
+    expect(JSON.parse(reportBody)).toEqual({
+      target_type: "hook",
+      target_id: "o1",
+      reason: "harassment",
+    });
+  });
+
   it("keeps the draft and offers a clear recovery after send failure", async () => {
     const user = userEvent.setup();
     installHandler((url, method) => {
@@ -280,9 +328,11 @@ describe("premium Chats experience", () => {
     });
     renderChats();
 
-    await waitFor(() => expect(screen.getAllByText(/no conversations yet/i).length).toBeGreaterThan(0));
-    expect(screen.getAllByRole("link", { name: /discover people/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: /go to likes/i }).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/no conversations yet/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/no conversations yet/i)).toHaveLength(1);
+    expect(screen.getByText(/waiting for a chat/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /discover people/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /go to likes/i })).toBeInTheDocument();
   });
 
   it("does not pretend the opener inbox is empty when GET /openers fails", async () => {

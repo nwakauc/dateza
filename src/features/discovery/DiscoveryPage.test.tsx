@@ -562,6 +562,58 @@ describe("Discover (FE-02)", () => {
     expect(screen.getByRole("link", { name: /complete profile/i })).toHaveAttribute("href", "/profile/edit");
   });
 
+  it("does not treat D8N 100% as a finished DateZA profile when public details are still empty", async () => {
+    setBearerToken("opaque-session-token");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = requestUrl(input);
+      if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
+      if (url.endsWith("/api/v1/profile")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            profile: {
+              ...ownerProfile,
+              display_name: "Necub",
+              bio: null,
+              prompts: [],
+              options: {},
+              profile_completion: { percent: 100, level: "complete", missing: [], suggestions: [], sections: {} },
+            },
+            onboarding: completeOnboarding,
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/photos")) {
+        return Promise.resolve(
+          jsonResponse(200, {
+            photos: [
+              {
+                id: 1,
+                profile_id: ownerProfile.id,
+                position: 0,
+                status: "approved",
+                visibility: "visible",
+                processing_state: "ready",
+                deleted_at: null,
+                image: { filename: "a.jpg", content_type: "image/jpeg", byte_size: 12, url: "https://example.test/me.jpg", url_expires_in: 60 },
+              },
+            ],
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/discovery")) {
+        return Promise.resolve(jsonResponse(200, { profiles: [discoveryProfile()], next_cursor: null, selection: selection({ count: 1 }) }));
+      }
+      return Promise.resolve(jsonResponse(404, { error: "not_found" }));
+    });
+
+    renderApp();
+    await screen.findByText("Maya");
+    expect(await screen.findByText(/make your profile stand out/i)).toBeInTheDocument();
+    expect(screen.queryByText("100% complete")).not.toBeInTheDocument();
+    expect(screen.getByText("0% complete")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /complete profile/i })).toHaveAttribute("href", "/profile/edit");
+  });
+
   it("hides the profile-completion panel only once the rich DateZA profile is filled", async () => {
     setBearerToken("opaque-session-token");
     vi.mocked(fetch).mockImplementation((input) => {

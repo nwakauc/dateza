@@ -3,6 +3,7 @@ import type { Completion, ProfileCompletion } from "../../lib/api/profileTypes.t
 import { describeMissing } from "./completionCopy.ts";
 import { hrefForCompletionKey } from "../profile/completionLinks.ts";
 import type { DatezaRichness } from "../profile/richProfileGaps.ts";
+import { standOutProgress } from "../profile/standOutProgress.ts";
 import { ShieldCheckIcon } from "../shell/icons.tsx";
 
 type Props = {
@@ -14,12 +15,12 @@ type Props = {
 
 type Item = { key: string; label: string; href: string };
 
-const STAND_OUT_SUBTITLE = "More details = more meaningful matches.";
+const STAND_OUT_SUBTITLE = "More details help the right people find you.";
 
 /**
  * Prompts members to finish the public DateZA profile, not onboarding publication.
- * D8N `profile_completion` is used when it reports unfinished richness.
- * Publication/onboarding 100% is ignored while public details are still empty.
+ * D8N percent is used only while it is still below 100. Publication 100% is
+ * ignored while public details are still empty.
  */
 export function ProfileCompletionPanel({
   publication,
@@ -27,13 +28,25 @@ export function ProfileCompletionPanel({
   datezaRichness,
   compact = false,
 }: Props) {
+  if (datezaRichness) {
+    const progress = standOutProgress(datezaRichness, profileCompletion);
+    if (progress.complete) return null;
+    return (
+      <CompletionCard
+        compact={compact}
+        percent={progress.percent}
+        items={progress.items.map((item) => ({ ...item, href: hrefForCompletionKey(item.key) }))}
+      />
+    );
+  }
+
   const d8nReportsGaps =
     profileCompletion != null &&
     (Math.round(profileCompletion.percent) < 100 ||
       profileCompletion.suggestions.length > 0 ||
       profileCompletion.missing.length > 0);
 
-  if (profileCompletion != null && d8nReportsGaps) {
+  if (profileCompletion != null && d8nReportsGaps && Math.round(profileCompletion.percent) < 100) {
     const percent = Math.max(0, Math.min(100, Math.round(profileCompletion.percent)));
     const items: Item[] =
       profileCompletion.suggestions.length > 0
@@ -47,19 +60,6 @@ export function ProfileCompletionPanel({
             href: hrefForCompletionKey(item.key),
           }));
     return <CompletionCard compact={compact} percent={percent} items={items} />;
-  }
-
-  if (datezaRichness && datezaRichness.filled < datezaRichness.total) {
-    return (
-      <CompletionCard
-        compact={compact}
-        percent={datezaRichness.percent}
-        items={datezaRichness.items.map((item) => ({
-          ...item,
-          href: hrefForCompletionKey(item.key),
-        }))}
-      />
-    );
   }
 
   if (!publication || publication.complete || publication.missing.length === 0) {

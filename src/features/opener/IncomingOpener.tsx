@@ -81,7 +81,12 @@ export function IncomingOpener({ opener, onResolved, onReplied }: Props) {
             ) : null}
           </p>
         </div>
-        <ProfileSafetyActions profileId={opener.sender.id} name={name} onBlocked={onResolved} />
+        <ProfileSafetyActions
+          profileId={opener.sender.id}
+          name={name}
+          hookId={opener.id}
+          onBlocked={onResolved}
+        />
       </header>
       <p className="incoming-opener__quote">“{opener.message}”</p>
       <form onSubmit={(event) => void submit(event)}>

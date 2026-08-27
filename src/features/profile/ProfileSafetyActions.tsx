@@ -3,21 +3,13 @@ import { ApiError } from "../../lib/api/errors.ts";
 import { unmatchMatch } from "../../lib/api/social.ts";
 import { blockProfile, reportProfile, reportSubmission } from "../../lib/api/safety.ts";
 import { PROFILE_REPORT_REASONS, type ProfileReportReason } from "../../lib/api/safetyTypes.ts";
+import { ContentReportDialog } from "../safety/ContentReportDialog.tsx";
+import { REPORT_REASON_LABELS } from "../safety/reportCopy.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { MoreIcon } from "../shell/icons.tsx";
 import { useToast } from "../toasts/useToast.ts";
 
-const REASON_LABELS: Record<ProfileReportReason, string> = {
-  inappropriate_content: "Inappropriate content",
-  harassment: "Harassment",
-  spam: "Spam",
-  fake_profile: "Fake profile",
-  underage: "Someone under 18",
-  other: "Something else",
-  violence_or_threat: "Violence or threats",
-  non_consensual_content: "Non-consensual content",
-  impersonation: "Impersonation",
-};
+type ContentReportKind = "conversation" | "profile_media" | "hook";
 
 type Props = {
   profileId: string;
@@ -26,15 +18,28 @@ type Props = {
   /** Active Match public UUID. Unmatch is only offered for a current match. */
   matchId?: string;
   onUnmatched?: () => void;
+  conversationId?: string;
+  mediaId?: string;
+  hookId?: string;
 };
 
-export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUnmatched }: Props) {
+export function ProfileSafetyActions({
+  profileId,
+  name,
+  matchId,
+  onBlocked,
+  onUnmatched,
+  conversationId,
+  mediaId,
+  hookId,
+}: Props) {
   const toast = useToast();
   const menuId = useId();
   const reasonFieldId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<"report" | "block" | "unmatch" | undefined>();
+  const [contentReport, setContentReport] = useState<ContentReportKind | undefined>();
   const [reason, setReason] = useState<ProfileReportReason | "">("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -151,6 +156,42 @@ export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUn
               <div className="profile-safety__separator" role="separator" />
             </>
           ) : null}
+          {conversationId ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setContentReport("conversation");
+              }}
+            >
+              Report this conversation
+            </button>
+          ) : null}
+          {mediaId ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setContentReport("profile_media");
+              }}
+            >
+              Report this photo
+            </button>
+          ) : null}
+          {hookId ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setContentReport("hook");
+              }}
+            >
+              Report this opener
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -217,7 +258,7 @@ export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUn
                         data-selected={selected ? "true" : "false"}
                         onClick={() => toggleReason(code)}
                       >
-                        {REASON_LABELS[code]}
+                        {REPORT_REASON_LABELS[code]}
                       </button>
                     );
                   })}
@@ -276,6 +317,26 @@ export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUn
             </div>
           </div>
         </Modal>
+      ) : null}
+
+      {contentReport === "conversation" && conversationId ? (
+        <ContentReportDialog
+          targetType="conversation"
+          targetId={conversationId}
+          name={name}
+          onClose={() => setContentReport(undefined)}
+        />
+      ) : null}
+      {contentReport === "profile_media" && mediaId ? (
+        <ContentReportDialog
+          targetType="profile_media"
+          targetId={mediaId}
+          name={name}
+          onClose={() => setContentReport(undefined)}
+        />
+      ) : null}
+      {contentReport === "hook" && hookId ? (
+        <ContentReportDialog targetType="hook" targetId={hookId} name={name} onClose={() => setContentReport(undefined)} />
       ) : null}
 
       {dialog === "block" ? (

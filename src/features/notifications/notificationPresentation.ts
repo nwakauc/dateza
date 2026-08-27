@@ -1,5 +1,6 @@
 import { parseDatingEventPayload } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
+import { formatCityName } from "../profile/placeLabel.ts";
 
 export type NotificationFilter = "all" | "likes" | "matches" | "messages" | "activity";
 
@@ -79,7 +80,7 @@ export function actorFromProfile(profile: {
   return {
     displayName: profile.display_name,
     age: profile.age,
-    city: profile.city,
+    city: formatCityName(profile.city) ?? profile.city,
     photoUrl: photo?.url ?? null,
   };
 }

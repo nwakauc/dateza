@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getCurrentProfile } from "../../lib/api/profile.ts";
@@ -26,7 +26,7 @@ function initialFor(name: string): string {
  * photo once here so nav, avatar, and Profile page all share one source
  * instead of each re-fetching.
  */
-export default function AppShell() {
+export default function AppShell({ children }: { children?: ReactNode }) {
   const { verification } = useSession();
   const [profile, setProfile] = useState<OwnerProfile | null>(null);
   const [onboarding, setOnboarding] = useState<ProfileOnboardingStatus | null>(null);
@@ -115,7 +115,7 @@ export default function AppShell() {
           {verification.status === "known" && !verification.verified && !verificationOpen ? (
             <VerificationBanner kind={verification.kind} onVerify={() => setVerificationOpen(true)} />
           ) : null}
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
         <BottomTabBar />
         <IncomingEventToasts refreshKey={version} onUnreadCount={setUnreadNotifications} onUnreadChats={setUnreadChats} />

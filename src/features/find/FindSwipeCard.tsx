@@ -91,7 +91,12 @@ export function FindSwipeCard({ profile, interaction, optionLabel, onOpenDetail,
 
         {onBlocked ? (
           <div className="find-card__safety">
-            <ProfileSafetyActions profileId={profile.id} name={name} onBlocked={onBlocked} />
+            <ProfileSafetyActions
+              profileId={profile.id}
+              name={name}
+              mediaId={activePhoto?.id}
+              onBlocked={onBlocked}
+            />
           </div>
         ) : null}
 

@@ -1,6 +1,8 @@
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
 import { lifestyleChoices } from "../onboarding/presentation.ts";
 import type { OptionLabelLookup } from "../find/optionLabels.ts";
+import { formatLanguageList } from "./languageLabel.ts";
+import { formatPlaceWithDistance } from "./placeLabel.ts";
 
 export type ProfileFact = { key: string; label: string; value: string };
 
@@ -48,19 +50,12 @@ function optionValues(
     .filter((label): label is string => Boolean(label));
 }
 
-function joinList(items: string[]): string {
-  if (items.length === 0) return "";
-  if (items.length === 1) return items[0]!;
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
 export function interestLabels(profile: ProfileDetail): string[] {
   return profile.interests.map((interest) => interest.label).filter(Boolean);
 }
 
 export function formatLanguages(languages: string[]): string {
-  return joinList(languages);
+  return formatLanguageList(languages);
 }
 
 export function matchHeadline(score: number): string {
@@ -70,10 +65,7 @@ export function matchHeadline(score: number): string {
 }
 
 export function identityLocation(profile: ProfileDetail): string | undefined {
-  const place = [profile.city, profile.country_code].filter(Boolean).join(", ");
-  const distance = profile.distance_km != null ? `${profile.distance_km} km away` : undefined;
-  if (place && distance) return `${place} · ${distance}`;
-  return place || distance;
+  return formatPlaceWithDistance(profile.city, profile.country_code, profile.distance_km);
 }
 
 export function intentFacts(profile: ProfileDetail, optionLabel: OptionLabelLookup): ProfileFact[] {

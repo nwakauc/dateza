@@ -1,4 +1,5 @@
 import type { FieldOption } from "../../../lib/api/profileTypes.ts";
+import { languageLabel } from "../languageLabel.ts";
 
 type Props = {
   options: FieldOption[];
@@ -29,7 +30,7 @@ export function LanguagesEditor({ options, values, onChange, max = 8, disabled }
         <ul className="edit-languages__list">
           {values.map((code, index) => (
             <li key={code} className="edit-languages__row">
-              <span className="edit-languages__name">{labels.get(code) ?? code}</span>
+              <span className="edit-languages__name">{labels.get(code) ?? languageLabel(code)}</span>
               {index === 0 ? <span className="edit-languages__tag">Listed first</span> : null}
               <button type="button" className="edit-languages__remove" onClick={() => remove(code)} disabled={disabled}>
                 Remove
@@ -52,8 +53,7 @@ export function LanguagesEditor({ options, values, onChange, max = 8, disabled }
         </label>
       ) : null}
       <p className="auth-form__hint">
-        {values.length}/{max} languages. Proficiency and a primary-language flag aren’t available yet — order is how they
-        appear on your profile.
+        {values.length}/{max} languages. The first language appears first on your profile.
       </p>
     </div>
   );

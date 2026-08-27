@@ -1,5 +1,6 @@
 import type { PublicProfile } from "../../lib/api/findTypes.ts";
 import { lifestyleChoices } from "../onboarding/presentation.ts";
+import { formatLanguageList } from "../profile/languageLabel.ts";
 import type { OptionLabelLookup } from "./optionLabels.ts";
 
 function humanize(code: string): string {
@@ -97,7 +98,7 @@ export function buildAboutFacts(profile: FactSource, fieldLabel: OptionLabelLook
     facts.push({ key: "fitness", label: "Fitness", value: fieldLabel("fitness", profile.fitness) ?? humanize(profile.fitness) });
   }
   if (profile.languages_spoken.length > 0) {
-    facts.push({ key: "languages", label: "Languages", value: profile.languages_spoken.join(", ") });
+    facts.push({ key: "languages", label: "Languages", value: formatLanguageList(profile.languages_spoken) });
   }
   if (profile.looking_for_text) {
     facts.push({ key: "looking_for", label: "Looking for", value: profile.looking_for_text });

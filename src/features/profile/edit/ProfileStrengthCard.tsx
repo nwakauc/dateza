@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { ProfileCompletion } from "../../../lib/api/profileTypes.ts";
 import { hrefForCompletionKey } from "../completionLinks.ts";
 import type { DatezaRichness } from "../richProfileGaps.ts";
+import { standOutProgress } from "../standOutProgress.ts";
 
 type Props = {
   profileCompletion: ProfileCompletion | null;
@@ -9,27 +10,12 @@ type Props = {
 };
 
 export function ProfileStrengthCard({ profileCompletion, richness }: Props) {
-  const d8nReportsGaps =
-    profileCompletion != null &&
-    (Math.round(profileCompletion.percent) < 100 ||
-      profileCompletion.suggestions.length > 0 ||
-      profileCompletion.missing.length > 0);
-
-  const percent = d8nReportsGaps && profileCompletion
-    ? Math.max(0, Math.min(100, Math.round(profileCompletion.percent)))
-    : richness.percent;
-  const items =
-    d8nReportsGaps && profileCompletion
-      ? (profileCompletion.suggestions.length > 0
-          ? profileCompletion.suggestions
-          : profileCompletion.missing.map((key) => ({ key, label: key.replace(/_/g, " ") }))
-        ).slice(0, 4)
-      : richness.items;
+  const progress = standOutProgress(richness, profileCompletion);
+  const { percent, items, complete } = progress;
 
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - percent / 100);
-  const complete = percent >= 100 && items.length === 0;
 
   return (
     <section className="edit-strength" aria-label="Profile strength">
@@ -49,7 +35,7 @@ export function ProfileStrengthCard({ profileCompletion, richness }: Props) {
         <div>
           <p className="edit-strength__percent">{percent}%</p>
           <p className="edit-strength__copy">
-            {complete ? "Your profile is looking strong." : "More details = more meaningful matches."}
+            {complete ? "Your profile is looking strong." : "More details help the right people find you."}
           </p>
         </div>
       </div>

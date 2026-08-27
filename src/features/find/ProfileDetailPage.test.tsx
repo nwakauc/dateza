@@ -95,7 +95,7 @@ function detailProfile(overrides: Record<string, unknown> = {}) {
     looking_for_text: "Someone kind who likes a long walk and a good plan.",
     height_cm: 168,
     body_type: null,
-    languages_spoken: ["English", "isiZulu"],
+    languages_spoken: ["en", "zu"],
     smoking: "never",
     drinking: "occasionally",
     fitness: "active",
@@ -156,12 +156,12 @@ describe("rich profile detail", () => {
 
   function mockApis(
     profile: Record<string, unknown> = detailProfile(),
-    extra?: (url: string, method: string) => Response | undefined,
+    extra?: (url: string, method: string, init?: RequestInit) => Response | undefined,
   ) {
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = ((init as RequestInit | undefined)?.method ?? "GET").toUpperCase();
-      const extraResult = extra?.(url, method);
+      const extraResult = extra?.(url, method, init as RequestInit | undefined);
       if (extraResult) return Promise.resolve(extraResult);
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile")) {
@@ -205,7 +205,9 @@ describe("rich profile detail", () => {
     renderAt("/profile/p1", { from: "discover" });
 
     expect(await screen.findByRole("heading", { name: "Thando, 26" })).toBeInTheDocument();
-    expect(screen.getByText(/cape town, za · 8 km away/i)).toBeInTheDocument();
+    expect(screen.getByText(/cape town · 8 km away/i)).toBeInTheDocument();
+    expect(screen.queryByText(/cape town, za/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/english and isizulu/i)).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();
     expect(screen.getByText("Great match")).toBeInTheDocument();
     expect(screen.getByText("Both want long-term")).toBeInTheDocument();
@@ -341,6 +343,28 @@ describe("rich profile detail", () => {
     expect(screen.getByRole("button", { name: /send report/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /^cancel$/i }));
     expect(screen.queryByRole("heading", { name: /why are you reporting/i })).not.toBeInTheDocument();
+  });
+
+  it("reports the visible photo through POST /reports", async () => {
+    const user = userEvent.setup();
+    let reportBody = "";
+    mockApis(detailProfile(), (url, method, init) => {
+      if (url.endsWith("/api/v1/reports") && method === "POST") {
+        reportBody = String(init?.body);
+        return jsonResponse(201, { report: { status: "received" }, created: true, blocked: false });
+      }
+    });
+    renderAt("/profile/p1", { from: "discover" });
+    await user.click(await screen.findByRole("button", { name: /more actions/i }));
+    await user.click(screen.getByRole("menuitem", { name: /report this photo/i }));
+    await user.click(screen.getByRole("button", { name: /harassment/i }));
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByRole("heading", { name: /report received/i })).toBeInTheDocument();
+    expect(JSON.parse(reportBody)).toEqual({
+      target_type: "profile_media",
+      target_id: "ph1",
+      reason: "harassment",
+    });
   });
 
   it("sends a notes-only report without a selected reason", async () => {

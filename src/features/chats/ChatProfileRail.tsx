@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { DatezaCompatibility, ProfileDetail } from "../../lib/api/findTypes.ts";
 import { describeCompatibilityReasons } from "../discovery/compatibilityCopy.ts";
+import { formatPlaceWithDistance } from "../profile/placeLabel.ts";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
 import { MapPinIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
@@ -51,7 +52,7 @@ export function ChatProfileRail({ profile, loading, error, returnTo, onRetry, on
 
   const name = profile.display_name ?? "DateZA member";
   const photo = profile.photos[0];
-  const place = [profile.city, profile.country_code].filter(Boolean).join(", ");
+  const place = formatPlaceWithDistance(profile.city, profile.country_code, profile.distance_km);
   const interests = profile.interests.slice(0, 5);
 
   return (
@@ -72,7 +73,7 @@ export function ChatProfileRail({ profile, loading, error, returnTo, onRetry, on
           {name}{profile.age ? `, ${profile.age}` : ""}
           {profile.verified ? <span title={VERIFIED_CONTACT_LABEL}><ShieldCheckIcon /></span> : null}
         </h3>
-        {place ? <p><MapPinIcon />{place}{profile.distance_km != null ? ` · ${Math.round(profile.distance_km)} km away` : ""}</p> : null}
+        {place ? <p><MapPinIcon />{place}</p> : null}
         {profile.online ? <span className="chat-rail__presence">Online now</span> : profile.active_today ? <span>Active today</span> : null}
       </div>
 

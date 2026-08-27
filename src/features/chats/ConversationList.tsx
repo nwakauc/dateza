@@ -60,7 +60,11 @@ export function ConversationList({
           <p>Relationships</p>
           <h1>Chats</h1>
         </div>
-        <span>{conversations.length > 0 ? `${conversations.length} loaded` : "Your connections"}</span>
+        <span>
+          {conversations.length > 0
+            ? `${conversations.length} ${conversations.length === 1 ? "chat" : "chats"}`
+            : "Your connections"}
+        </span>
       </header>
 
       {loading ? <ConversationListSkeleton /> : null}

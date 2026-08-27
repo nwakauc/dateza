@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
-import { BellIcon, ChevronRightIcon } from "./icons.tsx";
+import { BellIcon, ChevronRightIcon, SignOutIcon } from "./icons.tsx";
 import { ACCOUNT_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
 import type { OwnAccount } from "./OwnAccountContext.ts";
 import { useBadgeCounts } from "./useBadgeCounts.ts";
@@ -13,6 +15,8 @@ type Props = {
 export function TopNav({ account }: Props) {
   const counts = useBadgeCounts();
   const { verification } = useSession();
+  const { signOut, pending } = useSignOut();
+  const menuRef = useRef<HTMLDetailsElement>(null);
   const verified = canInteract(verification);
 
   return (
@@ -57,7 +61,7 @@ export function TopNav({ account }: Props) {
               </span>
             ) : null}
           </Link>
-          <details className="shell-account-menu">
+          <details className="shell-account-menu" ref={menuRef}>
             <summary aria-label="Open account menu">
               <span className="shell-avatar" aria-hidden="true">
                 {account.avatarUrl ? <img src={account.avatarUrl} width="38" height="38" alt="" /> : <span className="shell-avatar__initial">{account.initial}</span>}
@@ -76,6 +80,17 @@ export function TopNav({ account }: Props) {
                   </Link>
                 );
               })}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  menuRef.current?.removeAttribute("open");
+                  void signOut();
+                }}
+              >
+                <SignOutIcon />
+                <span>{pending ? "Signing out…" : "Sign out"}</span>
+              </button>
             </div>
           </details>
         </div>

@@ -228,18 +228,21 @@ function ChatMediaStage({
 }
 
 export function ChatEmptyState({ hasConversations }: { hasConversations: boolean }) {
+  if (hasConversations) {
+    return (
+      <div className="chat-empty">
+        <span><ChatIcon /></span>
+        <h2>Your conversations live here</h2>
+        <p>Choose someone from your chats and keep getting to know them.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="chat-empty">
+    <div className="chat-empty chat-empty--companion">
       <span><ChatIcon /></span>
-      <h2>{hasConversations ? "Your conversations live here" : "No conversations yet"}</h2>
-      <p>
-        {hasConversations
-          ? "Choose someone from your chats and keep getting to know them."
-          : "A match is only the beginning. Your conversations will grow here."}
-      </p>
-      {!hasConversations ? (
-        <div><Link to="/discover">Discover people</Link><Link to="/likes">Go to Likes</Link></div>
-      ) : null}
+      <h2>Waiting for a chat</h2>
+      <p>When you start talking, the conversation opens here.</p>
     </div>
   );
 }
@@ -453,6 +456,7 @@ export function ConversationView({
           profileId={conversation.profile.id}
           name={name}
           matchId={canCompose ? conversation.match_id : undefined}
+          conversationId={conversation.id}
           onBlocked={onBlocked}
           onUnmatched={onUnmatched}
         />

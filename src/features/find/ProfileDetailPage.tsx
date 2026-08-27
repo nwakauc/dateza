@@ -221,6 +221,7 @@ export default function ProfileDetailPage() {
             profileId={profile.id}
             name={name}
             matchId={matchId ?? (conversation && conversationCanCompose(conversation) ? conversation.match_id : undefined)}
+            mediaId={profile.photos[photoIndex]?.id}
             onBlocked={() => navigate(back.to, { replace: true })}
             onUnmatched={() => {
               setMatchId(null);

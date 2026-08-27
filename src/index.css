@@ -2348,6 +2348,14 @@ button.notifications-switch:focus-visible {
   touch-action: manipulation;
 }
 
+.not-found-member {
+  padding-top: 12px;
+}
+
+.not-found-member .public-status__home {
+  margin-top: 4px;
+}
+
 .public-status__home:hover,
 .public-status__home:focus-visible {
   color: #fff;
@@ -10452,6 +10460,14 @@ a.likes-card__message {
   color: #7d7079;
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+.chat-empty--companion h2 {
+  font-size: 1.35rem;
+}
+
+.chat-empty--companion p {
+  max-width: 260px;
 }
 
 .chat-inline-state button {
