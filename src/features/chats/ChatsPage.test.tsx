@@ -178,8 +178,7 @@ describe("premium Chats experience", () => {
     expect(screen.getByText(/you matched on .*25/i)).toBeInTheDocument();
     expect(screen.getAllByText("Online now").length).toBeGreaterThan(0);
 
-    await user.type(screen.getByRole("textbox", { name: /message naledi/i }), "Saturday works.");
-    await user.click(screen.getByRole("button", { name: /send message/i }));
+    await user.type(screen.getByRole("textbox", { name: /message naledi/i }), "Saturday works.{Enter}");
     expect((await screen.findAllByText("Saturday works.")).length).toBeGreaterThan(0);
     expect(sentBody).toBe(JSON.stringify({ body: "Saturday works." }));
   });

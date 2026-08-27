@@ -204,7 +204,7 @@ describe("RequireLocation (historical-account Discover guard)", () => {
     await screen.findByRole("heading", { name: /where are you dating from/i });
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/location access was denied/i)).toBeInTheDocument();
     expect(discoveryCalls).toBe(0);
   });
 

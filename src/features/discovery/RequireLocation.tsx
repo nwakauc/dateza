@@ -93,7 +93,9 @@ export function RequireLocation({ children }: Props) {
       <div className="shell-page__header">
         <p className="shell-page__eyebrow">Discover</p>
         <h1 className="shell-page__title">Where are you dating from?</h1>
-        <p className="shell-page__subtitle">Choose the general area you want to date from.</p>
+        <p className="shell-page__subtitle">
+          We use your general area to show people nearby. Your exact location is never shown.
+        </p>
       </div>
       <LocationStep
         onSuccess={() => {

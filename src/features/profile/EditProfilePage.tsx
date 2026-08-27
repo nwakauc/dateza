@@ -39,7 +39,7 @@ import { datezaRichness } from "./richProfileGaps.ts";
 import { PromptEditor } from "./PromptEditor.tsx";
 import { promptDraftsFromAnswers, type PromptDraft } from "./promptDrafts.ts";
 import { CharCount, PrivacyNote, SelectField } from "./edit/FieldControls.tsx";
-import { DatingPlacePicker } from "./edit/DatingPlacePicker.tsx";
+import { DatingLocationPicker } from "../location/DatingLocationPicker.tsx";
 import { EditPhotosSection } from "./edit/EditPhotosSection.tsx";
 import { EditPreviewCard } from "./edit/EditPreviewCard.tsx";
 import { InterestsPicker } from "./edit/InterestsPicker.tsx";
@@ -520,9 +520,10 @@ export default function EditProfilePage() {
                 </div>
               </div>
               <p className="edit-profile__kicker">Dating location</p>
-              <p className="auth-form__hint">Choose the general area you want to date from.</p>
+              <p className="auth-form__hint">We use your general area to show people nearby. Your exact location is never shown.</p>
               {account.profile ? (
-                <DatingPlacePicker
+                <DatingLocationPicker
+                  compact
                   savedLabel={account.profile.location?.place?.display_path}
                   configuredWithoutPlace={
                     account.profile.location?.configured === true && !account.profile.location.place

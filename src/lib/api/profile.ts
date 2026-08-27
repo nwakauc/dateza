@@ -580,3 +580,19 @@ export function updateProfilePlace(placeId: number): Promise<ProfileLocationStat
     return parseLocationStatus(data.location);
   });
 }
+
+/**
+ * After a successful location write, re-read GET /profile/location so the UI
+ * never treats a local PUT payload as authority. If readback fails, the
+ * write result is kept so a network blip does not look like an unconfigured
+ * member.
+ */
+export async function confirmSavedLocation(written: ProfileLocationStatus): Promise<ProfileLocationStatus> {
+  if (!written.configured) return written;
+  try {
+    const latest = await getProfileLocation();
+    return latest.configured ? latest : written;
+  } catch {
+    return written;
+  }
+}

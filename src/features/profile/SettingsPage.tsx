@@ -51,7 +51,7 @@ import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
-import { DatingPlacePicker } from "./edit/DatingPlacePicker.tsx";
+import { DatingLocationPicker } from "../location/DatingLocationPicker.tsx";
 import { hrefForCompletionKey } from "./completionLinks.ts";
 
 const SECTION_IDS = [
@@ -686,11 +686,12 @@ export default function SettingsPage() {
                     <MapPinIcon />
                     <span>
                       <strong>Dating location</strong>
-                      <small>Choose the general area you want to date from.</small>
+                      <small>Your exact location is never shown.</small>
                     </span>
                   </div>
                   {account.profile ? (
-                    <DatingPlacePicker
+                    <DatingLocationPicker
+                      compact
                       savedLabel={account.profile.location?.place?.display_path}
                       configuredWithoutPlace={
                         account.profile.location?.configured === true && !account.profile.location.place

@@ -138,7 +138,7 @@ export function RichProfileView({
 
   const actions =
     mode === "owner" ? (
-      <div className="rich-profile__actions">
+      <div className="rich-profile__actions rich-profile__actions--owner">
         <Link className="rich-profile__edit" to="/profile/edit">
           <PencilIcon className="rich-profile__icon" />
           Edit profile

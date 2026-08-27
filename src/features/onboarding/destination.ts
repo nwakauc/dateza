@@ -12,7 +12,7 @@ const WHERE_KEYS = ["country_code", "city"] as const;
 /** Not a profile field D8N accepts via PATCH /profile — this is the same
  * top-level "location" key completion.missing uses for a still-unset
  * ProfileLocation. LocationStep saves via PUT /profile/place (dating area)
- * or PUT /profile/location (device GPS, until backend T10). Mapping it into
+ * or PUT /profile/location (device GPS). Mapping it into a screen here
  * a screen here reuses the same "resume at the first still-missing screen"
  * logic as every other profile screen. */
 const LOCATION_KEYS = ["location"] as const;

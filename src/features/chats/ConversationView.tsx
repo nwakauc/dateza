@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
 import type { Conversation, Message } from "../../lib/api/socialTypes.ts";
@@ -32,6 +32,12 @@ type Props = {
 function MemberAvatar({ conversation, name }: { conversation: Conversation; name: string }) {
   const photo = conversation.profile.photos[0];
   return photo ? <img src={photo.url} width="48" height="48" alt="" /> : <span aria-hidden="true">{name[0]?.toUpperCase()}</span>;
+}
+
+function submitComposerOnEnter(event: KeyboardEvent<HTMLTextAreaElement>) {
+  if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
 }
 
 export function ChatEmptyState({ hasConversations }: { hasConversations: boolean }) {
@@ -125,9 +131,6 @@ export function ConversationView({
             </small>
           </span>
         </Link>
-        <Link className="chat-header__profile" to={`/profile/${conversation.profile.id}`} state={{ from: "chats", returnTo }}>
-          View profile
-        </Link>
         <ProfileSafetyActions
           profileId={conversation.profile.id}
           name={name}
@@ -141,7 +144,6 @@ export function ConversationView({
         <div className="chat-match-context">
           <span aria-hidden="true">♥</span>
           <p><strong>You matched on {matchDate(matchedAt)}</strong><small>Keep discovering what makes this connection yours.</small></p>
-          <Link to={`/profile/${conversation.profile.id}`} state={{ from: "chats", returnTo }}>View profile</Link>
         </div>
       ) : null}
 
@@ -189,8 +191,10 @@ export function ConversationView({
           maxLength={2000}
           value={draft}
           onChange={(event) => onDraft(event.target.value)}
+          onKeyDown={submitComposerOnEnter}
           placeholder={`Message ${name}…`}
           autoComplete="off"
+          enterKeyHint="send"
           disabled={!active || sending}
         />
         <button type="submit" aria-label="Send message" disabled={!draft.trim() || sending || !active}>

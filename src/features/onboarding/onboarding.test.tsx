@@ -1031,7 +1031,7 @@ describe("onboarding location step", () => {
     expect(screen.queryByRole("button", { name: /publish profile/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/location access was denied/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /where are you dating from/i })).toBeInTheDocument();
     expect(publishCalls).toBe(0);
   });

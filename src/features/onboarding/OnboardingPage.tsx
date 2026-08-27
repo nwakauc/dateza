@@ -57,7 +57,7 @@ const PROFILE_SCREEN_COPY: Record<ProfileScreen, { title: string; intro: string 
   },
   location: {
     title: "Where are you dating from?",
-    intro: "Choose the general area you want to date from.",
+    intro: "We use your general area to show people nearby. Your exact location is never shown.",
   },
   about: {
     title: "Tell us a little about yourself",
@@ -516,13 +516,13 @@ export default function OnboardingPage() {
   }
 
   if (step === "publication") {
-    // Insert a dating-location screen before publish when the server has not
-    // confirmed a configured location and this device has no fallback flag.
+    // Insert a dating-location screen before publish when GET /profile or
+    // GET /profile/location still reports configured: false.
     if (!locationConfirmed && profileId) {
       return (
         <OnboardingShell
           title="Where are you dating from?"
-          intro="Choose the general area you want to date from."
+          intro="We use your general area to show people nearby. Your exact location is never shown."
           percent={percent}
         >
           <LocationStep onSuccess={() => void reconcileProfile()} />

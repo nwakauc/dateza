@@ -224,7 +224,8 @@ describe("SettingsPage", () => {
     const user = userEvent.setup();
     renderSettings("/settings#preferences");
 
-    await user.click(await screen.findByRole("button", { name: /use western cape as dating location/i }));
+    await user.type(await screen.findByRole("combobox", { name: /search suburb, city or area/i }), "west");
+    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
     expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
     expect(await screen.findByText("Dating location updated.")).toBeInTheDocument();
     await waitFor(() => {

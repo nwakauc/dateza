@@ -87,10 +87,7 @@ describe("LocationStep", () => {
     const getCurrentPosition = vi.fn();
     stubGeolocation({ getCurrentPosition });
     setBearerToken("opaque-session-token");
-    mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      return jsonResponse(404, { error: "not_found" });
-    });
+    mockFetch(() => jsonResponse(404, { error: "not_found" }));
 
     render(<LocationStep onSuccess={vi.fn()} />);
 
@@ -98,7 +95,7 @@ describe("LocationStep", () => {
     expect(getCurrentPosition).not.toHaveBeenCalled();
   });
 
-  it("loads dating areas from D8N Places on mount and never calls Nominatim", async () => {
+  it("never calls Nominatim and does not load Places until the member searches", async () => {
     setBearerToken("opaque-session-token");
     const urls: string[] = [];
     mockFetch((url) => {
@@ -109,9 +106,9 @@ describe("LocationStep", () => {
 
     render(<LocationStep onSuccess={vi.fn()} />);
 
-    expect(await screen.findByRole("button", { name: "Western Cape" })).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: /search suburb, city or area/i })).toBeInTheDocument();
     expect(urls.some((url) => url.includes("nominatim"))).toBe(false);
-    expect(urls.some((url) => url === "/api/v1/places")).toBe(true);
+    expect(urls.some((url) => isPlacesUrl(url))).toBe(false);
   });
 
   it("maps a successful GPS fix to PUT /api/v1/profile/location and calls onSuccess once D8N confirms it", async () => {
@@ -125,9 +122,13 @@ describe("LocationStep", () => {
       },
     });
     mockFetch((url, init) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
       if (url.endsWith("/api/v1/profile/location") && (init?.method ?? "GET") === "PUT") {
         requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return jsonResponse(200, {
+          location: { configured: true, accuracy_meters: 25, source: "device", captured_at: "2026-08-25T02:05:01Z" },
+        });
+      }
+      if (url.endsWith("/api/v1/profile/location")) {
         return jsonResponse(200, {
           location: { configured: true, accuracy_meters: 25, source: "device", captured_at: "2026-08-25T02:05:01Z" },
         });
@@ -156,20 +157,17 @@ describe("LocationStep", () => {
         (error as PositionErrorCallback)({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3, message: "denied" } as GeolocationPositionError);
       },
     });
-    mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      return jsonResponse(404, { error: "not_found" });
-    });
+    mockFetch(() => jsonResponse(404, { error: "not_found" }));
 
     render(<LocationStep onSuccess={onSuccess} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/dateza needs a dating location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/location access was denied/i)).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
-  it("distinguishes position-unavailable from timeout with different copy", async () => {
+  it("uses shared recovery copy for unavailable and timeout errors", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
     stubGeolocation({
@@ -177,30 +175,24 @@ describe("LocationStep", () => {
         (error as PositionErrorCallback)({ code: 2, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3, message: "unavailable" } as GeolocationPositionError);
       },
     });
-    mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      return jsonResponse(404, { error: "not_found" });
-    });
+    mockFetch(() => jsonResponse(404, { error: "not_found" }));
 
     render(<LocationStep onSuccess={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: /use my current location/i }));
 
-    expect(await screen.findByText(/couldn't work out your location/i)).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't get your location/i)).toBeInTheDocument();
   });
 
   it("shows unsupported guidance and disables the action when the browser has no geolocation API", async () => {
     stubGeolocation(undefined);
     setBearerToken("opaque-session-token");
-    mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      return jsonResponse(404, { error: "not_found" });
-    });
+    mockFetch(() => jsonResponse(404, { error: "not_found" }));
 
     render(<LocationStep onSuccess={vi.fn()} />);
     const button = await screen.findByRole("button", { name: /use my current location/i });
     fireEvent.click(button);
 
-    expect(screen.getByText(/can't share a device location/i)).toBeInTheDocument();
+    expect(screen.getByText(/can't share a location/i)).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
 
@@ -214,7 +206,6 @@ describe("LocationStep", () => {
       },
     });
     mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
       if (url.endsWith("/api/v1/profile/location")) {
         return jsonResponse(422, { error: "invalid_location", details: { latitude: ["must be less than or equal to 90"] } });
       }
@@ -233,10 +224,7 @@ describe("LocationStep", () => {
     const getCurrentPosition = vi.fn();
     setBearerToken("opaque-session-token");
     stubGeolocation({ getCurrentPosition });
-    mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      return jsonResponse(404, { error: "not_found" });
-    });
+    mockFetch(() => jsonResponse(404, { error: "not_found" }));
 
     render(<LocationStep onSuccess={vi.fn()} />);
     const button = await screen.findByRole("button", { name: /use my current location/i });
@@ -257,7 +245,6 @@ describe("LocationStep", () => {
       },
     });
     mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
       if (url.endsWith("/api/v1/profile/location")) {
         return jsonResponse(200, { location: { configured: false, accuracy_meters: null, source: null, captured_at: null } });
       }
@@ -271,7 +258,7 @@ describe("LocationStep", () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it("lets a member choose a D8N Place instead of GPS and saves through PUT /profile/place", async () => {
+  it("lets a member search a D8N Place instead of GPS and saves through PUT /profile/place", async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
     setBearerToken("opaque-session-token");
@@ -290,11 +277,23 @@ describe("LocationStep", () => {
           },
         });
       }
+      if (url.endsWith("/api/v1/profile/location")) {
+        return jsonResponse(200, {
+          location: {
+            configured: true,
+            accuracy_meters: 8000,
+            source: "place",
+            captured_at: "2026-08-27T04:00:00Z",
+            place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+          },
+        });
+      }
       return jsonResponse(404, { error: "not_found" });
     });
 
     render(<LocationStep onSuccess={onSuccess} />);
-    await user.click(await screen.findByRole("button", { name: /use western cape as dating location/i }));
+    await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "west");
+    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(savedBody).toEqual({ place_id: 11 });

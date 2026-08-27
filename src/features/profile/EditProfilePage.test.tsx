@@ -382,8 +382,9 @@ describe("Edit profile", () => {
     });
 
     renderApp("/profile/edit");
-    expect(await screen.findByRole("heading", { name: /choose a province or region/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /use western cape as dating location/i }));
+    expect(await screen.findByRole("combobox", { name: /search suburb, city or area/i })).toBeInTheDocument();
+    await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "west");
+    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
     expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
     expect(savedBody).toEqual({ place_id: 11 });
   });

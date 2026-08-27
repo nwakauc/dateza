@@ -4,6 +4,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { setCsrfToken } from "../lib/api/csrfStore.ts";
 import { setBearerToken } from "../lib/api/tokenStore.ts";
 import { setUnauthorizedListener } from "../lib/api/client.ts";
+import { resetPlaceSearchIndex } from "../lib/api/places.ts";
 
 function unauthorizedResponse(): Response {
   return new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -35,6 +36,7 @@ afterEach(() => {
   setBearerToken(undefined);
   setCsrfToken(undefined);
   setUnauthorizedListener(undefined);
+  resetPlaceSearchIndex();
   window.localStorage.clear();
   document.title = "DateZA — Meet someone who chooses you.";
 });

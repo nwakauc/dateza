@@ -123,12 +123,14 @@ export function ConversationList({
               >
                 <ConversationAvatar conversation={conversation} name={name} />
                 <span className="conversation-row__copy">
-                  <strong>{name}</strong>
-                  <span>{preview?.body || "Start the conversation"}</span>
-                </span>
-                <span className="conversation-row__meta">
-                  {preview ? <time dateTime={preview.created_at}>{conversationTime(preview.created_at)}</time> : null}
-                  {conversation.status === "closed" ? <em>Closed</em> : null}
+                  <span className="conversation-row__top">
+                    <strong>{name}</strong>
+                    {preview ? <time dateTime={preview.created_at}>{conversationTime(preview.created_at)}</time> : null}
+                  </span>
+                  <span>
+                    {preview?.body || "Start the conversation"}
+                    {conversation.status === "closed" ? <em className="conversation-row__closed">Closed</em> : null}
+                  </span>
                 </span>
               </button>
             );

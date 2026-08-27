@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { declineOpener, openerDeclineErrorCopy, openerReplyErrorCopy, replyToOpener } from "../../lib/api/opener.ts";
 import type { ReceivedOpener } from "../../lib/api/openerTypes.ts";
@@ -92,9 +92,15 @@ export function IncomingOpener({ opener, onResolved, onReplied }: Props) {
           id={`reply-${opener.id}`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+            if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }}
           maxLength={2000}
           rows={3}
           placeholder="Write your reply…"
+          enterKeyHint="send"
           disabled={busy === "reply"}
         />
         {error ? (

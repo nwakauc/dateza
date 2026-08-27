@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getCurrentProfile, getProfileLocation, updateProfileLocation, updateProfilePlace } from "./profile.ts";
+import { getCurrentProfile, getProfileLocation, confirmSavedLocation, updateProfileLocation, updateProfilePlace } from "./profile.ts";
 
 /**
  * Fixtures below are the real response bodies captured against DateZA
@@ -276,6 +276,49 @@ describe("getProfileLocation", () => {
     expect(result.configured).toBe(true);
     expect(result.place?.display_path).toBe("Sea Point, Cape Town, Western Cape");
     expect(result).not.toHaveProperty("latitude");
+  });
+});
+
+describe("confirmSavedLocation", () => {
+  it("re-reads GET /profile/location after a successful write", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        location: {
+          configured: true,
+          accuracy_meters: 5000,
+          source: "place",
+          captured_at: "2026-08-27T04:00:00Z",
+          place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+        },
+      }),
+    );
+    const written = {
+      configured: true,
+      accuracy_meters: 25,
+      source: "device",
+      captured_at: "2026-08-27T04:00:00Z",
+      place: null,
+    };
+    const result = await confirmSavedLocation(written);
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/v1/profile/location");
+    expect(result.place?.display_path).toBe("Sea Point, Cape Town, Western Cape");
+  });
+
+  it("keeps the write result when readback is still unconfigured", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(200, {
+        location: { configured: false, accuracy_meters: null, source: null, captured_at: null, place: null },
+      }),
+    );
+    const written = {
+      configured: true,
+      accuracy_meters: 25,
+      source: "device",
+      captured_at: "2026-08-27T04:00:00Z",
+      place: null,
+    };
+    const result = await confirmSavedLocation(written);
+    expect(result).toEqual(written);
   });
 });
 
