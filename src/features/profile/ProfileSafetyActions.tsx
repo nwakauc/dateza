@@ -5,6 +5,7 @@ import { blockProfile, reportProfile, reportSubmission } from "../../lib/api/saf
 import { PROFILE_REPORT_REASONS, type ProfileReportReason } from "../../lib/api/safetyTypes.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { MoreIcon } from "../shell/icons.tsx";
+import { useToast } from "../toasts/useToast.ts";
 
 const REASON_LABELS: Record<ProfileReportReason, string> = {
   inappropriate_content: "Inappropriate content",
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUnmatched }: Props) {
+  const toast = useToast();
   const menuId = useId();
   const reasonFieldId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -85,9 +87,11 @@ export function ProfileSafetyActions({ profileId, name, matchId, onBlocked, onUn
     setError(undefined);
     try {
       await blockProfile(profileId);
+      toast.success(`${name} is blocked`);
       onBlocked();
     } catch (caught: unknown) {
       if (caught instanceof ApiError && (caught.status === 404 || caught.code === "profile_unavailable")) {
+        toast.success(`${name} is blocked`);
         onBlocked();
         return;
       }

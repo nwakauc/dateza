@@ -6,12 +6,14 @@ import { parseCompatibility, parsePublicProfile } from "./find.ts";
 import type {
   Conversation,
   ConversationListResponse,
+  ConversationRelationshipState,
   LikeListItem,
   LikeListResponse,
   MatchListResponse,
   Message,
   MessageListResponse,
   MessagePreview,
+  MessageReplyTo,
 } from "./socialTypes.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
@@ -21,6 +23,26 @@ function parseMessageBody(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (value == null) return "";
   return undefined;
+}
+
+function parseRelationshipState(value: unknown): ConversationRelationshipState {
+  return value === "ended" ? "ended" : "active";
+}
+
+function parseReplyTo(value: unknown): MessageReplyTo | null {
+  if (value == null) return null;
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.sender_id !== "string") return null;
+  if (value.message_type !== "text" && value.message_type !== "media") return null;
+  if (typeof value.deleted !== "boolean") return null;
+  const excerpt = value.body_excerpt;
+  if (excerpt != null && typeof excerpt !== "string") return null;
+  return {
+    id: value.id,
+    sender_id: value.sender_id,
+    message_type: value.message_type,
+    body_excerpt: excerpt ?? null,
+    deleted: value.deleted,
+  };
 }
 
 export function parseMessage(value: unknown): Message {
@@ -36,6 +58,7 @@ export function parseMessage(value: unknown): Message {
     body,
     created_at: value.created_at,
     attachments: parseMessageAttachments(value.attachments),
+    reply_to: parseReplyTo(value.reply_to),
   };
 }
 
@@ -58,6 +81,7 @@ export function parseConversation(value: unknown): Conversation {
     id: value.id,
     match_id: value.match_id,
     status: value.status,
+    relationship_state: parseRelationshipState(value.relationship_state),
     created_at: value.created_at,
     profile: parsePublicProfile(value.profile),
     last_message: value.last_message == null ? null : parseMessagePreview(value.last_message),
@@ -153,6 +177,7 @@ function sendMessagePayload(input: string | SendMessageInput): Record<string, un
       ...(upload.poster_signed_id ? { poster_signed_id: upload.poster_signed_id } : {}),
     }));
   }
+  if (input.reply_to_message_id) payload.reply_to_message_id = input.reply_to_message_id;
   return payload;
 }
 

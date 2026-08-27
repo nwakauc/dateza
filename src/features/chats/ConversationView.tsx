@@ -1,8 +1,8 @@
-import { type ChangeEvent, type FormEvent, type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ChatMediaKind } from "../../lib/api/chatMediaTypes.ts";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
-import type { Conversation, Message } from "../../lib/api/socialTypes.ts";
+import type { Conversation, Message, MessageReplyTo } from "../../lib/api/socialTypes.ts";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
 import {
   CameraIcon,
@@ -17,8 +17,86 @@ import {
   VideoIcon,
 } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
-import { matchDate, messageTime } from "./chatDisplay.ts";
+import { conversationCanCompose, conversationIsEnded, matchDate, messageTime } from "./chatDisplay.ts";
 import { MessageMedia } from "./MessageMedia.tsx";
+
+const OLDER_SCROLL_PX = 72;
+const LONG_PRESS_MS = 450;
+
+function quoteAuthor(senderId: string, ownerProfileId: string | undefined, counterpartName: string): string {
+  return senderId === ownerProfileId ? "You" : counterpartName;
+}
+
+function quoteExcerpt(reply: Pick<MessageReplyTo, "message_type" | "body_excerpt">): string {
+  if (reply.message_type === "media") return reply.body_excerpt?.trim() || "Photo or video";
+  return reply.body_excerpt?.trim() || "Message";
+}
+
+function MessageQuote({
+  reply,
+  counterpartName,
+  ownerProfileId,
+  onLocate,
+}: {
+  reply: MessageReplyTo;
+  counterpartName: string;
+  ownerProfileId?: string;
+  onLocate: (id: string) => void;
+}) {
+  const author = quoteAuthor(reply.sender_id, ownerProfileId, counterpartName);
+  const body = (
+    <>
+      <strong>{author}</strong>
+      <span>{quoteExcerpt(reply)}</span>
+    </>
+  );
+  if (reply.deleted) {
+    return (
+      <div className="message-quote message-quote--gone">
+        <strong>{author}</strong>
+        <span>{quoteExcerpt(reply)}</span>
+        <em>Original is no longer available</em>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="message-quote"
+      onClick={() => onLocate(reply.id)}
+      onPointerDown={(event) => event.stopPropagation()}
+      aria-label={`View original from ${author}`}
+    >
+      {body}
+    </button>
+  );
+}
+
+function ComposerReplyPreview({
+  message,
+  counterpartName,
+  ownerProfileId,
+  onCancel,
+}: {
+  message: Message;
+  counterpartName: string;
+  ownerProfileId?: string;
+  onCancel: () => void;
+}) {
+  const author = quoteAuthor(message.sender_id, ownerProfileId, counterpartName);
+  const excerpt = message.body.trim() || (message.attachments.some((item) => !item.deleted) ? "Photo or video" : "Message");
+  return (
+    <div className="chat-reply-preview">
+      <p>
+        <strong>Replying to {author}</strong>
+        <span>{excerpt}</span>
+      </p>
+      <button type="button" aria-label="Cancel reply" onClick={onCancel}>
+        <CloseIcon />
+      </button>
+    </div>
+  );
+}
 
 export type PendingChatMedia = {
   kind: ChatMediaKind;
@@ -56,6 +134,9 @@ type Props = {
   onLoadOlder: () => Promise<void>;
   onBlocked: () => void;
   onUnmatched?: () => void;
+  replyTo?: Message;
+  onReply: (message: Message) => void;
+  onCancelReply: () => void;
 };
 
 function MemberAvatar({ conversation, name }: { conversation: Conversation; name: string }) {
@@ -190,6 +271,9 @@ export function ConversationView({
   onLoadOlder,
   onBlocked,
   onUnmatched,
+  replyTo,
+  onReply,
+  onCancelReply,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -197,10 +281,27 @@ export function ConversationView({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const attachWrapRef = useRef<HTMLDivElement>(null);
   const attachPanelRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const activeConversationRef = useRef<string>();
+  const pinnedNewestRef = useRef(false);
+  const restoreFromBottomRef = useRef<number | null>(null);
+  const longPressTimerRef = useRef<number>();
+  const longPressOriginRef = useRef<{ x: number; y: number }>();
   const attachMenuId = useId();
-  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachForConversationId, setAttachForConversationId] = useState<string | undefined>();
+  const [locatedId, setLocatedId] = useState<string>();
   const conversationId = conversation?.id;
+  const attachOpen = conversationId !== undefined && attachForConversationId === conversationId && !pendingMedia;
+
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    const fromBottom = restoreFromBottomRef.current;
+    if (!scroller || fromBottom == null) return;
+    scroller.style.scrollBehavior = "auto";
+    scroller.scrollTop = scroller.scrollHeight - fromBottom;
+    scroller.style.scrollBehavior = "";
+    restoreFromBottomRef.current = null;
+  }, [messages]);
 
   useEffect(() => {
     if (!conversation || messagesLoading || messagesError || pendingMedia) return;
@@ -208,23 +309,29 @@ export function ConversationView({
     if (!scroller) return;
     if (activeConversationRef.current !== conversation.id) {
       activeConversationRef.current = conversation.id;
+      pinnedNewestRef.current = false;
+      scroller.style.scrollBehavior = "auto";
       scroller.scrollTop = scroller.scrollHeight;
+      scroller.style.scrollBehavior = "";
+      pinnedNewestRef.current = true;
     }
   }, [conversation, messagesLoading, messagesError, messages.length, pendingMedia]);
 
   useEffect(() => {
-    setAttachOpen(false);
-  }, [conversationId, pendingMedia]);
+    if (!locatedId) return;
+    const timeout = window.setTimeout(() => setLocatedId(undefined), 1600);
+    return () => window.clearTimeout(timeout);
+  }, [locatedId]);
 
   useEffect(() => {
     if (!attachOpen) return;
     function onPointer(event: PointerEvent) {
       const target = event.target as Node;
       if (attachWrapRef.current?.contains(target) || attachPanelRef.current?.contains(target)) return;
-      setAttachOpen(false);
+      setAttachForConversationId(undefined);
     }
     function onKey(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setAttachOpen(false);
+      if (event.key === "Escape") setAttachForConversationId(undefined);
     }
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -239,23 +346,68 @@ export function ConversationView({
   const name = conversation.profile.display_name || "DateZA member";
   const returnTo = `/chats?conversation=${encodeURIComponent(conversation.id)}`;
   const chronological = [...messages].reverse();
-  const active = conversation.status === "active";
+  const ended = conversationIsEnded(conversation);
+  const canCompose = conversationCanCompose(conversation);
   const staging = Boolean(pendingMedia);
   const canSend =
-    active &&
+    canCompose &&
     !sending &&
     pendingMedia?.phase !== "uploading" &&
     pendingMedia?.phase !== "failed" &&
     (draft.trim().length > 0 || pendingMedia?.phase === "ready");
-  const attachDisabled = !active || sending || staging;
+  const attachDisabled = !canCompose || sending || staging;
+  const historyPreview = ended && !messagesLoading && !messagesError && messages.length === 0 ? conversation.last_message : null;
 
   async function loadOlder() {
     const scroller = scrollerRef.current;
-    const previousHeight = scroller?.scrollHeight ?? 0;
-    await onLoadOlder();
-    window.requestAnimationFrame(() => {
-      if (scroller) scroller.scrollTop += scroller.scrollHeight - previousHeight;
-    });
+    if (scroller) restoreFromBottomRef.current = scroller.scrollHeight - scroller.scrollTop;
+    try {
+      await onLoadOlder();
+    } catch {
+      restoreFromBottomRef.current = null;
+    }
+  }
+
+  function onThreadScroll() {
+    const scroller = scrollerRef.current;
+    if (!scroller || !pinnedNewestRef.current || !nextCursor || loadingOlder) return;
+    if (scroller.scrollTop > OLDER_SCROLL_PX) return;
+    void loadOlder();
+  }
+
+  function locateOriginal(id: string) {
+    const escaped = typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(id) : id;
+    const node = scrollerRef.current?.querySelector(`[data-message-id="${escaped}"]`);
+    if (!(node instanceof HTMLElement)) return;
+    node.scrollIntoView({ block: "center", behavior: "smooth" });
+    setLocatedId(id);
+  }
+
+  function startReply(message: Message) {
+    if (!canCompose) return;
+    onReply(message);
+    window.requestAnimationFrame(() => composerRef.current?.focus());
+  }
+
+  function onBubblePointerDown(event: ReactPointerEvent<HTMLElement>, message: Message) {
+    if (!canCompose || event.pointerType === "mouse") return;
+    longPressOriginRef.current = { x: event.clientX, y: event.clientY };
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = window.setTimeout(() => startReply(message), LONG_PRESS_MS);
+  }
+
+  function onBubblePointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const origin = longPressOriginRef.current;
+    if (!origin) return;
+    if (Math.abs(event.clientX - origin.x) > 10 || Math.abs(event.clientY - origin.y) > 10) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressOriginRef.current = undefined;
+    }
+  }
+
+  function clearLongPress() {
+    window.clearTimeout(longPressTimerRef.current);
+    longPressOriginRef.current = undefined;
   }
 
   function handlePick(kind: ChatMediaKind, event: ChangeEvent<HTMLInputElement>) {
@@ -265,7 +417,7 @@ export function ConversationView({
   }
 
   function openPicker(pick: AttachPick) {
-    setAttachOpen(false);
+    setAttachForConversationId(undefined);
     if (pick === "camera") cameraInputRef.current?.click();
     else if (pick === "photo") photoInputRef.current?.click();
     else videoInputRef.current?.click();
@@ -285,20 +437,22 @@ export function ConversationView({
               {profile?.verified ? <i title={VERIFIED_CONTACT_LABEL}><ShieldCheckIcon /></i> : null}
             </strong>
             <small>
-              {!active
-                ? "Conversation closed"
-                : profile?.online
-                  ? "Online now"
-                  : profile?.active_today
-                    ? "Active today"
-                    : "DateZA connection"}
+              {ended
+                ? "This match has ended"
+                : !canCompose
+                  ? "Conversation closed"
+                  : profile?.online
+                    ? "Online now"
+                    : profile?.active_today
+                      ? "Active today"
+                      : "DateZA connection"}
             </small>
           </span>
         </Link>
         <ProfileSafetyActions
           profileId={conversation.profile.id}
           name={name}
-          matchId={active ? conversation.match_id : undefined}
+          matchId={canCompose ? conversation.match_id : undefined}
           onBlocked={onBlocked}
           onUnmatched={onUnmatched}
         />
@@ -308,14 +462,14 @@ export function ConversationView({
         <ChatMediaStage pending={pendingMedia} onCancel={onCancelMedia} onRetry={onRetryMedia} />
       ) : (
         <>
-          {matchedAt ? (
+          {matchedAt && canCompose ? (
             <div className="chat-match-context">
               <span aria-hidden="true">♥</span>
               <p><strong>You matched on {matchDate(matchedAt)}</strong><small>Keep discovering what makes this connection yours.</small></p>
             </div>
           ) : null}
 
-          <div className="message-thread" ref={scrollerRef} aria-live="polite">
+          <div className="message-thread" ref={scrollerRef} aria-live="polite" onScroll={onThreadScroll}>
             {messagesLoading ? <MessageSkeleton /> : null}
             {messagesError ? (
               <div className="chat-inline-state">
@@ -330,26 +484,47 @@ export function ConversationView({
                 {loadingOlder ? "Loading earlier messages…" : "Load earlier messages"}
               </button>
             ) : null}
-            {!messagesLoading && !messagesError && messages.length === 0 ? (
+            {!messagesLoading && !messagesError && messages.length === 0 && !ended ? (
               <div className="chat-inline-state">
                 <span className="chat-inline-state__heart" aria-hidden="true">♥</span>
                 <strong>Start with something genuine</strong>
                 <p>Ask about the detail that made you want to know them better.</p>
               </div>
             ) : null}
+            {historyPreview ? (
+              <article className="message-bubble">
+                {historyPreview.body.trim() ? <p>{historyPreview.body}</p> : null}
+                <time dateTime={historyPreview.created_at}>{messageTime(historyPreview.created_at)}</time>
+              </article>
+            ) : null}
             {!messagesLoading && !messagesError ? chronological.map((message) => {
               const own = message.sender_id === ownerProfileId;
               const mediaOnly = message.body.trim().length === 0 && message.attachments.length > 0;
               return (
                 <article
-                  className={`message-bubble${own ? " message-bubble--own" : ""}${mediaOnly ? " message-bubble--media" : ""}`}
+                  className={`message-bubble${own ? " message-bubble--own" : ""}${mediaOnly ? " message-bubble--media" : ""}${locatedId === message.id ? " message-bubble--located" : ""}`}
                   key={message.id}
+                  data-message-id={message.id}
+                  onPointerDown={(event) => onBubblePointerDown(event, message)}
+                  onPointerMove={onBubblePointerMove}
+                  onPointerUp={clearLongPress}
+                  onPointerCancel={clearLongPress}
                 >
+                  {message.reply_to ? (
+                    <MessageQuote
+                      reply={message.reply_to}
+                      counterpartName={name}
+                      ownerProfileId={ownerProfileId}
+                      onLocate={locateOriginal}
+                    />
+                  ) : null}
                   <MessageMedia
                     message={message}
                     counterpartName={name}
-                    canDelete={own && active}
+                    canDelete={own && canCompose}
                     canReport={!own}
+                    canReply={canCompose}
+                    onReply={startReply}
                     onDelete={onDeleteAttachment}
                     deletingAttachmentId={deletingAttachmentId}
                   />
@@ -361,9 +536,11 @@ export function ConversationView({
         </>
       )}
 
-      {!active ? <p className="chat-composer__closed">This conversation is closed.</p> : null}
+      {ended ? <p className="chat-composer__closed">This match has ended.</p> : null}
+      {!ended && !canCompose ? <p className="chat-composer__closed">This conversation is closed.</p> : null}
       {sendError ? <p className="chat-composer__error" role="alert">Your message wasn’t sent. Your draft is still here — try again.</p> : null}
       {mediaUnavailable ? <p className="chat-composer__error" role="alert">Photos and videos in chat aren’t available yet.</p> : null}
+      {canCompose ? (
       <form className={`chat-composer${attachOpen ? " chat-composer--attach-open" : ""}`} onSubmit={onSend}>
         <input
           ref={photoInputRef}
@@ -391,6 +568,14 @@ export function ConversationView({
           disabled={attachDisabled}
         />
         {attachOpen ? <ChatAttachMenu id={attachMenuId} panelRef={attachPanelRef} onPick={openPicker} /> : null}
+        {replyTo ? (
+          <ComposerReplyPreview
+            message={replyTo}
+            counterpartName={name}
+            ownerProfileId={ownerProfileId}
+            onCancel={onCancelReply}
+          />
+        ) : null}
         <div className="chat-composer__bar">
           {staging ? null : (
             <div className="chat-composer__attach-wrap" ref={attachWrapRef}>
@@ -402,7 +587,9 @@ export function ConversationView({
                 aria-controls={attachOpen ? attachMenuId : undefined}
                 aria-haspopup="menu"
                 disabled={attachDisabled}
-                onClick={() => setAttachOpen((open) => !open)}
+                onClick={() =>
+                  setAttachForConversationId((current) => (current === conversation.id ? undefined : conversation.id))
+                }
               >
                 <PlusIcon className="chat-composer__attach-icon chat-composer__attach-icon--plus" />
                 <PaperclipIcon className="chat-composer__attach-icon chat-composer__attach-icon--clip" />
@@ -412,16 +599,17 @@ export function ConversationView({
           <label className="sr-only" htmlFor={`chat-message-${conversation.id}`}>Message {name}</label>
           <textarea
             id={`chat-message-${conversation.id}`}
+            ref={composerRef}
             name="message"
             rows={1}
             maxLength={2000}
             value={draft}
             onChange={(event) => onDraft(event.target.value)}
             onKeyDown={submitComposerOnEnter}
-            placeholder={staging ? "Add a caption…" : `Message ${name}…`}
+            placeholder={staging ? "Add a caption…" : replyTo ? "Write a reply…" : `Message ${name}…`}
             autoComplete="off"
             enterKeyHint="send"
-            disabled={!active || sending}
+            disabled={sending}
           />
           <button className="chat-composer__send" type="submit" aria-label="Send message" disabled={!canSend}>
             <PaperPlaneIcon />
@@ -429,6 +617,7 @@ export function ConversationView({
           </button>
         </div>
       </form>
+      ) : null}
     </div>
   );
 }

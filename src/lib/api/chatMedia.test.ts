@@ -48,6 +48,7 @@ describe("chat media contract", () => {
     });
     expect(parsed.body).toBe("Hi");
     expect(parsed.attachments).toEqual([]);
+    expect(parsed.reply_to).toBeNull();
   });
 
   it("accepts a media-only message with a null body and D8N flat delivery URLs", () => {
@@ -185,5 +186,6 @@ describe("chat media contract", () => {
     });
     expect(parsed.last_message?.body).toBe("");
     expect(parsed.last_message?.attachments).toEqual([]);
+    expect(parsed.relationship_state).toBe("active");
   });
 });

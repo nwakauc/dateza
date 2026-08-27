@@ -49,6 +49,7 @@ import {
 } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { useToast } from "../toasts/useToast.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
 import { DatingLocationPicker } from "../location/DatingLocationPicker.tsx";
@@ -214,6 +215,7 @@ function errorCopy(error: unknown, fallback: string): string {
 }
 
 function PasswordChangeForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -232,6 +234,7 @@ function PasswordChangeForm({ onDone }: { onDone: () => void }) {
     setMessage(undefined);
     try {
       await changePassword(currentPassword, password, confirmation);
+      toast.success("Password updated");
       onDone();
     } catch (error) {
       setMessage(errorCopy(error, "We couldn't change your password. Check the details and try again."));
@@ -253,6 +256,7 @@ function PasswordChangeForm({ onDone }: { onDone: () => void }) {
 }
 
 function EmailChangeForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [code, setCode] = useState("");
@@ -271,6 +275,7 @@ function EmailChangeForm({ onDone }: { onDone: () => void }) {
         setStep("confirm");
       } else {
         await confirmEmailChange(email, code);
+        toast.success("Email updated");
         onDone();
       }
     } catch (error) {
@@ -329,6 +334,7 @@ function CloseAccountForm({ onClose }: { onClose: () => Promise<void> }) {
 
 export default function SettingsPage() {
   const account = useOwnAccount();
+  const toast = useToast();
   const { session, verification, refreshSession } = useSession();
   const { signOut, pending: signingOut } = useSignOut();
   const location = useLocation();
@@ -439,6 +445,7 @@ export default function SettingsPage() {
     const maxDistance = draft.max_distance_km ?? BROAD_PREFERENCE_DEFAULTS.max_distance_km;
     if (minAge < 18 || maxAge > 120 || minAge > maxAge || maxDistance < 1 || maxDistance > 500) {
       setSavePhase("error");
+      toast.error("We couldn’t save your preferences", "Check the age range and try again.");
       return;
     }
     setSavePhase("saving");
@@ -451,8 +458,10 @@ export default function SettingsPage() {
       });
       setPreferences(draft);
       setSavePhase("saved");
+      toast.success("Preferences saved");
     } catch {
       setSavePhase("error");
+      toast.error("We couldn’t save your preferences", "Check the age range and try again.");
     }
   }
 
@@ -464,8 +473,10 @@ export default function SettingsPage() {
       else await publishCurrentProfile();
       account.refresh();
       setPausePhase("idle");
+      toast.success(profileVisible ? "Dating is paused" : "You’re visible on DateZA");
     } catch {
       setPausePhase("error");
+      toast.error("We couldn’t update your profile visibility", "Nothing changed. Try again.");
     }
   }
 
@@ -481,6 +492,7 @@ export default function SettingsPage() {
     } catch {
       setNotificationPrefs(previous);
       setNotificationPrefsSaveError("We couldn't update that setting. Try again.");
+      toast.error("We couldn’t update that setting", "Try again.");
     } finally {
       setNotificationPrefsSaving(null);
     }
@@ -493,8 +505,10 @@ export default function SettingsPage() {
     try {
       await unblockProfile(profileId);
       setBlockedProfiles((current) => current?.filter((item) => item.profile.id !== profileId));
+      toast.success("Member unblocked");
     } catch {
       setBlockedError("We couldn't unblock this member. Try again.");
+      toast.error("We couldn’t unblock this member", "Try again.");
     } finally {
       setUnblockingId(undefined);
     }
@@ -699,6 +713,7 @@ export default function SettingsPage() {
                       onSaved={() => {
                         setLocationSaved(true);
                         void account.refresh();
+                        toast.success("Dating location updated");
                       }}
                     />
                   ) : null}

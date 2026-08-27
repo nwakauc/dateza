@@ -29,8 +29,25 @@ export type MessagePreview = {
   created_at: string;
   attachments: MessageAttachment[];
 };
-export type Conversation = { id: string; match_id: string; status: "active" | "closed"; created_at: string; profile: PublicProfile; last_message: MessagePreview | null };
+export type ConversationRelationshipState = "active" | "ended";
+export type Conversation = {
+  id: string;
+  match_id: string;
+  status: "active" | "closed";
+  /** Match lifecycle from D8N. Independent of `status`; unmatch ends the match without closing the conversation row. */
+  relationship_state: ConversationRelationshipState;
+  created_at: string;
+  profile: PublicProfile;
+  last_message: MessagePreview | null;
+};
 export type ConversationListResponse = { conversations: Conversation[]; next_cursor: string | null };
+export type MessageReplyTo = {
+  id: string;
+  sender_id: string;
+  message_type: "text" | "media";
+  body_excerpt: string | null;
+  deleted: boolean;
+};
 export type Message = {
   id: string;
   conversation_id: string;
@@ -38,5 +55,6 @@ export type Message = {
   body: string;
   created_at: string;
   attachments: MessageAttachment[];
+  reply_to: MessageReplyTo | null;
 };
 export type MessageListResponse = { messages: Message[]; next_cursor: string | null };

@@ -10,6 +10,7 @@ import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { openerActionLabel, openerSendAllowed } from "../../lib/api/openerTypes.ts";
 import { listConversations } from "../../lib/api/social.ts";
+import { conversationCanCompose } from "../chats/chatDisplay.ts";
 import type { Conversation } from "../../lib/api/socialTypes.ts";
 import { BoltIcon, ChevronDownIcon, LightbulbIcon, SearchIcon } from "../shell/icons.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
@@ -201,7 +202,7 @@ export default function FindPage() {
     listConversations()
       .then((result) => {
         if (cancelled) return;
-        setConversation(result.conversations.find((item) => item.profile.id === profileId && item.status === "active"));
+        setConversation(result.conversations.find((item) => item.profile.id === profileId && conversationCanCompose(item)));
       })
       .catch(() => {
         if (!cancelled) setConversation(undefined);
@@ -290,11 +291,11 @@ export default function FindPage() {
     } catch (caught) {
       setPhase("active");
       setPendingAction(undefined);
-      setActionError(
+      const message =
         caught instanceof ApiError && caught.status === 429
           ? "Too many requests. Wait a moment and try again."
-          : `We couldn't save that. Try again.`,
-      );
+          : "We couldn't save that. Try again.";
+      setActionError(message);
     }
   }
 

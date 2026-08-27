@@ -382,7 +382,71 @@ describe("premium Chats experience", () => {
     expect(screen.getByText(/does not block them/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /end match/i }));
     await waitFor(() => expect(unmatched).toBe(true));
-    expect(await screen.findByText("Conversation closed")).toBeInTheDocument();
+    expect(await screen.findByText("This match has ended")).toBeInTheDocument();
+    expect(screen.getByText("This match has ended.")).toBeInTheDocument();
+    expect(screen.getByText("I’d love that.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /message naledi/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /attach photo or video/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/you will no longer be able to see each other/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps an ended match visible as history without offering send or a load retry", async () => {
+    installHandler((url) => {
+      if (url.endsWith("/api/v1/conversations")) {
+        return jsonResponse(200, {
+          conversations: [{ ...conversation(), relationship_state: "ended" }],
+          next_cursor: null,
+        });
+      }
+      if (url.endsWith("/api/v1/conversations/c1/messages")) {
+        return jsonResponse(404, { error: "conversation_unavailable" });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+    expect(await screen.findByText("This match has ended")).toBeInTheDocument();
+    expect(screen.getByText("Ended")).toBeInTheDocument();
+    expect(screen.getAllByText("The trail sounds perfect.")).toHaveLength(2);
+    expect(screen.queryByRole("textbox", { name: /message naledi/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /attach photo or video/i })).not.toBeInTheDocument();
+  });
+
+  it("quotes a selected message, lets the member cancel, and sends reply_to_message_id", async () => {
+    const user = userEvent.setup();
+    let sentBody = "";
+    installHandler((url, method, init) => {
+      if (url.endsWith("/api/v1/conversations/c1/messages") && method === "POST") {
+        sentBody = String(init?.body);
+        return jsonResponse(201, {
+          message: {
+            id: "msg-3",
+            conversation_id: "c1",
+            sender_id: ownerId,
+            body: "Saturday works.",
+            created_at: "2026-08-26T09:03:00Z",
+            reply_to: {
+              id: "msg-1",
+              sender_id: "p1",
+              message_type: "text",
+              body_excerpt: "The trail sounds perfect.",
+              deleted: false,
+            },
+          },
+        });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+    expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /message actions/i })[0]!);
+    await user.click(screen.getByRole("menuitem", { name: /^reply$/i }));
+    expect(screen.getByText(/replying to naledi/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /cancel reply/i }));
+    expect(screen.queryByText(/replying to naledi/i)).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /message actions/i })[0]!);
+    await user.click(screen.getByRole("menuitem", { name: /^reply$/i }));
+    await user.type(screen.getByRole("textbox", { name: /message naledi/i }), "Saturday works.{Enter}");
+    expect(await screen.findByLabelText(/view original from naledi/i)).toBeInTheDocument();
+    expect(sentBody).toContain("\"reply_to_message_id\":\"msg-1\"");
+    expect(sentBody).toContain("\"body\":\"Saturday works.\"");
   });
 });

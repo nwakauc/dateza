@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationPreviewLabel } from "./chatDisplay.ts";
+import { conversationCanCompose, conversationIsEnded, conversationPreviewLabel } from "./chatDisplay.ts";
 
 describe("conversation preview copy", () => {
   it("uses body text when present", () => {
@@ -52,5 +52,19 @@ describe("conversation preview copy", () => {
         attachments: [],
       }),
     ).toBe("Photo or video");
+  });
+});
+
+describe("conversation compose eligibility", () => {
+  it("treats an ended match as read-only even when conversation status is still active", () => {
+    const base = {
+      status: "active" as const,
+      relationship_state: "active" as const,
+    };
+    expect(conversationCanCompose(base)).toBe(true);
+    expect(conversationIsEnded(base)).toBe(false);
+    expect(conversationCanCompose({ ...base, relationship_state: "ended" })).toBe(false);
+    expect(conversationIsEnded({ relationship_state: "ended" })).toBe(true);
+    expect(conversationCanCompose({ ...base, status: "closed" })).toBe(false);
   });
 });

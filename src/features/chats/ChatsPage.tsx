@@ -6,13 +6,14 @@ import { getProfileDetail } from "../../lib/api/find.ts";
 import { listReceivedOpeners } from "../../lib/api/opener.ts";
 import type { ReceivedOpener } from "../../lib/api/openerTypes.ts";
 import { listConversations, listMatches, listMessages, sendMessage } from "../../lib/api/social.ts";
+import { ApiError } from "../../lib/api/errors.ts";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
 import type { Conversation, Match, Message } from "../../lib/api/socialTypes.ts";
 import { ChatIcon } from "../shell/icons.tsx";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 import { chatMediaErrorMessage, uploadChatMedia } from "./chatMediaActions.ts";
 import { ChatProfileRail } from "./ChatProfileRail.tsx";
-import { mergeById, replaceConversationPreview, upsertConversation } from "./chatDisplay.ts";
+import { conversationCanCompose, mergeById, replaceConversationPreview, upsertConversation } from "./chatDisplay.ts";
 import { ConversationList } from "./ConversationList.tsx";
 import { ChatEmptyState, ConversationView, type PendingChatMedia } from "./ConversationView.tsx";
 
@@ -48,6 +49,7 @@ export default function ChatsPage() {
   const [profile, setProfile] = useState<ProfileDetail>();
   const [loadedProfileId, setLoadedProfileId] = useState<string>();
   const [profileErrorId, setProfileErrorId] = useState<string>();
+  const [replyTo, setReplyTo] = useState<Message>();
   const selectedId = params.get("conversation");
   const selected = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedId),
@@ -93,17 +95,18 @@ export default function ChatsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadMessages = useCallback((conversationId: string) => {
+  const loadMessages = useCallback((conversationId: string, ended = false) => {
     return listMessages(conversationId)
       .then((result) => {
         setMessages(result.messages);
         setMessageCursor(result.next_cursor);
         setLoadedConversationId(conversationId);
+        setMessageErrorId(undefined);
       })
       .catch(() => {
         setMessages([]);
         setMessageCursor(null);
-        setMessageErrorId(conversationId);
+        setMessageErrorId(ended ? undefined : conversationId);
         setLoadedConversationId(conversationId);
       });
   }, []);
@@ -133,12 +136,12 @@ export default function ChatsPage() {
 
   useEffect(() => {
     if (!selectedId || !selectedProfileId) return;
-    void Promise.all([loadMessages(selectedId), loadProfile(selectedProfileId)]);
-  }, [selectedId, selectedProfileId, loadMessages, loadProfile]);
+    void Promise.all([loadMessages(selectedId, selected?.relationship_state === "ended"), loadProfile(selectedProfileId)]);
+  }, [selectedId, selectedProfileId, selected?.relationship_state, loadMessages, loadProfile]);
 
   const processPollsRef = useRef(0);
   useEffect(() => {
-    if (!selected || loadedConversationId !== selected.id) {
+    if (!selected || loadedConversationId !== selected.id || !conversationCanCompose(selected)) {
       processPollsRef.current = 0;
       return;
     }
@@ -212,7 +215,7 @@ export default function ChatsPage() {
   }
 
   function pickMedia(kind: ChatMediaKind, file: File) {
-    if (!selected) return;
+    if (!selected || !conversationCanCompose(selected)) return;
     setMediaUnavailable(false);
     setPendingMedia((current) => {
       if (current?.previewUrl.startsWith("blob:")) URL.revokeObjectURL(current.previewUrl);
@@ -232,6 +235,7 @@ export default function ChatsPage() {
     setDraft("");
     setSendError(false);
     setMediaUnavailable(false);
+    setReplyTo(undefined);
     clearPendingMedia();
     setParams({ conversation: id });
   }
@@ -302,6 +306,7 @@ export default function ChatsPage() {
     const signedId = mediaSignedIdRef.current;
     const mediaKind = mediaKindRef.current;
     if (!selected || sendingRef.current) return;
+    if (!conversationCanCompose(selected)) return;
     if (pendingMedia?.phase === "uploading" || pendingMedia?.phase === "failed") return;
     if (!body && !(signedId && mediaKind)) return;
     sendingRef.current = true;
@@ -313,12 +318,15 @@ export default function ChatsPage() {
         ...(signedId && mediaKind
           ? { attachment_uploads: [{ signed_id: signedId, media_kind: mediaKind }] }
           : {}),
+        ...(replyTo ? { reply_to_message_id: replyTo.id } : {}),
       });
       setMessages((current) => (current.some((item) => item.id === message.id) ? current : [message, ...current]));
       setConversations((current) => replaceConversationPreview(current, selected.id, message));
       setDraft("");
+      setReplyTo(undefined);
       clearPendingMedia();
-    } catch {
+    } catch (caught: unknown) {
+      if (caught instanceof ApiError && caught.code === "invalid_reply_target") setReplyTo(undefined);
       setSendError(true);
     } finally {
       sendingRef.current = false;
@@ -364,9 +372,11 @@ export default function ChatsPage() {
     setMatches((current) => current.filter((match) => match.id !== matchId));
     setConversations((current) =>
       current.map((conversation) =>
-        conversation.id === selected.id ? { ...conversation, status: "closed" as const } : conversation,
+        conversation.id === selected.id ? { ...conversation, relationship_state: "ended" } : conversation,
       ),
     );
+    setReplyTo(undefined);
+    clearPendingMedia();
   }
 
   if (error) {
@@ -439,6 +449,9 @@ export default function ChatsPage() {
               onLoadOlder={loadOlderMessages}
               onBlocked={removeSelectedConversation}
               onUnmatched={handleUnmatched}
+              replyTo={replyTo}
+              onReply={setReplyTo}
+              onCancelReply={() => setReplyTo(undefined)}
             />
           ) : selectedId && (loading || loadingMoreConversations || conversationCursor !== null) ? (
             <div className="chat-empty" aria-busy="true">
@@ -465,7 +478,7 @@ export default function ChatsPage() {
             returnTo={`/chats?conversation=${encodeURIComponent(selected.id)}`}
             onRetry={() => retryProfile(selected.profile.id)}
             onBlocked={removeSelectedConversation}
-            matchId={selected.status === "active" ? selected.match_id : undefined}
+            matchId={conversationCanCompose(selected) ? selected.match_id : undefined}
             onUnmatched={handleUnmatched}
           />
         ) : null}

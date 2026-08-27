@@ -233,6 +233,7 @@ describe("D8N Opener", () => {
         id: "c1",
         match_id: "m1",
         status: "active",
+        relationship_state: "active",
         created_at: "2026-08-26T00:00:00Z",
         profile: {
           id: "s1",
@@ -265,6 +266,7 @@ describe("D8N Opener", () => {
         body: "Tea, always.",
         created_at: "2026-08-26T00:01:00Z",
         attachments: [],
+        reply_to: null,
       },
     });
     render(

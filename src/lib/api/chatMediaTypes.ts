@@ -64,4 +64,5 @@ export type AttachmentUploadRef = {
 export type SendMessageInput = {
   body?: string;
   attachment_uploads?: AttachmentUploadRef[];
+  reply_to_message_id?: string;
 };

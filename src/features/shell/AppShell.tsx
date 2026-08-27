@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { listNotifications } from "../../lib/api/notifications.ts";
 import { listOwnerPhotos } from "../../lib/api/photos.ts";
 import { getCurrentProfile } from "../../lib/api/profile.ts";
 import type { OwnerProfile, ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 import { memberDestination } from "../onboarding/destination.ts";
 import { useSession } from "../session/useSession.ts";
+import { IncomingEventToasts } from "../toasts/IncomingEventToasts.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationBanner } from "../verification/VerificationBanner.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
@@ -55,8 +55,8 @@ export default function AppShell() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getCurrentProfile(), listOwnerPhotos(), listNotifications()])
-      .then(([profileResult, photosResult, notificationsResult]) => {
+    Promise.allSettled([getCurrentProfile(), listOwnerPhotos()])
+      .then(([profileResult, photosResult]) => {
         if (cancelled) return;
         if (profileResult.status === "fulfilled") {
           setProfile(profileResult.value.profile);
@@ -68,7 +68,6 @@ export default function AppShell() {
           const withImage = photos.find((photo) => photo.image !== null);
           setAvatarUrl(withImage?.image?.url ?? null);
         }
-        if (notificationsResult.status === "fulfilled") setUnreadNotifications(notificationsResult.value.unread_count);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -117,6 +116,7 @@ export default function AppShell() {
           <Outlet />
         </main>
         <BottomTabBar />
+        <IncomingEventToasts refreshKey={version} onUnreadCount={setUnreadNotifications} />
       </div>
       {verificationOpen && verification.status === "known" ? (
         <Modal ariaLabel={`Verify your ${verification.kind}`} onClose={closeVerification}>

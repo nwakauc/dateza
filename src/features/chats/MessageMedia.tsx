@@ -10,6 +10,8 @@ type Props = {
   counterpartName: string;
   canDelete: boolean;
   canReport: boolean;
+  canReply?: boolean;
+  onReply?: (message: Message) => void;
   onDelete?: (messageId: string, attachmentId: string) => void;
   deletingAttachmentId?: string;
 };
@@ -37,7 +39,16 @@ function attachmentLabel(attachment: MessageAttachment): string {
   return attachment.media_kind === "video" ? "Video" : "Photo";
 }
 
-export function MessageMedia({ message, counterpartName, canDelete, canReport, onDelete, deletingAttachmentId }: Props) {
+export function MessageMedia({
+  message,
+  counterpartName,
+  canDelete,
+  canReport,
+  canReply,
+  onReply,
+  onDelete,
+  deletingAttachmentId,
+}: Props) {
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,7 +59,7 @@ export function MessageMedia({ message, counterpartName, canDelete, canReport, o
   const canDownload = Boolean(downloadable);
   const removable = kept[0];
   const showDelete = canDelete && Boolean(removable);
-  const showMenu = canDownload || showDelete || canReport;
+  const showMenu = Boolean(canReply) || canDownload || showDelete || canReport;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -76,7 +87,11 @@ export function MessageMedia({ message, counterpartName, canDelete, canReport, o
       ))}
       {message.body.trim() ? <p>{message.body}</p> : null}
       {showMenu ? (
-        <div className="message-bubble__actions" ref={menuRef}>
+        <div
+          className="message-bubble__actions"
+          ref={menuRef}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
             className="message-bubble__more"
@@ -90,6 +105,18 @@ export function MessageMedia({ message, counterpartName, canDelete, canReport, o
           </button>
           {menuOpen ? (
             <div className="message-bubble__menu" id={menuId} role="menu">
+              {canReply && onReply ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onReply(message);
+                  }}
+                >
+                  Reply
+                </button>
+              ) : null}
               {canDownload && downloadable ? (
                 <button
                   type="button"

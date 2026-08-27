@@ -19,6 +19,7 @@ import {
 } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { useToast } from "../toasts/useToast.ts";
 
 type ActionRowProps = {
   icon: ReactNode;
@@ -66,6 +67,7 @@ const GUIDE_SECTIONS = [
 
 export default function SafetyPage() {
   const account = useOwnAccount();
+  const toast = useToast();
   const { verification } = useSession();
   const [blockedProfiles, setBlockedProfiles] = useState<BlockedProfile[]>();
   const [blockedOpen, setBlockedOpen] = useState(false);
@@ -106,6 +108,7 @@ export default function SafetyPage() {
     try {
       await unblockProfile(profileId);
       setBlockedProfiles((current) => current?.filter((item) => item.profile.id !== profileId));
+      toast.success("Member unblocked");
     } catch {
       setBlockedError("We couldn't unblock this member. Nothing changed. Try again.");
     } finally {
@@ -121,6 +124,7 @@ export default function SafetyPage() {
       else await publishCurrentProfile();
       account.refresh();
       setVisibilityPhase("idle");
+      toast.success(profileVisible ? "Dating is paused" : "You’re visible on DateZA");
     } catch {
       setVisibilityPhase("error");
     }

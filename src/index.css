@@ -10359,18 +10359,24 @@ a.likes-card__message {
   background:
     radial-gradient(520px 260px at 70% 0%, rgba(232, 55, 90, 0.035), transparent 72%),
     #fffdfd;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .message-thread__older {
   align-self: center;
-  padding: 7px 12px;
+  min-height: 36px;
+  padding: 7px 14px;
   border: 1px solid #e8dce2;
   border-radius: 999px;
   background: #fff;
   color: #766972;
   font: 700 0.68rem Outfit, sans-serif;
   cursor: pointer;
+}
+
+.message-thread__older:focus-visible {
+  outline: 3px solid rgba(232, 55, 90, 0.45);
+  outline-offset: 2px;
 }
 
 .shell-page--chats .message-bubble {
@@ -10913,6 +10919,131 @@ a.likes-card__message {
   background: #fff0f3;
 }
 
+.message-quote {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-left: 3px solid #e8375a;
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-quote:focus-visible {
+  outline: 2px solid rgba(232, 55, 90, 0.55);
+  outline-offset: 2px;
+}
+
+.message-bubble--own .message-quote {
+  border-left-color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.message-bubble--own .message-quote:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.9);
+}
+
+.message-quote strong {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.message-quote span {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.86;
+}
+
+.message-quote--gone {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.message-quote--gone em {
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.message-bubble--located {
+  outline: 2px solid rgba(232, 55, 90, 0.55);
+  outline-offset: 3px;
+}
+
+.chat-reply-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #e8375a;
+  border-radius: 0 14px 14px 0;
+  background: #fff5f7;
+}
+
+.chat-reply-preview p {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  gap: 2px;
+}
+
+.chat-reply-preview strong {
+  color: #9f2140;
+  font-size: 0.72rem;
+}
+
+.chat-reply-preview span {
+  overflow: hidden;
+  color: #5c5158;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-reply-preview button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #5c5158;
+  cursor: pointer;
+}
+
+.chat-reply-preview button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.chat-reply-preview button:focus-visible {
+  outline: 3px solid rgba(232, 55, 90, 0.45);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble--located {
+    outline-width: 3px;
+  }
+}
+
 .message-lightbox-backdrop {
   position: fixed;
   inset: 0;
@@ -11343,5 +11474,189 @@ a.likes-card__message {
 
   .chat-composer__attach--open .chat-composer__attach-icon--plus {
     transition: none;
+  }
+}
+
+/* Live toasts — a DateZA note card, not a generic snackbar. */
+.toast-viewport {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 240;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(22.5rem, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  pointer-events: auto;
+  overflow: hidden;
+  border: 1px solid #f0dce3;
+  border-radius: 18px 18px 18px 6px;
+  background: #fffdfd;
+  box-shadow:
+    0 18px 40px rgba(48, 24, 36, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  animation: toast-in 280ms ease-out;
+}
+
+.toast__body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 12px;
+  padding: 12px 6px 12px 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.toast__body:hover {
+  color: inherit;
+}
+
+.toast__mark {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #fff0f4;
+  color: #e8375a;
+}
+
+.toast__photo {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+.toast__glyph {
+  width: 20px;
+  height: 20px;
+}
+
+.toast__bang {
+  color: #fff;
+  font: 800 1rem Outfit, sans-serif;
+}
+
+.toast__copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.toast__copy strong {
+  color: #17131a;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.toast__copy span {
+  overflow: hidden;
+  color: #5c5158;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast__close {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 2px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8a8290;
+  cursor: pointer;
+}
+
+.toast__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.toast__close:hover,
+.toast__close:focus-visible {
+  background: #fff0f4;
+  color: #17131a;
+}
+
+.toast__close:focus-visible {
+  outline: 2px solid rgba(232, 55, 90, 0.45);
+  outline-offset: 2px;
+}
+
+.toast--success .toast__mark {
+  background: #e7f7ee;
+  color: #1e9e68;
+}
+
+.toast--error {
+  border-color: #f3cfd6;
+  background: #fff7f8;
+}
+
+.toast--error .toast__mark {
+  background: #e8375a;
+  color: #fff;
+}
+
+.toast--match .toast__mark,
+.toast--like .toast__mark {
+  background: linear-gradient(145deg, #ee3158, #df1947);
+  color: #fff;
+}
+
+.toast--message .toast__mark {
+  background: #17131a;
+  color: #fff;
+}
+
+.toast--opener .toast__mark {
+  background: #efeafc;
+  color: #6c4fe0;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .toast-viewport {
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
   }
 }

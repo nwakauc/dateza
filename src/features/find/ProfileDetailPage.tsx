@@ -10,6 +10,7 @@ import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { MatchModal } from "../shell/MatchModal.tsx";
 import { ProfileSafetyActions } from "../profile/ProfileSafetyActions.tsx";
+import { conversationCanCompose } from "../chats/chatDisplay.ts";
 import { RichProfileSkeleton, RichProfileView } from "../profile/RichProfileView.tsx";
 import { originBack, profileOriginFromState, profileReturnTo } from "../profile/profileOrigin.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
@@ -219,11 +220,11 @@ export default function ProfileDetailPage() {
           <ProfileSafetyActions
             profileId={profile.id}
             name={name}
-            matchId={matchId ?? (conversation?.status === "active" ? conversation.match_id : undefined)}
+            matchId={matchId ?? (conversation && conversationCanCompose(conversation) ? conversation.match_id : undefined)}
             onBlocked={() => navigate(back.to, { replace: true })}
             onUnmatched={() => {
               setMatchId(null);
-              setConversation((current) => (current ? { ...current, status: "closed" } : current));
+              setConversation((current) => (current ? { ...current, relationship_state: "ended" } : current));
             }}
           />
         }

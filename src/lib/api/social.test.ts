@@ -84,6 +84,58 @@ describe("social adapter", () => {
     expect(result.conversations[0]).not.toHaveProperty("unread_count");
   });
 
+  it("parses relationship_state from D8N and defaults omitted values to active", () => {
+    expect(parseConversation({ ...conversation, relationship_state: "ended" }).relationship_state).toBe("ended");
+    expect(parseConversation(conversation).relationship_state).toBe("active");
+  });
+
+  it("parses reply_to snapshots additively and sends reply_to_message_id", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          messages: [{
+            id: "msg-2",
+            conversation_id: "c1",
+            sender_id: "p2",
+            body: "replying",
+            created_at: "2026-08-26T09:01:00Z",
+            reply_to: {
+              id: "msg-1",
+              sender_id: "p1",
+              message_type: "text",
+              body_excerpt: "Original text",
+              deleted: false,
+            },
+          }],
+          next_cursor: null,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(201, {
+          message: {
+            id: "msg-3",
+            conversation_id: "c1",
+            sender_id: "owner",
+            body: "Hello",
+            created_at: "2026-08-26T09:02:00Z",
+            reply_to: {
+              id: "msg-1",
+              sender_id: "p1",
+              message_type: "text",
+              body_excerpt: "Original text",
+              deleted: false,
+            },
+          },
+        }),
+      );
+    const listed = await listMessages("c1");
+    expect(listed.messages[0]?.reply_to?.id).toBe("msg-1");
+    expect(listed.messages[0]?.reply_to?.body_excerpt).toBe("Original text");
+    const sent = await sendMessage("c1", { body: "Hello", reply_to_message_id: "msg-1" });
+    expect(vi.mocked(fetch).mock.calls[1]?.[1]?.body).toBe(JSON.stringify({ body: "Hello", reply_to_message_id: "msg-1" }));
+    expect(sent.reply_to?.id).toBe("msg-1");
+  });
+
   it("lists and sends messages with { body } only", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
@@ -104,7 +156,9 @@ describe("social adapter", () => {
     const sendCall = vi.mocked(fetch).mock.calls[1];
     expect(sendCall?.[1]?.body).toBe(JSON.stringify({ body: "Hello" }));
     expect(String(sendCall?.[1]?.body)).not.toContain("client_token");
+    expect(String(sendCall?.[1]?.body)).not.toContain("reply_to_message_id");
     expect(sent.body).toBe("Hello");
+    expect(sent.reply_to).toBeNull();
   });
 
   it("does not treat a failed send as success", async () => {

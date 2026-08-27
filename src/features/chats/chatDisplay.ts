@@ -23,6 +23,14 @@ export function matchDate(value: string): string {
   return Number.isNaN(date.getTime()) ? "" : shortDateFormatter.format(date);
 }
 
+export function conversationCanCompose(conversation: Pick<Conversation, "status" | "relationship_state">): boolean {
+  return conversation.status === "active" && conversation.relationship_state !== "ended";
+}
+
+export function conversationIsEnded(conversation: Pick<Conversation, "relationship_state">): boolean {
+  return conversation.relationship_state === "ended";
+}
+
 export function mergeById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
   const seen = new Set(current.map((item) => item.id));
   return [...current, ...incoming.filter((item) => !seen.has(item.id))];

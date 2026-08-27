@@ -31,6 +31,7 @@ import { canInteract } from "../session/verificationState.ts";
 import { ChevronLeftIcon, ShieldCheckIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
+import { useToast } from "../toasts/useToast.ts";
 import { useVerificationGate } from "../verification/useVerificationGate.ts";
 import { Modal } from "../verification/Modal.tsx";
 import { VerificationFlow } from "../verification/VerificationFlow.tsx";
@@ -163,6 +164,7 @@ function ownerFromDraft(base: OwnerProfile, draft: Draft): OwnerProfile {
 
 export default function EditProfilePage() {
   const account = useOwnAccount();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const { verification, pendingReason, openPrompt, dismiss } = useVerificationGate();
@@ -364,8 +366,10 @@ export default function EditProfilePage() {
         setDraft(savedDraft);
         setBaseline(serializeDraft(savedDraft));
         setSavedFlash(true);
+        toast.success("Profile saved");
       } else {
         setSectionErrors(errors);
+        toast.error("Some details couldn’t save", "Check the highlighted sections and try again.");
       }
     } finally {
       setSaving(false);
@@ -530,6 +534,7 @@ export default function EditProfilePage() {
                   }
                   onSaved={() => {
                     void account.refresh();
+                    toast.success("Dating location updated");
                   }}
                 />
               ) : null}
