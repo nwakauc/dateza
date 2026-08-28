@@ -1,18 +1,18 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
 import {
-  PLACE_SEARCH_MIN_CHARS,
-  searchPlaces,
-  type PlaceSearchHit,
-} from "../../lib/api/places.ts";
+  GEOCODE_SEARCH_MIN_CHARS,
+  geocodeSuburb,
+  type GeocodeResult,
+} from "../../lib/api/geocode.ts";
 import {
   confirmSavedLocation,
   updateProfileLocation,
-  updateProfilePlace,
 } from "../../lib/api/profile.ts";
 import type { ProfileLocationStatus } from "../../lib/api/profileTypes.ts";
 
-export const PLACE_SEARCH_DEBOUNCE_MS = 280;
+export const GEOCODE_SEARCH_DEBOUNCE_MS = 280;
+export const MANUAL_LOCATION_ACCURACY_METERS = 3_000;
 export const LOCATION_PRIVACY_COPY =
   "We use your general area to show people nearby. Your exact location is never shown.";
 
@@ -49,10 +49,7 @@ function gpsMessage(phase: GpsPhase, detail: string | undefined): string | undef
   }
 }
 
-function placeSaveMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === "invalid_place") {
-    return "That area isn't available. Choose a different dating area.";
-  }
+function areaSaveMessage(error: unknown): string {
   if (error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError")) {
     return "We couldn't reach DateZA. Check your connection and try again.";
   }
@@ -67,10 +64,27 @@ function gpsFieldMessage(error: unknown): string | undefined {
   return undefined;
 }
 
-function resultSubtitle(hit: PlaceSearchHit): string | undefined {
-  if (hit.displayPath === hit.name) return undefined;
-  const prefix = `${hit.name}, `;
-  return hit.displayPath.startsWith(prefix) ? hit.displayPath.slice(prefix.length) : hit.displayPath;
+function resultKey(result: GeocodeResult): string {
+  return `${result.latitude},${result.longitude}`;
+}
+
+function resultPrimary(result: GeocodeResult): string {
+  const comma = result.displayName.indexOf(",");
+  return comma === -1 ? result.displayName : result.displayName.slice(0, comma).trim();
+}
+
+function resultSubtitle(result: GeocodeResult): string | undefined {
+  const comma = result.displayName.indexOf(",");
+  if (comma === -1) return undefined;
+  const rest = result.displayName.slice(comma + 1).trim();
+  return rest || undefined;
+}
+
+function resultsSelectionHint(count: number): string {
+  if (count === 1) {
+    return "We found one match — confirm this is your dating area.";
+  }
+  return "Choose the area that matches you below.";
 }
 
 export function DatingLocationPicker({
@@ -83,6 +97,7 @@ export function DatingLocationPicker({
   const inputId = useId();
   const listId = useId();
   const statusId = useId();
+  const resultsHintId = useId();
   const busyRef = useRef(false);
   const debounceRef = useRef<number | undefined>(undefined);
   const searchRequestRef = useRef(0);
@@ -90,16 +105,17 @@ export function DatingLocationPicker({
   const [gpsPhase, setGpsPhase] = useState<GpsPhase>("idle");
   const [gpsDetail, setGpsDetail] = useState<string | undefined>();
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<PlaceSearchHit[]>([]);
+  const [hits, setHits] = useState<GeocodeResult[]>([]);
+  const [suggestedQuery, setSuggestedQuery] = useState<string | undefined>();
   const [searchPhase, setSearchPhase] = useState<SearchPhase>("idle");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [savingPlaceId, setSavingPlaceId] = useState<number | null>(null);
+  const [savingResultKey, setSavingResultKey] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | undefined>();
   const [confirmedLabel, setConfirmedLabel] = useState<string | null>(null);
   const [confirmedDeviceOnly, setConfirmedDeviceOnly] = useState(false);
 
   const gpsBusy = gpsPhase === "locating" || gpsPhase === "saving";
-  const searchBusy = savingPlaceId !== null;
+  const searchBusy = savingResultKey !== null;
   const busy = gpsBusy || searchBusy;
   const displayedLabel = confirmedLabel ?? savedLabel ?? null;
   const usingCurrentArea = confirmedDeviceOnly || (configuredWithoutPlace && !confirmedLabel);
@@ -112,27 +128,30 @@ export function DatingLocationPicker({
     window.clearTimeout(debounceRef.current);
     const needle = value.trim();
     const requestId = ++searchRequestRef.current;
-    if (needle.length < PLACE_SEARCH_MIN_CHARS) {
+    if (needle.length < GEOCODE_SEARCH_MIN_CHARS) {
       setHits([]);
+      setSuggestedQuery(undefined);
       setSearchPhase("idle");
       setActiveIndex(0);
       return;
     }
     setSearchPhase("loading");
     debounceRef.current = window.setTimeout(() => {
-      void searchPlaces(needle)
-        .then((results) => {
+      void geocodeSuburb(needle)
+        .then(({ results, suggestedQuery: corrected }) => {
           if (requestId !== searchRequestRef.current) return;
           setHits(results);
+          setSuggestedQuery(corrected);
           setActiveIndex(0);
           setSearchPhase("ready");
         })
         .catch(() => {
           if (requestId !== searchRequestRef.current) return;
           setHits([]);
+          setSuggestedQuery(undefined);
           setSearchPhase("error");
         });
-    }, PLACE_SEARCH_DEBOUNCE_MS);
+    }, GEOCODE_SEARCH_DEBOUNCE_MS);
   }
 
   useEffect(() => {
@@ -142,15 +161,17 @@ export function DatingLocationPicker({
     };
   }, []);
 
-  function applyConfirmed(status: ProfileLocationStatus) {
-    const label = status.place?.display_path ?? null;
+  function applyConfirmed(status: ProfileLocationStatus, manualLabel?: string) {
+    const label = manualLabel ?? status.place?.display_path ?? null;
     setConfirmedLabel(label);
-    setConfirmedDeviceOnly(status.configured && !status.place);
+    setConfirmedDeviceOnly(status.configured && !label);
     onSaved(status);
   }
 
-  async function saveGps(coords: { latitude: number; longitude: number; accuracyMeters: number; capturedAt: string }) {
-    setGpsPhase("saving");
+  async function saveLocation(
+    coords: { latitude: number; longitude: number; accuracyMeters: number; capturedAt: string },
+    manualLabel?: string,
+  ) {
     try {
       const written = await updateProfileLocation({
         latitude: coords.latitude,
@@ -159,19 +180,38 @@ export function DatingLocationPicker({
         captured_at: coords.capturedAt,
       });
       if (!written.configured) {
-        setGpsPhase("error");
-        setGpsDetail("DateZA couldn't confirm your location yet. Try again.");
+        if (manualLabel) {
+          setSaveError("DateZA couldn't confirm that dating area. Try again.");
+        } else {
+          setGpsPhase("error");
+          setGpsDetail("DateZA couldn't confirm your location yet. Try again.");
+        }
         return;
       }
       const status = await confirmSavedLocation(written);
-      setGpsPhase("idle");
-      applyConfirmed(status);
+      if (manualLabel) {
+        setQuery("");
+        setHits([]);
+        setSearchPhase("idle");
+      } else {
+        setGpsPhase("idle");
+      }
+      applyConfirmed(status, manualLabel);
     } catch (caught) {
-      setGpsPhase("error");
-      setGpsDetail(gpsFieldMessage(caught) ?? "Something went wrong saving your dating location. Try again.");
+      if (manualLabel) {
+        setSaveError(areaSaveMessage(caught));
+      } else {
+        setGpsPhase("error");
+        setGpsDetail(gpsFieldMessage(caught) ?? "Something went wrong saving your dating location. Try again.");
+      }
     } finally {
       busyRef.current = false;
     }
+  }
+
+  async function saveGps(coords: { latitude: number; longitude: number; accuracyMeters: number; capturedAt: string }) {
+    setGpsPhase("saving");
+    await saveLocation(coords);
   }
 
   function requestLocation() {
@@ -207,30 +247,31 @@ export function DatingLocationPicker({
     );
   }
 
-  async function selectHit(hit: PlaceSearchHit) {
+  async function selectResult(result: GeocodeResult) {
     if (busy) return;
-    setSavingPlaceId(hit.id);
+    const key = resultKey(result);
+    setSavingResultKey(key);
     setSaveError(undefined);
-    try {
-      const written = await updateProfilePlace(hit.id);
-      if (!written.configured) {
-        setSaveError("DateZA couldn't confirm that dating area. Try again.");
-        return;
-      }
-      const status = await confirmSavedLocation(written);
-      setQuery("");
-      setHits([]);
-      setSearchPhase("idle");
-      applyConfirmed(status);
-    } catch (error) {
-      setSaveError(placeSaveMessage(error));
-    } finally {
-      setSavingPlaceId(null);
-    }
+    busyRef.current = true;
+    await saveLocation(
+      {
+        latitude: result.latitude,
+        longitude: result.longitude,
+        accuracyMeters: MANUAL_LOCATION_ACCURACY_METERS,
+        capturedAt: new Date().toISOString(),
+      },
+      result.displayName,
+    );
+    setSavingResultKey(null);
   }
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (!listOpen) return;
+    if (event.key === "Enter" && hits.length === 1 && searchPhase === "ready" && !searchBusy) {
+      event.preventDefault();
+      void selectResult(hits[0]!);
+      return;
+    }
+    if (!listOpen || hits.length <= 1) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((current) => (current + 1) % hits.length);
@@ -241,7 +282,7 @@ export function DatingLocationPicker({
       const hit = hits[activeIndex];
       if (hit) {
         event.preventDefault();
-        void selectHit(hit);
+        void selectResult(hit);
       }
     } else if (event.key === "Escape") {
       setHits([]);
@@ -263,6 +304,8 @@ export function DatingLocationPicker({
 
   const gpsCopy = gpsMessage(gpsPhase, gpsDetail);
   const activeHit = listOpen ? hits[activeIndex] : undefined;
+  const soloResult = listOpen && hits.length === 1 ? hits[0] : undefined;
+  const describedBy = [statusId, listOpen ? resultsHintId : undefined].filter(Boolean).join(" ");
 
   return (
     <div className={compact ? "dating-location dating-location--compact" : "dating-location"}>
@@ -319,11 +362,12 @@ export function DatingLocationPicker({
             aria-autocomplete="list"
             aria-expanded={listOpen}
             aria-controls={listId}
-            aria-activedescendant={activeHit ? `${listId}-${activeHit.id}` : undefined}
-            aria-describedby={statusId}
+            aria-activedescendant={activeHit ? `${listId}-${resultKey(activeHit)}` : undefined}
+            aria-describedby={describedBy || undefined}
             onChange={(event) => {
               setQuery(event.target.value);
               setSaveError(undefined);
+              setSuggestedQuery(undefined);
               scheduleSearch(event.target.value);
             }}
             onKeyDown={onSearchKeyDown}
@@ -332,10 +376,13 @@ export function DatingLocationPicker({
         <p id={statusId} className="dating-location__search-status" aria-live="polite">
           {searchPhase === "loading" ? "Searching areas…" : null}
           {searchPhase === "error" ? "Area search is temporarily unavailable." : null}
-          {searchPhase === "ready" && hits.length === 0 && trimmedQuery.length >= PLACE_SEARCH_MIN_CHARS
+          {searchPhase === "ready" && hits.length === 0 && trimmedQuery.length >= GEOCODE_SEARCH_MIN_CHARS
             ? "We couldn't find that area. Try a nearby suburb, town or city."
             : null}
         </p>
+        {suggestedQuery ? (
+          <p className="dating-location__search-correction">Showing results for {suggestedQuery}</p>
+        ) : null}
         {searchPhase === "error" ? (
           <button
             type="button"
@@ -347,35 +394,67 @@ export function DatingLocationPicker({
           </button>
         ) : null}
         {listOpen ? (
-          <ul id={listId} className="onboard-suburb-results" role="listbox" aria-label="Matching areas">
-            {hits.map((hit, index) => {
-              const subtitle = resultSubtitle(hit);
-              const selected = index === activeIndex;
-              return (
-                <li key={hit.id} role="presentation">
-                  <button
-                    type="button"
-                    id={`${listId}-${hit.id}`}
-                    role="option"
-                    aria-label={subtitle ? `${hit.name}, ${subtitle}` : hit.name}
-                    className={
-                      selected
-                        ? "onboard-suburb-results__item onboard-suburb-results__item--active"
-                        : "onboard-suburb-results__item"
-                    }
-                    disabled={busy}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => void selectHit(hit)}
-                  >
-                    <span className="dating-location__result-name">
-                      {savingPlaceId === hit.id ? "Saving…" : hit.name}
-                    </span>
-                    {subtitle ? <span className="dating-location__result-path">{subtitle}</span> : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <p id={resultsHintId} className="dating-location__results-hint">
+              {resultsSelectionHint(hits.length)}
+            </p>
+            {soloResult ? (
+              <div className="dating-location__solo-result">
+                <button
+                  type="button"
+                  className={compact ? "dating-location__confirm" : "auth-form__submit"}
+                  disabled={busy}
+                  onClick={() => void selectResult(soloResult)}
+                >
+                  {savingResultKey === resultKey(soloResult)
+                    ? "Saving…"
+                    : `Use ${resultPrimary(soloResult)}`}
+                </button>
+                {resultSubtitle(soloResult) ? (
+                  <p className="dating-location__solo-path">{resultSubtitle(soloResult)}</p>
+                ) : null}
+              </div>
+            ) : (
+              <ul id={listId} className="onboard-suburb-results" role="listbox" aria-label="Matching areas">
+                {hits.map((hit, index) => {
+                  const key = resultKey(hit);
+                  const subtitle = resultSubtitle(hit);
+                  const selected = index === activeIndex;
+                  const primary = resultPrimary(hit);
+                  return (
+                    <li key={key} role="presentation">
+                      <button
+                        type="button"
+                        id={`${listId}-${key}`}
+                        role="option"
+                        aria-label={subtitle ? `${primary}, ${subtitle}` : primary}
+                        className={
+                          selected
+                            ? "onboard-suburb-results__item onboard-suburb-results__item--active"
+                            : "onboard-suburb-results__item"
+                        }
+                        disabled={busy}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => void selectResult(hit)}
+                      >
+                        <span className="dating-location__result-copy">
+                          <span className="dating-location__result-name">
+                            {savingResultKey === key ? "Saving…" : primary}
+                          </span>
+                          {subtitle ? <span className="dating-location__result-path">{subtitle}</span> : null}
+                        </span>
+                        {savingResultKey === key ? null : (
+                          <span className="dating-location__result-action" aria-hidden="true">
+                            Select
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         ) : null}
         {saveError ? (
           <p className="auth-form__error" role="alert">

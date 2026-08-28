@@ -4,36 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DatingLocationPicker } from "./DatingLocationPicker.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 
-const westernCape = {
-  id: 11,
-  kind: "region",
-  name: "Western Cape",
-  code: "western-cape",
-  has_children: true,
-};
-
-const capeTown = {
-  id: 21,
-  kind: "city",
-  name: "Cape Town",
-  code: "cape-town",
-  has_children: true,
-};
-
-const seaPoint = {
-  id: 31,
-  kind: "locality",
-  name: "Sea Point",
-  code: "sea-point",
-  has_children: false,
-};
-
-const sandton = {
-  id: 41,
-  kind: "locality",
-  name: "Sandton",
-  code: "sandton",
-  has_children: false,
+const seaPointHit = {
+  lat: "-33.9149",
+  lon: "18.3876",
+  display_name: "Sea Point, Cape Town, Western Cape, South Africa",
 };
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -49,15 +23,8 @@ function requestUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
-function isPlacesUrl(url: string): boolean {
-  return url === "/api/v1/places" || url.startsWith("/api/v1/places?");
-}
-
-function placesBody(url: string) {
-  const parentId = new URL(url, "https://dateza.test").searchParams.get("parent_id");
-  if (parentId === "11") return { places: [capeTown] };
-  if (parentId === "21") return { places: [seaPoint] };
-  return { places: [westernCape, { id: 12, kind: "region", name: "Gauteng", code: "gauteng", has_children: true }] };
+function isNominatimUrl(url: string): boolean {
+  return url.includes("nominatim.openstreetmap.org");
 }
 
 function stubGeolocation(geolocation: Partial<Geolocation> | undefined) {
@@ -87,9 +54,6 @@ function successfulPosition(): GeolocationPosition {
 function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
   vi.mocked(fetch).mockImplementation((input, init) => {
     const url = requestUrl(input);
-    if (url.includes("nominatim") || url.includes("openstreetmap") || url.includes("maps.googleapis") || url.includes("mapbox")) {
-      return Promise.resolve(jsonResponse(500, { error: "geocoder_should_not_run" }));
-    }
     return Promise.resolve(handler(url, init));
   });
 }
@@ -110,7 +74,7 @@ afterEach(() => {
 });
 
 describe("DatingLocationPicker", () => {
-  it("shows a configured Place label without prompting for a new choice", () => {
+  it("shows a saved area label without prompting for a new choice", () => {
     render(
       <DatingLocationPicker
         savedLabel="Sea Point, Cape Town, Western Cape"
@@ -122,13 +86,13 @@ describe("DatingLocationPicker", () => {
     expect(screen.getByRole("combobox", { name: /search suburb, city or area/i })).toBeInTheDocument();
   });
 
-  it("shows Using your current area for a configured device location without a Place label", () => {
+  it("shows Using your current area for a configured device location without a saved label", () => {
     render(<DatingLocationPicker configuredWithoutPlace onSaved={vi.fn()} />);
     expect(screen.getByText("Using your current area")).toBeInTheDocument();
     expect(screen.queryByText(/dating from/i)).not.toBeInTheDocument();
   });
 
-  it("does not request geolocation or Places until the member acts", async () => {
+  it("does not request geolocation or Nominatim until the member acts", async () => {
     const getCurrentPosition = vi.fn();
     stubGeolocation({ getCurrentPosition });
     setBearerToken("opaque-session-token");
@@ -141,7 +105,7 @@ describe("DatingLocationPicker", () => {
     render(<DatingLocationPicker onSaved={vi.fn()} />);
 
     expect(getCurrentPosition).not.toHaveBeenCalled();
-    expect(urls.some((url) => isPlacesUrl(url))).toBe(false);
+    expect(urls.some((url) => isNominatimUrl(url))).toBe(false);
     expect(screen.getByText(/we use your general area to show people nearby/i)).toBeInTheDocument();
   });
 
@@ -213,7 +177,7 @@ describe("DatingLocationPicker", () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it("preserves a saved Place when device location times out", async () => {
+  it("preserves a saved area label when device location times out", async () => {
     const user = userEvent.setup();
     stubGeolocation({
       getCurrentPosition: (_success, error) => {
@@ -246,7 +210,7 @@ describe("DatingLocationPicker", () => {
     expect(screen.getByRole("combobox", { name: /search suburb, city or area/i })).toBeEnabled();
   });
 
-  it("debounces suburb search, calls D8N Places only, and saves the selected place_id", async () => {
+  it("debounces suburb search through Nominatim and saves coarse coordinates to PUT /profile/location", async () => {
     const user = userEvent.setup();
     const onSaved = vi.fn();
     setBearerToken("opaque-session-token");
@@ -255,16 +219,18 @@ describe("DatingLocationPicker", () => {
     let getAfterPut = false;
     mockFetch((url, init) => {
       urls.push(url);
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      if (url.endsWith("/api/v1/profile/place") && (init?.method ?? "GET") === "PUT") {
+      if (isNominatimUrl(url)) {
+        return jsonResponse(200, [seaPointHit]);
+      }
+      if (url.endsWith("/api/v1/profile/location") && (init?.method ?? "GET") === "PUT") {
         savedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
         return jsonResponse(200, {
           location: {
             configured: true,
-            accuracy_meters: 5000,
-            source: "place",
+            accuracy_meters: 3000,
+            source: "device",
             captured_at: "2026-08-27T04:00:00Z",
-            place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+            place: null,
           },
         });
       }
@@ -273,10 +239,10 @@ describe("DatingLocationPicker", () => {
         return jsonResponse(200, {
           location: {
             configured: true,
-            accuracy_meters: 5000,
-            source: "place",
+            accuracy_meters: 3000,
+            source: "device",
             captured_at: "2026-08-27T04:00:00Z",
-            place: { id: 31, name: "Sea Point", display_path: "Sea Point, Cape Town, Western Cape" },
+            place: null,
           },
         });
       }
@@ -284,26 +250,83 @@ describe("DatingLocationPicker", () => {
     });
 
     render(<DatingLocationPicker onSaved={onSaved} />);
-    expect(urls.some((url) => isPlacesUrl(url))).toBe(false);
+    expect(urls.some((url) => isNominatimUrl(url))).toBe(false);
     await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "sea");
 
-    expect(await screen.findByRole("option", { name: /sea point/i })).toBeInTheDocument();
-    expect(screen.getByText("Cape Town, Western Cape")).toBeInTheDocument();
-    expect(urls.some((url) => url.includes("nominatim") || url.includes("openstreetmap"))).toBe(false);
-    expect(urls.some((url) => isPlacesUrl(url))).toBe(true);
-    await user.click(screen.getByRole("option", { name: /sea point/i }));
+    expect(await screen.findByText(/we found one match/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /use sea point/i })).toBeInTheDocument();
+    expect(screen.getByText("Cape Town, Western Cape, South Africa")).toBeInTheDocument();
+    expect(urls.some((url) => isNominatimUrl(url))).toBe(true);
+    expect(urls.some((url) => url.endsWith("/api/v1/profile/place"))).toBe(false);
+    await user.click(screen.getByRole("button", { name: /use sea point/i }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
-    expect(savedBody).toEqual({ place_id: 31 });
+    expect(savedBody).toMatchObject({
+      latitude: -33.9149,
+      longitude: 18.3876,
+      accuracy_meters: 3000,
+    });
+    expect(typeof savedBody?.captured_at).toBe("string");
     expect(getAfterPut).toBe(true);
-    expect(screen.getByText("Dating from Sea Point, Cape Town, Western Cape")).toBeInTheDocument();
+    expect(screen.getByText("Dating from Sea Point, Cape Town, Western Cape, South Africa")).toBeInTheDocument();
+  });
+
+  it("corrects a common misspelling and shows results for Khayelitsha", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    mockFetch((url) => {
+      if (!isNominatimUrl(url)) return jsonResponse(404, { error: "not_found" });
+      if (url.includes("kayelitsha")) return jsonResponse(200, []);
+      if (url.includes("Khayelitsha")) {
+        return jsonResponse(200, [
+          {
+            lat: "-34.0405905",
+            lon: "18.6674201",
+            display_name: "Khayelitsha, City of Cape Town, Western Cape, South Africa",
+          },
+        ]);
+      }
+      return jsonResponse(200, []);
+    });
+
+    render(<DatingLocationPicker onSaved={vi.fn()} />);
+    await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "kayelitsha");
+
+    expect(await screen.findByText(/showing results for khayelitsha/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /use khayelitsha/i })).toBeInTheDocument();
+  });
+
+  it("prompts members to choose from multiple suburb matches", async () => {
+    const user = userEvent.setup();
+    setBearerToken("opaque-session-token");
+    mockFetch((url) => {
+      if (isNominatimUrl(url)) {
+        return jsonResponse(200, [
+          seaPointHit,
+          {
+            lat: "-26.1076",
+            lon: "28.0567",
+            display_name: "Sandton, Johannesburg, Gauteng, South Africa",
+          },
+        ]);
+      }
+      return jsonResponse(404, { error: "not_found" });
+    });
+
+    render(<DatingLocationPicker onSaved={vi.fn()} />);
+    await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "sa");
+
+    expect(await screen.findByText(/choose the area that matches you below/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Select").length).toBeGreaterThan(0);
+    expect(screen.getByRole("option", { name: /sea point/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /sandton/i })).toBeInTheDocument();
   });
 
   it("shows a no-results state without inserting free text", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
     mockFetch((url) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, { places: [sandton] });
+      if (isNominatimUrl(url)) return jsonResponse(200, []);
       return jsonResponse(404, { error: "not_found" });
     });
 
@@ -314,13 +337,13 @@ describe("DatingLocationPicker", () => {
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
-  it("keeps current location available when area search fails, without calling an external geocoder", async () => {
+  it("keeps current location available when area search fails", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
     const urls: string[] = [];
     mockFetch((url) => {
       urls.push(url);
-      if (isPlacesUrl(url)) return jsonResponse(500, { error: "unavailable" });
+      if (isNominatimUrl(url)) return jsonResponse(503, { error: "busy" });
       return jsonResponse(404, { error: "not_found" });
     });
 
@@ -332,6 +355,7 @@ describe("DatingLocationPicker", () => {
     expect(await screen.findByText(/area search is temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /use my current location/i })).toBeEnabled();
     expect(screen.getByText("Dating from Sandton, Johannesburg, Gauteng")).toBeInTheDocument();
-    expect(urls.some((url) => url.includes("nominatim") || url.includes("openstreetmap"))).toBe(false);
+    expect(urls.some((url) => isNominatimUrl(url))).toBe(true);
+    expect(urls.some((url) => url.endsWith("/api/v1/places"))).toBe(false);
   });
 });

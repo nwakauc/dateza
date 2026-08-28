@@ -1,8 +1,17 @@
+const HEART_PATH =
+  "M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z";
+
+function waitingBurstHeart(index: number): string {
+  return `<span class="dz-btn-waiting__burst dz-btn-waiting__burst--${index}" aria-hidden="true"><svg viewBox="0 0 30 30" class="dz-btn-waiting__burst-icon"><path d="${HEART_PATH}" fill="currentColor"></path></svg></span>`;
+}
+
+const WAITING_HEART_BURST = [1, 2, 3, 4, 5, 6].map(waitingBurstHeart).join("");
+
 export const landingMarkup = `
 <div class="dz-page" id="top">
 <div class="dz-nav" style="display:flex;align-items:center;justify-content:space-between;padding:18px 64px;position:relative;z-index:5">
-  <a href="#top" class="dz-logo" style="display:block;color:inherit;text-decoration:none;cursor:pointer;display:flex;flex-direction:column;gap:2px">
-    <div style="display:flex;align-items:center;gap:8px"><svg width="28" height="28" viewBox="0 0 30 30"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="#E8375A"></path></svg><span style="font-size:22px;font-weight:800;letter-spacing:-0.5px">Date<span style="color:#E8375A">ZA</span></span></div>
+  <a href="#top" class="dz-logo dateza-brand-link" style="display:block;color:inherit;text-decoration:none;cursor:pointer;display:flex;flex-direction:column;gap:2px">
+    <span class="dateza-brand dateza-brand--lg public-chrome__brand" style="display:inline-flex;align-items:center;gap:8px;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#1C1720"><span class="dateza-brand__heart" aria-hidden="true" style="position:relative;display:inline-flex;color:#E8375A"><svg class="dateza-brand__heart-icon" width="28" height="28" viewBox="0 0 30 30"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg><span class="dateza-brand__burst dateza-brand__burst--1" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span><span class="dateza-brand__burst dateza-brand__burst--2" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span><span class="dateza-brand__burst dateza-brand__burst--3" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span><span class="dateza-brand__burst dateza-brand__burst--4" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span><span class="dateza-brand__burst dateza-brand__burst--5" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span><span class="dateza-brand__burst dateza-brand__burst--6" aria-hidden="true"><svg viewBox="0 0 30 30" class="dateza-brand__burst-icon"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="currentColor"></path></svg></span></span><span class="dateza-brand__wordmark" aria-hidden="true"><span class="dateza-brand__date">Date</span><span class="dateza-brand__za">ZA</span></span></span>
     <span style="font-size:9px;font-weight:700;letter-spacing:1.8px;color:#9A8F98;padding-left:36px">NO DNA. JUST RSA. 🇿🇦</span>
   </a>
   <button type="button" id="dz-menu-btn" class="dz-menu-btn" aria-expanded="false" aria-controls="dz-nav-links" aria-label="Open menu"><span></span><span></span><span></span></button>
@@ -26,7 +35,7 @@ export const landingMarkup = `
       <p class="dz-hero-desc" style="margin:0;font-size:17.5px;line-height:1.65;color:#5F5566;max-width:400px;text-wrap:pretty">Real South Africans. Contact verified. Better matches from what you said actually matters.</p>
       <div class="dz-hero-ctas" style="display:flex;gap:14px;align-items:center">
         <a href="/sign-up" class="dz-btn-primary-lg" style="background:#1C1720;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;text-decoration:none;cursor:pointer;display:inline-block">Start Matching →</a>
-        <a href="/sign-up" class="dz-btn-waiting" style="background:#E8375A;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 10px 26px rgba(232,55,90,.32);text-decoration:none;cursor:pointer;display:inline-block">Girls are waiting</a>
+        <a href="/sign-up" class="dz-btn-waiting" style="background:#E8375A;color:#fff;padding:18px 34px;border-radius:999px;font-size:15.5px;font-weight:700;box-shadow:0 10px 26px rgba(232,55,90,.32);text-decoration:none;cursor:pointer;display:inline-block"><span class="dz-btn-waiting__label">Girls are waiting</span>${WAITING_HEART_BURST}</a>
       </div>
     </div>
     <div class="dz-hero-visual-mobile"><img class="dz-img" src="/images/people/couple-hero-mobile.webp" alt="A couple smiling together at sunset" loading="eager"></div>

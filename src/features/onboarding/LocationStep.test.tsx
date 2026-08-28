@@ -4,20 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocationStep } from "./LocationStep.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 
-const westernCape = {
-  id: 11,
-  kind: "region",
-  name: "Western Cape",
-  code: "western-cape",
-  has_children: true,
-};
-
-const capeTown = {
-  id: 21,
-  kind: "city",
-  name: "Cape Town",
-  code: "cape-town",
-  has_children: false,
+const westernCapeHit = {
+  lat: "-33.9249",
+  lon: "18.4241",
+  display_name: "Western Cape, South Africa",
 };
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -33,14 +23,8 @@ function requestUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
-function isPlacesUrl(url: string): boolean {
-  return url === "/api/v1/places" || url.startsWith("/api/v1/places?");
-}
-
-function placesBody(url: string) {
-  const parentId = new URL(url, "https://dateza.test").searchParams.get("parent_id");
-  if (parentId === "11") return { places: [capeTown] };
-  return { places: [westernCape] };
+function isNominatimUrl(url: string): boolean {
+  return url.includes("nominatim.openstreetmap.org");
 }
 
 function stubGeolocation(geolocation: Partial<Geolocation> | undefined) {
@@ -71,9 +55,6 @@ function successfulPosition(overrides: Partial<GeolocationCoordinates> = {}): Ge
 function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
   vi.mocked(fetch).mockImplementation((input, init) => {
     const url = requestUrl(input);
-    if (url.includes("nominatim.openstreetmap.org")) {
-      return Promise.resolve(jsonResponse(500, { error: "geocoder_should_not_run" }));
-    }
     return Promise.resolve(handler(url, init));
   });
 }
@@ -95,20 +76,18 @@ describe("LocationStep", () => {
     expect(getCurrentPosition).not.toHaveBeenCalled();
   });
 
-  it("never calls Nominatim and does not load Places until the member searches", async () => {
+  it("does not call Nominatim until the member searches", async () => {
     setBearerToken("opaque-session-token");
     const urls: string[] = [];
     mockFetch((url) => {
       urls.push(url);
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
       return jsonResponse(404, { error: "not_found" });
     });
 
     render(<LocationStep onSuccess={vi.fn()} />);
 
     expect(await screen.findByRole("combobox", { name: /search suburb, city or area/i })).toBeInTheDocument();
-    expect(urls.some((url) => url.includes("nominatim"))).toBe(false);
-    expect(urls.some((url) => isPlacesUrl(url))).toBe(false);
+    expect(urls.some((url) => isNominatimUrl(url))).toBe(false);
   });
 
   it("maps a successful GPS fix to PUT /api/v1/profile/location and calls onSuccess once D8N confirms it", async () => {
@@ -258,22 +237,22 @@ describe("LocationStep", () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it("lets a member search a D8N Place instead of GPS and saves through PUT /profile/place", async () => {
+  it("lets a member search an area instead of GPS and saves coarse coordinates through PUT /profile/location", async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
     setBearerToken("opaque-session-token");
     let savedBody: Record<string, unknown> | undefined;
     mockFetch((url, init) => {
-      if (isPlacesUrl(url)) return jsonResponse(200, placesBody(url));
-      if (url.endsWith("/api/v1/profile/place") && (init?.method ?? "GET") === "PUT") {
+      if (isNominatimUrl(url)) return jsonResponse(200, [westernCapeHit]);
+      if (url.endsWith("/api/v1/profile/location") && (init?.method ?? "GET") === "PUT") {
         savedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
         return jsonResponse(200, {
           location: {
             configured: true,
-            accuracy_meters: 8000,
-            source: "place",
+            accuracy_meters: 3000,
+            source: "device",
             captured_at: "2026-08-27T04:00:00Z",
-            place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+            place: null,
           },
         });
       }
@@ -281,10 +260,10 @@ describe("LocationStep", () => {
         return jsonResponse(200, {
           location: {
             configured: true,
-            accuracy_meters: 8000,
-            source: "place",
+            accuracy_meters: 3000,
+            source: "device",
             captured_at: "2026-08-27T04:00:00Z",
-            place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+            place: null,
           },
         });
       }
@@ -293,9 +272,14 @@ describe("LocationStep", () => {
 
     render(<LocationStep onSuccess={onSuccess} />);
     await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "west");
-    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
+    await user.click(await screen.findByRole("button", { name: /use western cape/i }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
-    expect(savedBody).toEqual({ place_id: 11 });
+    expect(savedBody).toMatchObject({
+      latitude: -33.9249,
+      longitude: 18.4241,
+      accuracy_meters: 3000,
+    });
+    expect(typeof savedBody?.captured_at).toBe("string");
   });
 });

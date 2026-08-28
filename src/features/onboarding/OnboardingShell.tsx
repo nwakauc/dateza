@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
+import { DateZaBrand } from "../../components/brand/DateZaBrand.tsx";
 
 type Props = {
   title: string;
@@ -46,16 +47,8 @@ export function OnboardingShell({
               Back
             </button>
           ) : null}
-          <Link className="auth-screen__brand" to="/" aria-label="DateZA home">
-            <svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true">
-              <path
-                d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z"
-                fill="#E8375A"
-              />
-            </svg>
-            <span>
-              Date<span>ZA</span>
-            </span>
+          <Link className="auth-screen__brand dateza-brand-link" to="/" aria-label="DateZA home">
+            <DateZaBrand size="lg" />
           </Link>
         </div>
         <p className="auth-screen__eyebrow">Set up your profile</p>

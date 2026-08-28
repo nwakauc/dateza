@@ -343,28 +343,46 @@ describe("Edit profile", () => {
     expect(screen.queryByRole("button", { name: /save changes/i })).not.toBeInTheDocument();
   });
 
-  it("saves dating location through PUT /profile/place and shows the server label", async () => {
+  it("saves dating location through PUT /profile/location and shows the chosen area label", async () => {
     const user = userEvent.setup();
     let savedBody: Record<string, unknown> | undefined;
     vi.mocked(fetch).mockImplementation((input, init) => {
       const url = requestUrl(input);
       const method = methodOf(init);
-      const places = placesListResponse(url);
-      if (places) return Promise.resolve(places);
+      if (url.includes("nominatim.openstreetmap.org")) {
+        return Promise.resolve(jsonResponse(200, [{
+          lat: "-33.9249",
+          lon: "18.4241",
+          display_name: "Western Cape, South Africa",
+        }]));
+      }
       if (url.endsWith("/api/v1/me")) return Promise.resolve(jsonResponse(200, meBody()));
       if (url.endsWith("/api/v1/profile/configuration")) {
         return Promise.resolve(jsonResponse(200, { configuration, onboarding: completeOnboarding }));
       }
-      if (url.endsWith("/api/v1/profile/place") && method === "PUT") {
+      if (url.endsWith("/api/v1/profile/location") && method === "PUT") {
         savedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
         return Promise.resolve(
           jsonResponse(200, {
             location: {
               configured: true,
-              accuracy_meters: 8000,
-              source: "place",
+              accuracy_meters: 3000,
+              source: "device",
               captured_at: "2026-08-27T04:00:00Z",
-              place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+              place: null,
+            },
+          }),
+        );
+      }
+      if (url.endsWith("/api/v1/profile/location") && method === "GET") {
+        return Promise.resolve(
+          jsonResponse(200, {
+            location: {
+              configured: true,
+              accuracy_meters: 3000,
+              source: "device",
+              captured_at: "2026-08-27T04:00:00Z",
+              place: null,
             },
           }),
         );
@@ -384,8 +402,12 @@ describe("Edit profile", () => {
     renderApp("/profile/edit");
     expect(await screen.findByRole("combobox", { name: /search suburb, city or area/i })).toBeInTheDocument();
     await user.type(screen.getByRole("combobox", { name: /search suburb, city or area/i }), "west");
-    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
-    expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
-    expect(savedBody).toEqual({ place_id: 11 });
+    await user.click(await screen.findByRole("button", { name: /use western cape/i }));
+    expect(await screen.findByText("Dating from Western Cape, South Africa")).toBeInTheDocument();
+    expect(savedBody).toMatchObject({
+      latitude: -33.9249,
+      longitude: 18.4241,
+      accuracy_meters: 3000,
+    });
   });
 });

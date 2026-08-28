@@ -122,19 +122,32 @@ function installApi() {
     if (url.endsWith("/api/v1/profile/preferences") && method === "PATCH") {
       return Promise.resolve(jsonResponse({}));
     }
-    if (url === "/api/v1/places" || url.startsWith("/api/v1/places?")) {
-      return Promise.resolve(jsonResponse({
-        places: [{ id: 11, kind: "region", name: "Western Cape", code: "western-cape", has_children: true }],
-      }));
+    if (url.includes("nominatim.openstreetmap.org")) {
+      return Promise.resolve(jsonResponse([{
+        lat: "-33.9249",
+        lon: "18.4241",
+        display_name: "Western Cape, South Africa",
+      }]));
     }
-    if (url.endsWith("/api/v1/profile/place") && method === "PUT") {
+    if (url.endsWith("/api/v1/profile/location") && method === "PUT") {
       return Promise.resolve(jsonResponse({
         location: {
           configured: true,
-          accuracy_meters: 8000,
-          source: "place",
+          accuracy_meters: 3000,
+          source: "device",
           captured_at: "2026-08-27T04:00:00Z",
-          place: { id: 11, name: "Western Cape", display_path: "Western Cape" },
+          place: null,
+        },
+      }));
+    }
+    if (url.endsWith("/api/v1/profile/location") && method === "GET") {
+      return Promise.resolve(jsonResponse({
+        location: {
+          configured: true,
+          accuracy_meters: 3000,
+          source: "device",
+          captured_at: "2026-08-27T04:00:00Z",
+          place: null,
         },
       }));
     }
@@ -219,20 +232,24 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("saves dating location through PUT /profile/place from Settings", async () => {
+  it("saves dating location through PUT /profile/location from Settings", async () => {
     const fetchMock = installApi();
     const user = userEvent.setup();
     renderSettings("/settings#preferences");
 
     await user.type(await screen.findByRole("combobox", { name: /search suburb, city or area/i }), "west");
-    await user.click(await screen.findByRole("option", { name: "Western Cape" }));
-    expect(await screen.findByText("Dating from Western Cape")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /use western cape/i }));
+    expect(await screen.findByText("Dating from Western Cape, South Africa")).toBeInTheDocument();
     expect(await screen.findByText("Dating location updated.")).toBeInTheDocument();
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input, init]) =>
-        requestUrl(input).endsWith("/api/v1/profile/place") && requestMethod(input, init) === "PUT");
+        requestUrl(input).endsWith("/api/v1/profile/location") && requestMethod(input, init) === "PUT");
       expect(call).toBeDefined();
-      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ place_id: 11 });
+      expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+        latitude: -33.9249,
+        longitude: 18.4241,
+        accuracy_meters: 3000,
+      });
     });
   });
 

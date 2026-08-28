@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { DateZaBrand } from "../../components/brand/DateZaBrand.tsx";
 import { PUBLIC_FOOTER, PUBLIC_NAV } from "./publicNav.ts";
 
 type Props = {
@@ -31,18 +32,8 @@ export function PublicChrome({ children }: Props) {
   return (
     <div className="dz-page public-site">
       <header className="dz-nav public-chrome__nav">
-        <Link className="dz-logo public-chrome__logo" to="/" aria-label="DateZA home" onClick={closeMenu}>
-          <span className="public-chrome__brand">
-            <svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true">
-              <path
-                d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z"
-                fill="#E8375A"
-              />
-            </svg>
-            <span>
-              Date<span>ZA</span>
-            </span>
-          </span>
+        <Link className="dz-logo public-chrome__logo dateza-brand-link" to="/" aria-label="DateZA home" onClick={closeMenu}>
+          <DateZaBrand size="lg" className="public-chrome__brand" />
           <span className="public-chrome__tag">NO DNA. JUST RSA. 🇿🇦</span>
         </Link>
         <button

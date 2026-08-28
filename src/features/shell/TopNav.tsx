@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { DateZaBrand } from "../../components/brand/DateZaBrand.tsx";
 import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
@@ -22,16 +23,8 @@ export function TopNav({ account }: Props) {
   return (
     <header className="shell-topnav">
       <div className="shell-topnav__inner">
-        <Link to="/discover" className="shell-brand" aria-label="DateZA home">
-          <svg width="24" height="24" viewBox="0 0 30 30" aria-hidden="true">
-            <path
-              d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z"
-              fill="#E8375A"
-            />
-          </svg>
-          <span>
-            Date<span>ZA</span>
-          </span>
+        <Link to="/discover" className="shell-brand dateza-brand-link" aria-label="DateZA home">
+          <DateZaBrand size="md" />
         </Link>
 
         <nav className="shell-primary-nav" aria-label="Main">
