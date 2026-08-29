@@ -43,7 +43,15 @@ export default function SignInPage() {
       const trimmedIdentifier = identifier.trim();
       const session = await loginWithPassword(trimmedIdentifier, password);
       await establishSession(session);
-      navigate("/home", { replace: true });
+      const from =
+        typeof location.state === "object" &&
+        location.state !== null &&
+        "from" in location.state &&
+        typeof location.state.from === "string" &&
+        location.state.from.startsWith("/hq")
+          ? location.state.from
+          : "/home";
+      navigate(from, { replace: true });
     } catch (caught) {
       setError(signInErrorMessage(caught));
       setPending(false);

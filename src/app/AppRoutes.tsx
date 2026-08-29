@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ForgotPasswordPage from "../features/auth/ForgotPasswordPage.tsx";
 import { GuestRoute } from "../features/auth/GuestRoute.tsx";
 import ResetPasswordPage from "../features/auth/ResetPasswordPage.tsx";
@@ -19,6 +19,12 @@ import SafetyPage from "../features/profile/SafetyPage.tsx";
 import SettingsPage from "../features/profile/SettingsPage.tsx";
 import { ProtectedRoute } from "../features/session/ProtectedRoute.tsx";
 import AppShell from "../features/shell/AppShell.tsx";
+import HqShell from "../features/hq/HqShell.tsx";
+import { HqProtectedRoute } from "../features/hq/HqProtectedRoute.tsx";
+import CommandCentrePage from "../features/hq/pages/CommandCentrePage.tsx";
+import Member360Page from "../features/hq/pages/Member360Page.tsx";
+import MemberSearchPage from "../features/hq/pages/MemberSearchPage.tsx";
+import UnavailableHqPage from "../features/hq/pages/UnavailableHqPage.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
 import {
   CareersPage,
@@ -32,6 +38,10 @@ import {
   StoriesPage,
 } from "../pages/public/MarketingPages.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
+function HqPlannedPage() {
+  const location = useLocation();
+  return <UnavailableHqPage path={location.pathname} />;
+}
 
 export default function AppRoutes() {
   return (
@@ -142,6 +152,47 @@ export default function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/safety" element={<SafetyPage />} />
         <Route path="/safety" element={<Navigate to="/settings/safety" replace />} />
+      </Route>
+
+      {/* D8N HQ — internal command centre (Phase 1: shell + Member 360).
+          Isolated visual/system from the consumer dating product. */}
+      <Route
+        path="/hq"
+        element={
+          <HqProtectedRoute>
+            <HqShell />
+          </HqProtectedRoute>
+        }
+      >
+        <Route index element={<CommandCentrePage />} />
+        <Route path="members" element={<MemberSearchPage />} />
+        <Route path="members/:lookup" element={<Member360Page />} />
+        <Route path="live" element={<UnavailableHqPage path="/hq/live" />} />
+        <Route path="alerts" element={<UnavailableHqPage path="/hq/alerts" />} />
+        <Route path="incidents" element={<UnavailableHqPage path="/hq/incidents" />} />
+        <Route path="growth" element={<UnavailableHqPage path="/hq/growth" />} />
+        <Route path="product" element={<UnavailableHqPage path="/hq/product" />} />
+        <Route path="marketplace" element={<UnavailableHqPage path="/hq/marketplace" />} />
+        <Route path="revenue" element={<UnavailableHqPage path="/hq/revenue" />} />
+        <Route path="customers" element={<UnavailableHqPage path="/hq/customers" />} />
+        <Route path="trust-safety" element={<UnavailableHqPage path="/hq/trust-safety" />} />
+        <Route path="reliability" element={<UnavailableHqPage path="/hq/reliability" />} />
+        <Route path="apm" element={<UnavailableHqPage path="/hq/apm" />} />
+        <Route path="errors" element={<UnavailableHqPage path="/hq/errors" />} />
+        <Route path="traces" element={<UnavailableHqPage path="/hq/traces" />} />
+        <Route path="logs" element={<UnavailableHqPage path="/hq/logs" />} />
+        <Route path="jobs" element={<UnavailableHqPage path="/hq/jobs" />} />
+        <Route path="database" element={<UnavailableHqPage path="/hq/database" />} />
+        <Route path="infrastructure" element={<UnavailableHqPage path="/hq/infrastructure" />} />
+        <Route path="deployments" element={<UnavailableHqPage path="/hq/deployments" />} />
+        <Route path="data-health" element={<UnavailableHqPage path="/hq/data-health" />} />
+        <Route path="security" element={<UnavailableHqPage path="/hq/security" />} />
+        <Route path="brands" element={<UnavailableHqPage path="/hq/brands" />} />
+        <Route path="admin" element={<UnavailableHqPage path="/hq/admin" />} />
+        <Route path="audit" element={<UnavailableHqPage path="/hq/audit" />} />
+        <Route path="intelligence" element={<UnavailableHqPage path="/hq/intelligence" />} />
+        <Route path="briefings" element={<UnavailableHqPage path="/hq/briefings" />} />
+        <Route path="*" element={<HqPlannedPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
