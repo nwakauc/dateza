@@ -10819,18 +10819,17 @@ a.likes-card__message {
 
 .shell-page--chats .message-bubble {
   max-width: min(74%, 500px);
-  padding: 10px 13px 7px;
-  border: 1px solid #ece7ea;
-  border-radius: 5px 16px 16px 16px;
-  background: #f7f4f6;
-  box-shadow: 0 4px 14px rgba(48, 32, 43, 0.035);
+  padding: 9px 12px 6px;
+  border: 0;
+  border-radius: 6px 18px 18px 18px;
+  background: #f2eef1;
+  box-shadow: none;
 }
 
 .shell-page--chats .message-bubble--own {
-  border-color: transparent;
-  border-radius: 16px 5px 16px 16px;
-  background: linear-gradient(145deg, #ee3158, #df1947);
-  box-shadow: 0 6px 18px rgba(219, 31, 74, 0.16);
+  border-radius: 18px 6px 18px 18px;
+  background: #e8375a;
+  box-shadow: none;
 }
 
 .shell-page--chats .message-bubble p {
@@ -11287,60 +11286,103 @@ a.likes-card__message {
 
 .message-bubble__actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
 }
 
 .message-bubble--own .message-bubble__actions {
   left: auto;
-  right: 4px;
+  right: 2px;
 }
 
 .message-bubble:not(.message-bubble--own) .message-bubble__actions {
   right: auto;
-  left: 4px;
+  left: 2px;
 }
 
 .message-bubble__more {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(28, 23, 32, 0.08);
+  background: transparent;
   color: inherit;
   cursor: pointer;
   opacity: 0;
-}
-
-.message-bubble:hover .message-bubble__more,
-.message-bubble:focus-within .message-bubble__more,
-.message-bubble__more[aria-expanded="true"] {
-  opacity: 1;
-}
-
-.message-bubble--own .message-bubble__more {
-  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
 .message-bubble__more svg {
-  width: 16px;
+  width: 14px;
+}
+
+.message-bubble--own .message-bubble__more {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.message-bubble:not(.message-bubble--own) .message-bubble__more {
+  color: rgba(28, 23, 32, 0.45);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .message-bubble:hover .message-bubble__more,
+  .message-bubble:focus-within .message-bubble__more,
+  .message-bubble__more[aria-expanded="true"] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .message-bubble:hover .message-bubble__more:hover,
+  .message-bubble__more[aria-expanded="true"] {
+    background: rgba(28, 23, 32, 0.06);
+  }
+
+  .message-bubble--own:hover .message-bubble__more:hover,
+  .message-bubble--own .message-bubble__more[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .message-bubble__more {
+    display: none;
+  }
+}
+
+.message-bubble--actions-open .message-bubble__menu {
+  animation: message-actions-menu-in 0.16s ease;
+}
+
+@keyframes message-actions-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .message-bubble__menu {
   position: absolute;
-  top: 32px;
+  top: 28px;
   right: 0;
   z-index: 3;
   display: grid;
-  min-width: 140px;
-  padding: 6px;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid #ece7ea;
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 10px 28px rgba(28, 23, 32, 0.16);
+  box-shadow: 0 8px 24px rgba(28, 23, 32, 0.1);
 }
 
 .message-bubble:not(.message-bubble--own) .message-bubble__menu {
@@ -11349,13 +11391,13 @@ a.likes-card__message {
 }
 
 .message-bubble__menu button {
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #1c1720;
-  font: 700 0.8rem Outfit, sans-serif;
+  font: 600 0.78rem Outfit, sans-serif;
   text-align: left;
   cursor: pointer;
 }
@@ -11558,9 +11600,9 @@ a.likes-card__message {
   width: 18px;
 }
 
-@media (max-width: 899px) {
-  .message-bubble__more {
-    opacity: 1;
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble--actions-open .message-bubble__menu {
+    animation: none;
   }
 }
 

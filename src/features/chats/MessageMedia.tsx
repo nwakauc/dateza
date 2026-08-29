@@ -11,6 +11,8 @@ type Props = {
   canDelete: boolean;
   canReport: boolean;
   canReply?: boolean;
+  actionsOpen?: boolean;
+  onActionsOpenChange?: (open: boolean) => void;
   onReply?: (message: Message) => void;
   onDelete?: (messageId: string, attachmentId: string) => void;
   deletingAttachmentId?: string;
@@ -35,6 +37,23 @@ async function saveDelivery(delivery: ChatMediaDelivery): Promise<void> {
   }
 }
 
+async function copyMessageText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
 function attachmentLabel(attachment: MessageAttachment): string {
   return attachment.media_kind === "video" ? "Video" : "Photo";
 }
@@ -45,32 +64,40 @@ export function MessageMedia({
   canDelete,
   canReport,
   canReply,
+  actionsOpen,
+  onActionsOpenChange,
   onReply,
   onDelete,
   deletingAttachmentId,
 }: Props) {
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [lightbox, setLightbox] = useState<MessageAttachment>();
   const [reporting, setReporting] = useState(false);
+  const menuOpen = actionsOpen ?? internalOpen;
   const kept = message.attachments.filter((item) => !item.deleted);
-  const downloadable = kept.find((item) => item.download)?.download ?? kept.find((item) => item.display)?.display;
-  const canDownload = Boolean(downloadable);
   const removable = kept[0];
+  const canCopy = message.body.trim().length > 0;
   const showDelete = canDelete && Boolean(removable);
-  const showMenu = Boolean(canReply) || canDownload || showDelete || canReport;
+  const hasActions = Boolean((canReply && onReply) || canCopy || showDelete || canReport);
+
+  function setMenuOpen(next: boolean) {
+    onActionsOpenChange?.(next);
+    if (actionsOpen === undefined) setInternalOpen(next);
+  }
 
   useEffect(() => {
     if (!menuOpen) return;
     function onPointer(event: PointerEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
+        onActionsOpenChange?.(false);
+        if (actionsOpen === undefined) setInternalOpen(false);
       }
     }
     document.addEventListener("pointerdown", onPointer);
     return () => document.removeEventListener("pointerdown", onPointer);
-  }, [menuOpen]);
+  }, [actionsOpen, menuOpen, onActionsOpenChange]);
 
   return (
     <>
@@ -86,7 +113,7 @@ export function MessageMedia({
         />
       ))}
       {message.body.trim() ? <p>{message.body}</p> : null}
-      {showMenu ? (
+      {hasActions ? (
         <div
           className="message-bubble__actions"
           ref={menuRef}
@@ -99,7 +126,7 @@ export function MessageMedia({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-controls={menuId}
-            onClick={() => setMenuOpen((current) => !current)}
+            onClick={() => setMenuOpen(!menuOpen)}
           >
             <MoreIcon />
           </button>
@@ -117,16 +144,15 @@ export function MessageMedia({
                   Reply
                 </button>
               ) : null}
-              {canDownload && downloadable ? (
+              {canCopy ? (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setMenuOpen(false);
-                    void saveDelivery(downloadable);
+                    void copyMessageText(message.body.trim()).then(() => setMenuOpen(false));
                   }}
                 >
-                  Save
+                  Copy
                 </button>
               ) : null}
               {showDelete && onDelete && removable ? (
@@ -139,7 +165,7 @@ export function MessageMedia({
                     onDelete(message.id, removable.id);
                   }}
                 >
-                  {deletingAttachmentId === removable.id ? "Removing…" : "Remove"}
+                  {deletingAttachmentId === removable.id ? "Deleting…" : "Delete"}
                 </button>
               ) : null}
               {canReport ? (

@@ -52,8 +52,9 @@ D8N's HttpOnly browser-session cookie and CSRF contract (see
 `docs/decisions/0003-same-origin-browser-session.md`).
 
 Browser code always calls same-origin `/api/*`. Local development uses
-`VITE_D8N_API_URL` only as Vite's server-side proxy target; Vercel rewrites the
-same paths to `https://dateza-staging-api.d8n.tech` before its SPA fallback.
+`VITE_D8N_API_URL` only as Vite's server-side proxy target (DateZA staging);
+Vercel rewrites the same paths to `https://dateza-api.d8n.tech` before its SPA
+fallback.
 The browser never calls the D8N host directly. This keeps the session cookie
 first-party while preserving D8N's upstream host-based DateZA resolution.
 `https://staging-api.d8n.tech` is HookUs, not DateZA. Do not proxy to

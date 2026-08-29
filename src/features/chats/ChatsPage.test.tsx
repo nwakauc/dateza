@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +15,16 @@ const completeOnboarding = {
   profile_published: true,
   completion: { complete: true, percent: 100, missing: [] },
 };
+
+async function openMessageActions(user: ReturnType<typeof userEvent.setup>, messageText: string) {
+  const bubble = screen
+    .getAllByText(messageText)
+    .map((node) => node.closest(".message-bubble"))
+    .find((node): node is HTMLElement => node instanceof HTMLElement);
+  expect(bubble).toBeDefined();
+  await user.hover(bubble!);
+  await user.click(within(bubble!).getByRole("button", { name: /message actions/i }));
+}
 
 function publicProfile(id = "p1", name = "Naledi") {
   return {
@@ -207,7 +217,7 @@ describe("premium Chats experience", () => {
     });
     renderChats("/chats?conversation=c1");
     expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /message actions/i })[0]!);
+    await openMessageActions(user, "The trail sounds perfect.");
     await user.click(screen.getByRole("menuitem", { name: /^report$/i }));
     await user.click(screen.getByRole("button", { name: /^harassment$/i }));
     await user.click(screen.getByRole("button", { name: /send report/i }));
@@ -462,6 +472,18 @@ describe("premium Chats experience", () => {
     expect(screen.queryByRole("button", { name: /attach photo or video/i })).not.toBeInTheDocument();
   });
 
+  it("copies message text from the actions menu", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+    installHandler();
+    renderChats("/chats?conversation=c1");
+    expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
+    await openMessageActions(user, "The trail sounds perfect.");
+    await user.click(screen.getByRole("menuitem", { name: /^copy$/i }));
+    expect(writeText).toHaveBeenCalledWith("The trail sounds perfect.");
+  });
+
   it("quotes a selected message, lets the member cancel, and sends reply_to_message_id", async () => {
     const user = userEvent.setup();
     let sentBody = "";
@@ -488,12 +510,12 @@ describe("premium Chats experience", () => {
     });
     renderChats("/chats?conversation=c1");
     expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /message actions/i })[0]!);
+    await openMessageActions(user, "The trail sounds perfect.");
     await user.click(screen.getByRole("menuitem", { name: /^reply$/i }));
     expect(screen.getByText(/replying to naledi/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /cancel reply/i }));
     expect(screen.queryByText(/replying to naledi/i)).not.toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /message actions/i })[0]!);
+    await openMessageActions(user, "The trail sounds perfect.");
     await user.click(screen.getByRole("menuitem", { name: /^reply$/i }));
     await user.type(screen.getByRole("textbox", { name: /message naledi/i }), "Saturday works.{Enter}");
     expect(await screen.findByLabelText(/view original from naledi/i)).toBeInTheDocument();

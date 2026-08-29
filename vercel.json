@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://dateza-staging-api.d8n.tech/api/:path*"
+      "destination": "https://dateza-api.d8n.tech/api/:path*"
     },
     {
       "source": "/(.*)",

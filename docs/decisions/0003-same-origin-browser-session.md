@@ -54,10 +54,10 @@ Registration, identity bootstrap, onboarding, and refresh use a first-party
 browser session on supported browsers. The frontend no longer needs a
 deployment-time API-origin variable.
 
-The Vercel rewrite currently names the DateZA staging upstream. Production
-promotion must deliberately change that destination and redeploy. Preview
-deployments share the same staging upstream unless their hosting configuration
-is split later.
+The Vercel rewrite destination is the DateZA production upstream
+(`https://dateza-api.d8n.tech`). Local development continues to proxy to
+DateZA staging via `VITE_D8N_API_URL`. Preview deployments share the same
+production rewrite unless their hosting configuration is split later.
 
 Successful frontend checks cannot prove an upstream cookie is host-only or that
 D8N accepts the browser-facing Origin. Deployment verification must inspect the

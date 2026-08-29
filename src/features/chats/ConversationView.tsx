@@ -294,6 +294,7 @@ export function ConversationView({
   const attachMenuId = useId();
   const [attachForConversationId, setAttachForConversationId] = useState<string | undefined>();
   const [locatedId, setLocatedId] = useState<string>();
+  const [openActionsId, setOpenActionsId] = useState<string>();
   const [newMessagesAvailable, setNewMessagesAvailable] = useState(false);
   const newestIdRef = useRef<string>();
   const conversationId = conversation?.id;
@@ -404,6 +405,7 @@ export function ConversationView({
   function onThreadScroll() {
     const scroller = scrollerRef.current;
     if (!scroller) return;
+    setOpenActionsId(undefined);
     const fromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
     pinnedNewestRef.current = fromBottom < NEAR_BOTTOM_PX;
     if (pinnedNewestRef.current) setNewMessagesAvailable(false);
@@ -430,7 +432,9 @@ export function ConversationView({
     if (!canCompose || event.pointerType === "mouse") return;
     longPressOriginRef.current = { x: event.clientX, y: event.clientY };
     window.clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = window.setTimeout(() => startReply(message), LONG_PRESS_MS);
+    longPressTimerRef.current = window.setTimeout(() => {
+      setOpenActionsId(message.id);
+    }, LONG_PRESS_MS);
   }
 
   function onBubblePointerMove(event: ReactPointerEvent<HTMLElement>) {
@@ -541,7 +545,7 @@ export function ConversationView({
               const mediaOnly = message.body.trim().length === 0 && message.attachments.length > 0;
               return (
                 <article
-                  className={`message-bubble${own ? " message-bubble--own" : ""}${mediaOnly ? " message-bubble--media" : ""}${locatedId === message.id ? " message-bubble--located" : ""}`}
+                  className={`message-bubble${own ? " message-bubble--own" : ""}${mediaOnly ? " message-bubble--media" : ""}${locatedId === message.id ? " message-bubble--located" : ""}${openActionsId === message.id ? " message-bubble--actions-open" : ""}`}
                   key={message.id}
                   data-message-id={message.id}
                   onPointerDown={(event) => onBubblePointerDown(event, message)}
@@ -563,6 +567,8 @@ export function ConversationView({
                     canDelete={own && canCompose}
                     canReport={!own}
                     canReply={canCompose}
+                    actionsOpen={openActionsId === message.id}
+                    onActionsOpenChange={(open) => setOpenActionsId(open ? message.id : undefined)}
                     onReply={startReply}
                     onDelete={onDeleteAttachment}
                     deletingAttachmentId={deletingAttachmentId}
