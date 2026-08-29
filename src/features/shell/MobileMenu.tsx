@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSignOut } from "../auth/useSignOut.ts";
+import { HqEntryLink } from "../hq/HqEntryLink.tsx";
 import { Modal } from "../verification/Modal.tsx";
 import { CloseIcon, MenuIcon } from "./icons.tsx";
 import { ACCOUNT_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
@@ -67,6 +68,7 @@ export function MobileMenu({ account }: Props) {
                 </Link>
               );
             })}
+            <HqEntryLink variant="menu" onNavigate={close} />
           </nav>
           <button
             type="button"

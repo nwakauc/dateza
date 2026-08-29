@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { revokeCurrentSession } from "../../lib/api/auth.ts";
 import { setCsrfToken } from "../../lib/api/csrfStore.ts";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
 import { clearDiscoverFilterMemory } from "../discovery/discoverFilterMemory.ts";
 import { useSession } from "../session/useSession.ts";
 
@@ -25,6 +26,7 @@ export function useSignOut() {
       setBearerToken(undefined);
       setCsrfToken(undefined);
       setVerification({ status: "unknown" });
+      clearBrandAdminAccessCache();
       clearDiscoverFilterMemory();
       await refreshSession();
       setPending(false);

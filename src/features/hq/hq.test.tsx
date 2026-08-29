@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
+import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
 import { lookupHqMember } from "../../lib/hq/api.ts";
 
 function json(status: number, body: unknown) {
@@ -24,6 +25,14 @@ function meOk() {
     verification_required: false,
     verification: { code_dispatched: false, resend_available_in: 0 },
   });
+}
+
+function adminReportsOk() {
+  return json(200, { reports: [], next_cursor: null });
+}
+
+function urlOf(input: RequestInfo | URL): string {
+  return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 }
 
 const PROFILE_ID = "11111111-1111-1111-1111-111111111111";
@@ -191,6 +200,7 @@ function renderAt(path: string) {
 describe("D8N HQ Phase 1 integration", () => {
   beforeEach(() => {
     setBearerToken("opaque-token");
+    clearBrandAdminAccessCache();
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -198,6 +208,7 @@ describe("D8N HQ Phase 1 integration", () => {
     cleanup();
     vi.unstubAllGlobals();
     setBearerToken(undefined);
+    clearBrandAdminAccessCache();
   });
 
   it("redirects unauthenticated operators from /hq to sign-in", async () => {
@@ -209,10 +220,22 @@ describe("D8N HQ Phase 1 integration", () => {
     ).toBeInTheDocument();
   });
 
+  it("blocks signed-in non-admins from /hq", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return json(403, { error: "forbidden" });
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq");
+    expect(await screen.findByRole("heading", { name: /hq is for admins only/i })).toBeInTheDocument();
+  });
+
   it("shows host brand context without inventing All Company", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       return json(404, { error: "not_found" });
     });
     renderAt("/hq");
@@ -223,8 +246,9 @@ describe("D8N HQ Phase 1 integration", () => {
   it("looks up a member and navigates to Member 360 via profile public id", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/api/v1/hq/members/")) {
         if (url.includes("/discovery_diagnostic")) {
           return json(200, {
@@ -267,8 +291,9 @@ describe("D8N HQ Phase 1 integration", () => {
   it("shows unknown lookup as not found without enumeration claims", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/api/v1/hq/members/")) return json(404, { error: "member_unavailable" });
       return json(404, { error: "not_found" });
     });
@@ -283,8 +308,9 @@ describe("D8N HQ Phase 1 integration", () => {
   it("surfaces forbidden on lookup", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/api/v1/hq/members/")) return json(403, { error: "forbidden" });
       return json(404, { error: "not_found" });
     });
@@ -297,8 +323,9 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("renders profile-not-existing state from exists:false", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(404, { error: "profile_unavailable" });
       }
@@ -314,8 +341,9 @@ describe("D8N HQ Phase 1 integration", () => {
   it("loads security event history on demand with pagination", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/security_events")) {
         if (url.includes("cursor=")) {
           return json(200, {
@@ -364,8 +392,9 @@ describe("D8N HQ Phase 1 integration", () => {
   it("loads auth attempts and enforcement history on demand", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/auth_attempts")) {
         return json(200, {
           auth_attempts: [
@@ -419,8 +448,9 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("renders discovery diagnostic stages without inventing gender/age/distance splits", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(200, {
           eligible: true,
@@ -457,8 +487,9 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("preserves section URL state", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(200, { eligible: false, ineligibility_reason: "suspended", stages: [] });
       }
@@ -474,8 +505,9 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("shows backend failure on Member 360 load", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       if (url.includes("/api/v1/hq/members/")) return json(500, { error: "server_error" });
       return json(404, { error: "not_found" });
     });
@@ -485,8 +517,9 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("does not invent Command Centre metrics", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
       return json(404, { error: "not_found" });
     });
     renderAt("/hq");

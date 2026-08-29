@@ -4,6 +4,7 @@ import { DateZaBrand } from "../../components/brand/DateZaBrand.tsx";
 import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
+import { HqEntryLink } from "../hq/HqEntryLink.tsx";
 import { BellIcon, ChevronRightIcon, SignOutIcon } from "./icons.tsx";
 import { ACCOUNT_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
 import type { OwnAccount } from "./OwnAccountContext.ts";
@@ -46,6 +47,7 @@ export function TopNav({ account }: Props) {
         </nav>
 
         <div className="shell-topnav__actions">
+          <HqEntryLink variant="chip" />
           <Link to="/notifications" className="shell-icon-link" aria-label="Notifications">
             <BellIcon />
             {account.unreadNotifications > 0 ? (
@@ -73,6 +75,10 @@ export function TopNav({ account }: Props) {
                   </Link>
                 );
               })}
+              <HqEntryLink
+                variant="menu"
+                onNavigate={() => menuRef.current?.removeAttribute("open")}
+              />
               <button
                 type="button"
                 disabled={pending}
