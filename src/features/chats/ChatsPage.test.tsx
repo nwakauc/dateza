@@ -172,7 +172,6 @@ describe("premium Chats experience", () => {
   });
 
   it("marks unread message notifications read when a conversation is opened", async () => {
-    const user = userEvent.setup();
     const readCalls: string[] = [];
     let notificationPoll = 0;
     installHandler((url, method) => {
