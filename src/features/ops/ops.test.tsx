@@ -63,13 +63,28 @@ describe("DateZA Operations console", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/hq/operator")) {
+        return operatorOk(true, {
+          effective_capabilities: [
+            "hq.member.sensitive_read",
+            "hq.trust_safety.read",
+            "admin.reports.read",
+            "admin.reports.moderate",
+            "admin.enforcements.manage",
+            "hq.analytics.read",
+          ],
+        });
+      }
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       if (url.includes("/api/v1/hq/trust_safety/repeat_offenders")) {
         return json(200, { repeat_offenders: [], minimum_reports: 2, truncated: false });
       }
       if (url.includes("/api/v1/hq/trust_safety/enforcements")) {
         return json(200, { enforcements: [], next_cursor: null });
+      }
+      if (url.includes("/api/v1/hq/members/")) return json(404, { error: "not_found" });
+      if (url.includes("/api/v1/hq/members")) {
+        return json(200, { members: [], next_cursor: null });
       }
       return json(404, { error: "not_found" });
     });
@@ -88,7 +103,8 @@ describe("DateZA Operations console", () => {
 
     expect(await screen.findByText("Open reports")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText(/sla not configured/i)).toBeInTheDocument();
+    expect(screen.getByText(/signups today/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/not configured/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/total users/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/revenue/i)).not.toBeInTheDocument();
   });

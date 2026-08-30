@@ -1,13 +1,14 @@
 import { useCallback, useState } from "react";
 import { ApiError } from "../../../lib/api/errors.ts";
 import {
+  fetchHqMemberDirectory,
   fetchProfilePhotoQueue,
   fetchRepeatOffenders,
   fetchTrustSafetyEnforcements,
   fetchTrustSafetyOverview,
   hqErrorMessage,
 } from "../../../lib/hq/api.ts";
-import type { HqAdminEnforcement, HqTrustSafetyOverview } from "../../../lib/hq/types.ts";
+import type { HqAdminEnforcement, HqMemberDirectoryEntry, HqTrustSafetyOverview } from "../../../lib/hq/types.ts";
 import { opsCan } from "../opsCapabilities.ts";
 
 export type OpsDashboardData = {
@@ -17,6 +18,7 @@ export type OpsDashboardData = {
   repeatOffenderCount: number | null;
   repeatOffenderTruncated: boolean;
   recentEnforcements: HqAdminEnforcement[];
+  recentSignups: HqMemberDirectoryEntry[];
 };
 
 export type OpsDashboardState =
@@ -38,7 +40,17 @@ export function useOpsDashboard(operator: ReturnType<typeof import("../../hq/use
       repeatOffenderCount: null,
       repeatOffenderTruncated: false,
       recentEnforcements: [],
+      recentSignups: [],
     };
+
+    if (opsCan(operator, "hq.member.sensitive_read")) {
+      try {
+        const directory = await fetchHqMemberDirectory({ limit: 8 });
+        data.recentSignups = directory.members;
+      } catch (error) {
+        errors.push(hqErrorMessage(error));
+      }
+    }
 
     if (opsCan(operator, "hq.trust_safety.read")) {
       try {

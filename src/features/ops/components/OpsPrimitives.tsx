@@ -35,12 +35,28 @@ export function OpsMetricCard({
   value,
   hint,
   badge,
+  unavailable,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   badge?: string;
+  /** When set, renders an honest unavailable card instead of a fabricated number. */
+  unavailable?: string;
 }) {
+  if (unavailable) {
+    return (
+      <article className="ops-metric ops-metric--unavailable">
+        <div className="ops-metric__head">
+          <p className="ops-metric__label">{label}</p>
+          <OpsBadge tone="neutral">NOT CONFIGURED</OpsBadge>
+        </div>
+        <p className="ops-metric__value">—</p>
+        <p className="ops-metric__hint">{unavailable}</p>
+      </article>
+    );
+  }
+
   return (
     <article className="ops-metric">
       <div className="ops-metric__head">
@@ -58,6 +74,37 @@ export function OpsEmpty({ title, body }: { title: string; body: string }) {
     <div className="ops-empty">
       <h3>{title}</h3>
       <p>{body}</p>
+    </div>
+  );
+}
+
+export function OpsDashboardSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="ops-dashboard-section">
+      <div className="ops-dashboard-section__head">
+        <h2>{title}</h2>
+        {description ? <p className="ops-muted">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export function OpsGenderSplitPlaceholder({ message }: { message: string }) {
+  return (
+    <div className="ops-gender-chart" aria-label="Gender split unavailable">
+      <div className="ops-gender-chart__ring" aria-hidden="true">
+        <span>—</span>
+      </div>
+      <p className="ops-muted">{message}</p>
     </div>
   );
 }
