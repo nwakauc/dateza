@@ -9,6 +9,8 @@ import { json, meOk, operatorOk } from "../hq/testFixtures.ts";
 import { OwnAccountContext, type OwnAccount } from "./OwnAccountContext.ts";
 import { MobileHeader } from "./MobileHeader.tsx";
 import { TopNav } from "./TopNav.tsx";
+import { HqEntryLink } from "../hq/HqEntryLink.tsx";
+import { OpsEntryLink } from "../ops/OpsEntryLink.tsx";
 
 const account: OwnAccount = {
   loading: false,
@@ -56,6 +58,7 @@ describe("HQ entry visibility", () => {
     );
 
     expect(await screen.findByRole("link", { name: /open d8n hq/i })).toHaveAttribute("href", "/hq");
+    expect(screen.getByRole("link", { name: /open dateza admin/i })).toHaveAttribute("href", "/ops");
   });
 
   it("hides HQ entry for ordinary members", async () => {
@@ -83,6 +86,7 @@ describe("HQ entry visibility", () => {
       ).toBe(true);
     });
     expect(screen.queryByRole("link", { name: /open d8n hq/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /open dateza admin/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /d8n hq/i })).not.toBeInTheDocument();
   });
 
@@ -105,5 +109,48 @@ describe("HQ entry visibility", () => {
 
     await user.click(screen.getByRole("button", { name: /open menu/i }));
     expect(await screen.findByRole("link", { name: /d8n hq/i })).toHaveAttribute("href", "/hq");
+    expect(screen.getByRole("link", { name: /admin/i })).toHaveAttribute("href", "/ops");
+  });
+
+  it("offers D8N HQ on the profile account list for operators", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      return json(404, { error: "not_found" });
+    });
+
+    render(
+      <MemoryRouter>
+        <SessionProvider>
+          <OwnAccountContext.Provider value={account}>
+            <HqEntryLink variant="row" />
+          </OwnAccountContext.Provider>
+        </SessionProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("link", { name: /d8n hq/i })).toHaveAttribute("href", "/hq");
+  });
+
+  it("offers DateZA Admin on the profile account list for operators", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      return json(404, { error: "not_found" });
+    });
+
+    render(
+      <MemoryRouter>
+        <SessionProvider>
+          <OwnAccountContext.Provider value={account}>
+            <OpsEntryLink variant="row" />
+          </OwnAccountContext.Provider>
+        </SessionProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("link", { name: /admin/i })).toHaveAttribute("href", "/ops");
   });
 });

@@ -5,7 +5,42 @@ contracts live in `docs/api/openapi.yaml` (tags `Hq` and `Admin`). Backend
 Phase 2 notes: `PHASE-2-IMPLEMENTATION.md`. Foundation/security handoff:
 `FOUNDATION-SECURITY-IMPLEMENTATION.md`.
 
-## Routes
+## DateZA Operations console (`/ops`)
+
+Separate from the dark D8N HQ Command Centre (`/hq`). This is the DateZA-branded,
+day-to-day admin surface for brand operators (reports, photos, member lookup,
+trust & safety).
+
+| Path | Page | Capability gate (nav) |
+| --- | --- | --- |
+| `/ops` | Dashboard | any authorized operator |
+| `/ops/users` | Member search | `hq.member.sensitive_read` |
+| `/ops/users/:lookup` | Member 360 | same (route) |
+| `/ops/reports` | Report queue | `admin.reports.read` |
+| `/ops/reports/:reportId` | Report detail | same; transitions need `admin.reports.moderate` |
+| `/ops/photos` | Photo moderation queue | `admin.profile_photos.moderate` |
+| `/ops/safety` | Trust & Safety overview | `hq.trust_safety.read` |
+| `/ops/activity` | Member activity lookup | `hq.member.security_read` |
+| `/ops/operators` | Operator assignments | `admin.operators.read` (+ manage actions need `admin.operators.manage`) |
+
+Consumer shell entry: `OpsEntryLink` (chip + account menus) when
+`GET /api/v1/hq/operator` succeeds — same probe as HQ. HQ sidebar links back to
+`/ops` as “DateZA Admin”.
+
+Dashboard metrics use only verified endpoints (overview, photo queue length,
+repeat offenders, recent enforcements). No signup, revenue, health, or activity
+fabrication. Users page is search-first; paginated directory awaits a backend
+contract.
+
+Additional APIs used by `/ops` only:
+
+- `GET /api/v1/admin/profile_photos`
+- `PATCH /api/v1/admin/profile_photos/{id}`
+- `GET /api/v1/hq/operators`
+- `POST /api/v1/hq/operators`
+- `PATCH /api/v1/hq/operators/{id}`
+
+## D8N HQ routes (`/hq`)
 
 | Path | Page | Notes |
 | --- | --- | --- |
@@ -84,7 +119,8 @@ localStorage, logged, or sent to analytics.
 
 ## Limitations (honest)
 
-- No operator-management UI (`/api/v1/hq/operators`) in Phase 1–2 surfaces.
+- No brand-scoped paginated member directory on `/ops/users` (search-first only).
+- No operator-management UI in `/hq` (available under `/ops/operators` when entitled).
 - No SLA overdue numbers or reports-per-1,000 inventing.
 - No reason / target-type queue filters (overview breakdowns only).
 - Repeat offenders are bounded + `truncated`, not cursor-paginated.
@@ -97,13 +133,14 @@ localStorage, logged, or sent to analytics.
 - `src/features/hq/hq.test.tsx` — Phase 1 Member 360 / shell / MFA gate
 - `src/features/hq/trustSafety.test.tsx` — Phase 2 overview, queue, detail,
   offenders, enforcements, moderation success/failure, 403, 404
-- `src/features/shell/hqEntry.test.tsx` — consumer HQ entry via operator probe
+- `src/features/shell/hqEntry.test.tsx` — consumer HQ + Admin entry via operator probe
+- `src/features/ops/ops.test.tsx` — ops dashboard metrics, capability nav, users search-first
 - `src/features/hq/testFixtures.ts` — shared operator/session mocks
 
 Run:
 
 ```sh
-npx vitest run src/features/hq src/features/shell/hqEntry.test.tsx
+npx vitest run src/features/hq src/features/ops src/features/shell/hqEntry.test.tsx
 npm run lint
 npm run typecheck
 npm run build

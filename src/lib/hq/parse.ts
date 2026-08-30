@@ -49,9 +49,15 @@ import type {
   HqMfaEnrollmentResponse,
   HqMfaLifecycleState,
   HqMfaState,
+  HqManagedOperator,
   HqOperatorAssignment,
   HqOperatorRole,
   HqOperatorStatus,
+  HqProfilePhotoDerivative,
+  HqProfilePhotoModeration,
+  HqProfilePhotoModerationResult,
+  HqProfilePhotoQueue,
+  HqProfilePhotoQueueEntry,
 } from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -948,4 +954,104 @@ export function parseMfaChallengeResponse(data: unknown): HqMfaChallengeResult {
       recovery_codes_remaining: requireNumber(mfa.recovery_codes_remaining, "recovery_codes_remaining"),
     },
   };
+}
+
+function parseProfilePhotoDerivative(value: unknown): HqProfilePhotoDerivative | null {
+  if (value === null) return null;
+  const row = requireRecord(value, "photo_derivative");
+  return {
+    content_type: requireString(row.content_type, "photo_content_type"),
+    url: requireString(row.url, "photo_url"),
+    url_expires_in: requireNumber(row.url_expires_in, "photo_url_expires_in"),
+  };
+}
+
+function parseProfilePhotoQueueEntry(value: unknown): HqProfilePhotoQueueEntry {
+  const row = requireRecord(value, "photo_queue_entry");
+  return {
+    id: requireString(row.id, "photo_id"),
+    profile_id: requireString(row.profile_id, "photo_profile_id"),
+    position: requireNumber(row.position, "photo_position"),
+    created_at: requireString(row.created_at, "photo_created_at"),
+    image: parseProfilePhotoDerivative(row.image),
+  };
+}
+
+export function parseProfilePhotoQueue(data: unknown): HqProfilePhotoQueue {
+  const root = requireRecord(data, "photo_queue");
+  if (!Array.isArray(root.photos)) {
+    throw new ApiError(502, undefined, "invalid_hq_photo_queue");
+  }
+  return { photos: root.photos.map(parseProfilePhotoQueueEntry) };
+}
+
+function parseProfilePhotoModeration(value: unknown): HqProfilePhotoModeration {
+  const row = requireRecord(value, "photo_moderation");
+  const status = requireString(row.status, "photo_status");
+  if (status !== "approved" && status !== "rejected") {
+    throw new ApiError(502, undefined, "invalid_hq_photo_status");
+  }
+  const visibility = requireString(row.visibility, "photo_visibility");
+  if (visibility !== "hidden" && visibility !== "visible") {
+    throw new ApiError(502, undefined, "invalid_hq_photo_visibility");
+  }
+  const processing = requireString(row.processing_state, "photo_processing_state");
+  if (
+    processing !== "pending" &&
+    processing !== "processing" &&
+    processing !== "ready" &&
+    processing !== "failed"
+  ) {
+    throw new ApiError(502, undefined, "invalid_hq_photo_processing_state");
+  }
+  return {
+    id: requireString(row.id, "photo_id"),
+    profile_id: requireString(row.profile_id, "photo_profile_id"),
+    position: requireNumber(row.position, "photo_position"),
+    status,
+    visibility,
+    processing_state: processing,
+  };
+}
+
+export function parseProfilePhotoModerationResult(data: unknown): HqProfilePhotoModerationResult {
+  const root = requireRecord(data, "photo_moderation_result");
+  return {
+    transitioned: requireBoolean(root.transitioned, "photo_transitioned"),
+    photo: parseProfilePhotoModeration(root.photo),
+  };
+}
+
+function parseManagedOperator(value: unknown): HqManagedOperator {
+  const row = requireRecord(value, "managed_operator");
+  const assignmentStatus = requireString(row.assignment_status, "assignment_status");
+  if (
+    assignmentStatus !== "active" &&
+    assignmentStatus !== "suspended" &&
+    assignmentStatus !== "revoked"
+  ) {
+    throw new ApiError(502, undefined, "invalid_hq_assignment_status");
+  }
+  return {
+    admin_user_id: requireNumber(row.admin_user_id, "admin_user_id"),
+    user_id: requireNumber(row.user_id, "user_id"),
+    admin_status: parseOperatorStatus(row.admin_status),
+    assignment_status: assignmentStatus,
+    role: parseOperatorRole(row.role),
+    effective_capabilities: parseCapabilityList(row.effective_capabilities, "operator_capabilities"),
+    mfa_enrolled: requireBoolean(row.mfa_enrolled, "mfa_enrolled"),
+  };
+}
+
+export function parseManagedOperatorResponse(data: unknown): HqManagedOperator {
+  const root = requireRecord(data, "managed_operator_response");
+  return parseManagedOperator(root.operator);
+}
+
+export function parseManagedOperatorList(data: unknown): HqManagedOperator[] {
+  const root = requireRecord(data, "managed_operator_list");
+  if (!Array.isArray(root.operators)) {
+    throw new ApiError(502, undefined, "invalid_hq_operators");
+  }
+  return root.operators.map(parseManagedOperator);
 }

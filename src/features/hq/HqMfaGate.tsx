@@ -9,6 +9,8 @@ import { ApiError } from "../../lib/api/errors.ts";
 import type { HqCurrentOperator, HqMfaEnrollment } from "../../lib/hq/types.ts";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { useHqOperator } from "./useHqOperator.ts";
+import { HqSiteLink } from "./HqSiteLink.tsx";
+import { HqStatusFrame } from "./HqStatusFrame.tsx";
 
 type Props = {
   children: ReactNode;
@@ -19,20 +21,24 @@ export function HqMfaGate({ children }: Props) {
 
   if (status === "loading") {
     return (
-      <SessionStatusPage
-        title="Loading HQ session…"
-        body="Confirming your operator role, capabilities, and security state."
-        busy
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="Loading HQ session…"
+          body="Confirming your operator role, capabilities, and security state."
+          busy
+        />
+      </HqStatusFrame>
     );
   }
 
   if (status === "unavailable" || !operator) {
     return (
-      <SessionStatusPage
-        title="Could not open HQ"
-        body="Your operator session could not be loaded for this brand."
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="Could not open HQ"
+          body="Your operator session could not be loaded for this brand."
+        />
+      </HqStatusFrame>
     );
   }
 
@@ -129,6 +135,7 @@ function EnrollmentPanel({
 
   return (
     <div className="hq-mfa">
+      <HqSiteLink variant="inline" />
       <div className="hq-mfa__panel hq-card">
         <h1>Set up HQ multi-factor authentication</h1>
         <p className="hq-mfa__lead">
@@ -218,6 +225,7 @@ function ChallengePanel({ onComplete }: { onComplete: () => Promise<void> }) {
 
   return (
     <div className="hq-mfa">
+      <HqSiteLink variant="inline" />
       <form className="hq-mfa__panel hq-card" onSubmit={(event) => void submit(event)}>
         <h1>Confirm it is you</h1>
         <p className="hq-mfa__lead">
@@ -270,6 +278,7 @@ function RecoveryCodesPanel({
 
   return (
     <div className="hq-mfa">
+      <HqSiteLink variant="inline" />
       <div className="hq-mfa__panel hq-card">
         <h1>Save your recovery codes</h1>
         <p className="hq-mfa__lead">

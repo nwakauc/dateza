@@ -446,3 +446,55 @@ export type HqMfaChallengeResult = {
     recovery_codes_remaining: number;
   };
 };
+
+export type HqProfilePhotoDerivative = {
+  content_type: string;
+  url: string;
+  url_expires_in: number;
+};
+
+export type HqProfilePhotoQueueEntry = {
+  id: string;
+  profile_id: string;
+  position: number;
+  created_at: string;
+  image: HqProfilePhotoDerivative | null;
+};
+
+export type HqProfilePhotoQueue = {
+  photos: HqProfilePhotoQueueEntry[];
+};
+
+export type HqProfilePhotoModeration = {
+  id: string;
+  profile_id: string;
+  position: number;
+  status: "approved" | "rejected";
+  visibility: "hidden" | "visible";
+  processing_state: "pending" | "processing" | "ready" | "failed";
+};
+
+export type HqProfilePhotoModerationResult = {
+  transitioned: boolean;
+  photo: HqProfilePhotoModeration;
+};
+
+export type HqManagedOperator = {
+  admin_user_id: number;
+  user_id: number;
+  admin_status: HqOperatorStatus;
+  assignment_status: "active" | "suspended" | "revoked";
+  role: HqOperatorRole;
+  effective_capabilities: HqCapability[];
+  mfa_enrolled: boolean;
+};
+
+export type HqCreateOperatorBody = {
+  email: string;
+  role: HqOperatorRole;
+};
+
+export type HqUpdateOperatorBody = {
+  role?: HqOperatorRole;
+  status?: "active" | "suspended" | "revoked";
+};

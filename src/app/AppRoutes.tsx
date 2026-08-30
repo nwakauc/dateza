@@ -19,6 +19,17 @@ import SafetyPage from "../features/profile/SafetyPage.tsx";
 import SettingsPage from "../features/profile/SettingsPage.tsx";
 import { ProtectedRoute } from "../features/session/ProtectedRoute.tsx";
 import AppShell from "../features/shell/AppShell.tsx";
+import OpsShell from "../features/ops/OpsShell.tsx";
+import { OpsProtectedRoute } from "../features/ops/OpsProtectedRoute.tsx";
+import OpsDashboardPage from "../features/ops/pages/OpsDashboardPage.tsx";
+import OpsUsersPage from "../features/ops/pages/OpsUsersPage.tsx";
+import OpsUserDetailPage from "../features/ops/pages/OpsUserDetailPage.tsx";
+import OpsReportsPage from "../features/ops/pages/OpsReportsPage.tsx";
+import OpsReportDetailPage from "../features/ops/pages/OpsReportDetailPage.tsx";
+import OpsPhotosPage from "../features/ops/pages/OpsPhotosPage.tsx";
+import OpsSafetyPage from "../features/ops/pages/OpsSafetyPage.tsx";
+import OpsActivityPage from "../features/ops/pages/OpsActivityPage.tsx";
+import OpsOperatorsPage from "../features/ops/pages/OpsOperatorsPage.tsx";
 import HqShell from "../features/hq/HqShell.tsx";
 import { HqProtectedRoute } from "../features/hq/HqProtectedRoute.tsx";
 import CommandCentrePage from "../features/hq/pages/CommandCentrePage.tsx";
@@ -196,6 +207,26 @@ export default function AppRoutes() {
         <Route path="intelligence" element={<UnavailableHqPage path="/hq/intelligence" />} />
         <Route path="briefings" element={<UnavailableHqPage path="/hq/briefings" />} />
         <Route path="*" element={<HqPlannedPage />} />
+      </Route>
+
+      {/* DateZA Operations / Admin console — day-to-day brand ops (separate from D8N HQ). */}
+      <Route
+        path="/ops"
+        element={
+          <OpsProtectedRoute>
+            <OpsShell />
+          </OpsProtectedRoute>
+        }
+      >
+        <Route index element={<OpsDashboardPage />} />
+        <Route path="users" element={<OpsUsersPage />} />
+        <Route path="users/:lookup" element={<OpsUserDetailPage />} />
+        <Route path="reports" element={<OpsReportsPage />} />
+        <Route path="reports/:reportId" element={<OpsReportDetailPage />} />
+        <Route path="photos" element={<OpsPhotosPage />} />
+        <Route path="safety" element={<OpsSafetyPage />} />
+        <Route path="activity" element={<OpsActivityPage />} />
+        <Route path="operators" element={<OpsOperatorsPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

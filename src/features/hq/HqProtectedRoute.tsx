@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { SessionStatusPage } from "../session/SessionStatusPage.tsx";
 import { useSession } from "../session/useSession.ts";
 import type { ReactNode } from "react";
+import { HqStatusFrame } from "./HqStatusFrame.tsx";
 import { useBrandAdminAccess } from "./useBrandAdminAccess.ts";
 
 type Props = {
@@ -16,20 +17,24 @@ export function HqProtectedRoute({ children }: Props) {
 
   if (session.status === "unknown") {
     return (
-      <SessionStatusPage
-        title="Checking your session…"
-        body="Please wait while D8N HQ confirms whether you are signed in."
-        busy
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="Checking your session…"
+          body="Please wait while D8N HQ confirms whether you are signed in."
+          busy
+        />
+      </HqStatusFrame>
     );
   }
 
   if (session.status === "unavailable") {
     return (
-      <SessionStatusPage
-        title="D8N is temporarily unavailable"
-        body="We could not confirm your session. Refresh the page and try again."
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="D8N is temporarily unavailable"
+          body="We could not confirm your session. Refresh the page and try again."
+        />
+      </HqStatusFrame>
     );
   }
 
@@ -39,29 +44,35 @@ export function HqProtectedRoute({ children }: Props) {
 
   if (adminAccess === "unknown") {
     return (
-      <SessionStatusPage
-        title="Checking HQ access…"
-        body="Confirming whether this account is an authorized operator for this brand."
-        busy
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="Checking HQ access…"
+          body="Confirming whether this account is an authorized operator for this brand."
+          busy
+        />
+      </HqStatusFrame>
     );
   }
 
   if (adminAccess === "forbidden") {
     return (
-      <SessionStatusPage
-        title="HQ is for authorized operators"
-        body="This account is signed in, but it does not have an active operator assignment for this brand."
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="HQ is for authorized operators"
+          body="This account is signed in, but it does not have an active operator assignment for this brand."
+        />
+      </HqStatusFrame>
     );
   }
 
   if (adminAccess === "unavailable") {
     return (
-      <SessionStatusPage
-        title="Could not verify HQ access"
-        body="Try again in a moment. If this keeps happening, refresh the page."
-      />
+      <HqStatusFrame>
+        <SessionStatusPage
+          title="Could not verify HQ access"
+          body="Try again in a moment. If this keeps happening, refresh the page."
+        />
+      </HqStatusFrame>
     );
   }
 

@@ -231,6 +231,17 @@ describe("D8N HQ Phase 1 integration", () => {
     expect(screen.queryByRole("option", { name: /all company/i })).not.toBeInTheDocument();
   });
 
+  it("offers a return path to DateZA from HQ", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    expect(await screen.findByRole("heading", { name: "Command Centre" })).toBeInTheDocument();
+    const exits = screen.getAllByRole("link", { name: /back to dateza/i });
+    expect(exits.length).toBeGreaterThan(0);
+    for (const link of exits) {
+      expect(link).toHaveAttribute("href", "/discover");
+    }
+  });
+
   it("looks up a member and navigates to Member 360 via profile public id", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(

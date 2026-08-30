@@ -12,6 +12,10 @@ import {
   parseMfaChallengeResponse,
   parseMfaConfirmationResponse,
   parseMfaEnrollmentResponse,
+  parseProfilePhotoModerationResult,
+  parseProfilePhotoQueue,
+  parseManagedOperatorList,
+  parseManagedOperatorResponse,
   parseRepeatOffenderList,
   parseSecurityEventList,
   parseTrustSafetyOverview,
@@ -30,6 +34,11 @@ import type {
   HqMfaChallengeResult,
   HqMfaConfirmation,
   HqMfaEnrollmentResponse,
+  HqCreateOperatorBody,
+  HqManagedOperator,
+  HqProfilePhotoModerationResult,
+  HqProfilePhotoQueue,
+  HqUpdateOperatorBody,
   HqRepeatOffenderList,
   HqSecurityEventList,
   HqSuspendProfileBody,
@@ -235,6 +244,49 @@ export async function reinstateAdminProfile(profileId: string): Promise<HqAdminE
     method: "DELETE",
   });
   return parseAdminEnforcementResponse(data);
+}
+
+export async function fetchProfilePhotoQueue(): Promise<HqProfilePhotoQueue> {
+  const data = await apiRequest("/api/v1/admin/profile_photos");
+  return parseProfilePhotoQueue(data);
+}
+
+export async function moderateProfilePhoto(
+  photoId: string,
+  status: "approved" | "rejected",
+): Promise<HqProfilePhotoModerationResult> {
+  const data = await apiRequest(`/api/v1/admin/profile_photos/${encodeURIComponent(photoId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  return parseProfilePhotoModerationResult(data);
+}
+
+export async function fetchManagedOperators(): Promise<HqManagedOperator[]> {
+  const data = await apiRequest("/api/v1/hq/operators");
+  return parseManagedOperatorList(data);
+}
+
+export async function createManagedOperator(body: HqCreateOperatorBody): Promise<HqManagedOperator> {
+  const data = await apiRequest("/api/v1/hq/operators", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseManagedOperatorResponse(data);
+}
+
+export async function updateManagedOperator(
+  adminUserId: number,
+  body: HqUpdateOperatorBody,
+): Promise<HqManagedOperator> {
+  const data = await apiRequest(`/api/v1/hq/operators/${adminUserId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseManagedOperatorResponse(data);
 }
 
 export function hqErrorMessage(error: unknown): string {

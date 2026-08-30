@@ -6,6 +6,7 @@ import { getProfileConfiguration } from "../../lib/api/profile.ts";
 import type { ProfileDetail } from "../../lib/api/findTypes.ts";
 import type { ProfileConfiguration } from "../../lib/api/profileTypes.ts";
 import { useSignOut } from "../auth/useSignOut.ts";
+import { HqEntryLink } from "../hq/HqEntryLink.tsx";
 import { canInteract } from "../session/verificationState.ts";
 import { GearIcon, ChevronRightIcon, ShieldCheckIcon, ShieldIcon } from "../shell/icons.tsx";
 import { VERIFIED_CONTACT_LABEL } from "../shell/trustLabels.ts";
@@ -74,6 +75,7 @@ function AccountLinks({
         </span>
         <ChevronRightIcon className="shell-row__chevron" />
       </Link>
+      <HqEntryLink variant="row" />
       <button type="button" className="shell-row" onClick={onSignOut} disabled={signingOut}>
         <span className="shell-row__body">
           <p className="shell-row__title">{signingOut ? "Signing out…" : "Sign out"}</p>

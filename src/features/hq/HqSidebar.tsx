@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { canAccessNavItem } from "../../lib/hq/capabilities.ts";
+import { HqSiteLink } from "./HqSiteLink.tsx";
 import { HQ_NAV_GROUPS } from "./navConfig.ts";
 import { useHqOperator } from "./useHqOperator.ts";
 
@@ -45,7 +46,13 @@ export function HqSidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      <div className="hq-sidebar__footer">Phase 1–2 · Operator HQ</div>
+      <div className="hq-sidebar__footer">
+        <Link to="/ops" className="hq-site-link hq-site-link--sidebar" onClick={onNavigate}>
+          DateZA Admin
+        </Link>
+        <HqSiteLink variant="sidebar" onNavigate={onNavigate} />
+        <p className="hq-sidebar__phase">Phase 1–2 · Operator HQ</p>
+      </div>
     </aside>
   );
 }

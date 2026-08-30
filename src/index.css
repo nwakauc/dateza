@@ -6924,6 +6924,32 @@ button.onboard-chip:focus-visible {
   outline-offset: 2px;
 }
 
+.shell-ops-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(31, 61, 45, 0.2);
+  background: #1f3d2d;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.shell-ops-chip:hover {
+  background: #163024;
+}
+
+.shell-ops-chip:focus-visible {
+  outline: 2px solid #e8375a;
+  outline-offset: 2px;
+}
+
 .shell-avatar {
   position: relative;
   display: inline-flex;

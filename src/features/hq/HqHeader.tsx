@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { HqSiteLink } from "./HqSiteLink.tsx";
 import { useHqBrand } from "./useHqBrand.ts";
 import { formatOperatorRole } from "../../lib/hq/capabilities.ts";
 
@@ -163,6 +164,7 @@ export function HqHeader({
         </div>
       </div>
       <div className="hq-header__controls">
+        <HqSiteLink variant="header" />
         <BrandSelector />
         <DateRangeSelector />
         <GlobalSearchTrigger onOpen={onOpenSearch} />

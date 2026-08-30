@@ -16,6 +16,8 @@ import {
   StatusBadge,
   UnavailableState,
 } from "../components/HqPrimitives.tsx";
+import { useHqOperator } from "../useHqOperator.ts";
+import { opsCan } from "../../ops/opsCapabilities.ts";
 
 type LoadResult =
   | { status: "ready"; report: HqAdminReport }
@@ -74,7 +76,15 @@ function partyLabel(party: HqAdminReport["reported"]): string {
   return party.display_name ?? party.id;
 }
 
-function PartyLink({ party, label }: { party: HqAdminReport["reported"]; label: string }) {
+function PartyLink({
+  party,
+  label,
+  memberBase,
+}: {
+  party: HqAdminReport["reported"];
+  label: string;
+  memberBase: string;
+}) {
   if (!party?.id) {
     return (
       <div className="hq-kv">
@@ -87,7 +97,7 @@ function PartyLink({ party, label }: { party: HqAdminReport["reported"]; label: 
     <div className="hq-kv">
       <dt>{label}</dt>
       <dd>
-        <Link className="hq-inline-link" to={`/hq/members/${encodeURIComponent(party.id)}`}>
+        <Link className="hq-inline-link" to={`${memberBase}/${encodeURIComponent(party.id)}`}>
           {partyLabel(party)}
         </Link>
       </dd>
@@ -95,7 +105,17 @@ function PartyLink({ party, label }: { party: HqAdminReport["reported"]; label: 
   );
 }
 
-export default function ReportDetailPage() {
+type ReportDetailPageProps = {
+  routePrefix?: "hq" | "ops";
+};
+
+export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPageProps) {
+  const memberBase = routePrefix === "ops" ? "/ops/users" : "/hq/members";
+  const queueLink = routePrefix === "ops" ? "/ops/reports" : "/hq/trust-safety?tab=queue";
+  const sectionLink = routePrefix === "ops" ? "/ops/reports" : "/hq/trust-safety";
+  const { operator } = useHqOperator();
+  const canModerateReports =
+    routePrefix === "ops" ? opsCan(operator, "admin.reports.moderate") : true;
   const { reportId: reportIdParam } = useParams();
   const reportId = Number.parseInt(reportIdParam ?? "", 10);
   const validId = Number.isFinite(reportId) && reportId > 0;
@@ -222,7 +242,7 @@ export default function ReportDetailPage() {
     return (
       <div className="hq-content">
         <StateBanner tone="forbidden" title="Forbidden" body={errorMessage ?? ""} />
-        <Link className="hq-inline-link" to="/hq/trust-safety?tab=queue">
+        <Link className="hq-inline-link" to={queueLink}>
           Back to queue
         </Link>
       </div>
@@ -237,7 +257,7 @@ export default function ReportDetailPage() {
           title="Report unavailable"
           body={errorMessage ?? "That report is unavailable for this brand."}
         />
-        <Link className="hq-inline-link" to="/hq/trust-safety?tab=queue">
+        <Link className="hq-inline-link" to={queueLink}>
           Back to queue
         </Link>
       </div>
@@ -261,9 +281,9 @@ export default function ReportDetailPage() {
   return (
     <div className="hq-content hq-ts-stack">
       <div className="hq-breadcrumbs">
-        <Link to="/hq/trust-safety">Trust &amp; Safety</Link>
+        <Link to={sectionLink}>Trust &amp; Safety</Link>
         <span className="hq-breadcrumbs__sep">/</span>
-        <Link to="/hq/trust-safety?tab=queue">Queue</Link>
+        <Link to={queueLink}>Queue</Link>
         <span className="hq-breadcrumbs__sep">/</span>
         <span>Report #{report.id}</span>
       </div>
@@ -303,8 +323,8 @@ export default function ReportDetailPage() {
             ]}
           />
           <dl className="hq-kv-grid" style={{ marginTop: 12 }}>
-            <PartyLink party={report.reported} label="Reported" />
-            <PartyLink party={report.reporter} label="Reporter" />
+            <PartyLink party={report.reported} label="Reported" memberBase={memberBase} />
+            <PartyLink party={report.reporter} label="Reporter" memberBase={memberBase} />
           </dl>
           <div className="hq-kv" style={{ marginTop: 12 }}>
             <dt>Reporter note</dt>
@@ -333,7 +353,11 @@ export default function ReportDetailPage() {
       </div>
 
       <MetricCard title="Moderation">
-        {allowed.length === 0 ? (
+        {!canModerateReports ? (
+          <p className="hq-card__subtitle">
+            You can review this report but cannot change its status with your current access.
+          </p>
+        ) : allowed.length === 0 ? (
           <p className="hq-card__subtitle">
             This report is in a terminal state. Status cannot be changed again.
           </p>

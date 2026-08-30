@@ -5,6 +5,7 @@ import { useSignOut } from "../auth/useSignOut.ts";
 import { canInteract } from "../session/verificationState.ts";
 import { useSession } from "../session/useSession.ts";
 import { HqEntryLink } from "../hq/HqEntryLink.tsx";
+import { OpsEntryLink } from "../ops/OpsEntryLink.tsx";
 import { BellIcon, ChevronRightIcon, SignOutIcon } from "./icons.tsx";
 import { ACCOUNT_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./navConfig.ts";
 import type { OwnAccount } from "./OwnAccountContext.ts";
@@ -47,6 +48,7 @@ export function TopNav({ account }: Props) {
         </nav>
 
         <div className="shell-topnav__actions">
+          <OpsEntryLink variant="chip" />
           <HqEntryLink variant="chip" />
           <Link to="/notifications" className="shell-icon-link" aria-label="Notifications">
             <BellIcon />
@@ -75,6 +77,10 @@ export function TopNav({ account }: Props) {
                   </Link>
                 );
               })}
+              <OpsEntryLink
+                variant="menu"
+                onNavigate={() => menuRef.current?.removeAttribute("open")}
+              />
               <HqEntryLink
                 variant="menu"
                 onNavigate={() => menuRef.current?.removeAttribute("open")}
