@@ -17,7 +17,7 @@ export type HqNavGroup = {
 
 /**
  * Full IA from D8N-HQ-PLAN / implementation brief.
- * Only Command Centre + Members are Phase 1 ready surfaces.
+ * Phase 1: Command Centre + Members. Phase 2: Trust & Safety.
  */
 export const HQ_NAV_GROUPS: HqNavGroup[] = [
   {
@@ -52,7 +52,7 @@ export const HQ_NAV_GROUPS: HqNavGroup[] = [
     id: "trust",
     label: "Trust",
     items: [
-      { id: "trust-safety", label: "Trust & Safety", path: "/hq/trust-safety", availability: "planned" },
+      { id: "trust-safety", label: "Trust & Safety", path: "/hq/trust-safety", availability: "ready" },
     ],
   },
   {
@@ -101,6 +101,10 @@ export const HQ_NAV_GROUPS: HqNavGroup[] = [
   },
 ];
 
+function allNavItems(): HqNavItem[] {
+  return HQ_NAV_GROUPS.flatMap((g) => g.items);
+}
+
 export function findHqNavItem(pathname: string): HqNavItem | undefined {
   const normalized = pathname.replace(/\/$/, "") || "/hq";
   for (const group of HQ_NAV_GROUPS) {
@@ -114,7 +118,10 @@ export function findHqNavItem(pathname: string): HqNavItem | undefined {
     }
   }
   if (normalized.startsWith("/hq/members")) {
-    return HQ_NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === "members");
+    return allNavItems().find((i) => i.id === "members");
+  }
+  if (normalized.startsWith("/hq/trust-safety")) {
+    return allNavItems().find((i) => i.id === "trust-safety");
   }
   return undefined;
 }
@@ -133,7 +140,7 @@ export function hqUnavailableCopy(availability: HqNavAvailability): {
   }
   return {
     title: "Coming later",
-    body: "Navigation is reserved so the shell can grow. This page is not part of the Phase 1 Member 360 slice.",
+    body: "Navigation is reserved so the shell can grow. This page is not part of the Phase 1–2 HQ surfaces yet.",
     badge: "COMING LATER",
   };
 }

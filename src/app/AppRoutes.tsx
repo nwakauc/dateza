@@ -24,6 +24,8 @@ import { HqProtectedRoute } from "../features/hq/HqProtectedRoute.tsx";
 import CommandCentrePage from "../features/hq/pages/CommandCentrePage.tsx";
 import Member360Page from "../features/hq/pages/Member360Page.tsx";
 import MemberSearchPage from "../features/hq/pages/MemberSearchPage.tsx";
+import ReportDetailPage from "../features/hq/pages/ReportDetailPage.tsx";
+import TrustSafetyPage from "../features/hq/pages/TrustSafetyPage.tsx";
 import UnavailableHqPage from "../features/hq/pages/UnavailableHqPage.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
 import {
@@ -154,7 +156,7 @@ export default function AppRoutes() {
         <Route path="/safety" element={<Navigate to="/settings/safety" replace />} />
       </Route>
 
-      {/* D8N HQ — internal command centre (Phase 1: shell + Member 360).
+      {/* D8N HQ — internal command centre (Phase 1–2: shell, Member 360, Trust & Safety).
           Isolated visual/system from the consumer dating product. */}
       <Route
         path="/hq"
@@ -175,7 +177,8 @@ export default function AppRoutes() {
         <Route path="marketplace" element={<UnavailableHqPage path="/hq/marketplace" />} />
         <Route path="revenue" element={<UnavailableHqPage path="/hq/revenue" />} />
         <Route path="customers" element={<UnavailableHqPage path="/hq/customers" />} />
-        <Route path="trust-safety" element={<UnavailableHqPage path="/hq/trust-safety" />} />
+        <Route path="trust-safety" element={<TrustSafetyPage />} />
+        <Route path="trust-safety/reports/:reportId" element={<ReportDetailPage />} />
         <Route path="reliability" element={<UnavailableHqPage path="/hq/reliability" />} />
         <Route path="apm" element={<UnavailableHqPage path="/hq/apm" />} />
         <Route path="errors" element={<UnavailableHqPage path="/hq/errors" />} />

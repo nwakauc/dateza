@@ -11,18 +11,25 @@ function HqShellInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const navItem = findHqNavItem(location.pathname);
+  const isReportDetail = /\/hq\/trust-safety\/reports\//.test(location.pathname);
   const title =
     location.pathname.startsWith("/hq/members/")
       ? "Member 360"
-      : (navItem?.label ?? "D8N HQ");
+      : isReportDetail
+        ? "Report detail"
+        : (navItem?.label ?? "D8N HQ");
   const subtitle =
     title === "Command Centre"
       ? "Real-time overview of everything happening across D8N."
       : title === "Members" || title === "Member 360"
         ? "Look up a member and inspect operational state for the selected brand."
-        : navItem?.availability === "ready"
-          ? undefined
-          : "This area is reserved in the shell and not implemented yet.";
+        : title === "Trust & Safety"
+          ? "Moderation queue, repeat offenders, and enforcement history for this brand."
+          : title === "Report detail"
+            ? "Inspect evidence and apply lifecycle or account enforcement actions."
+            : navItem?.availability === "ready"
+              ? undefined
+              : "This area is reserved in the shell and not implemented yet.";
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 

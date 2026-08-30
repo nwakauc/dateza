@@ -2,6 +2,9 @@ import { ApiError } from "../api/errors.ts";
 import type {
   HqAccountClosure,
   HqAdminEnforcement,
+  HqAdminReport,
+  HqAdminReportList,
+  HqAdminReportParty,
   HqAuthAttempt,
   HqAuthAttemptKind,
   HqAuthAttemptList,
@@ -24,11 +27,17 @@ import type {
   HqRecentAuthAttempt,
   HqRecentReport,
   HqRecentSecurityEvent,
+  HqRepeatOffender,
+  HqRepeatOffenderList,
+  HqReportReason,
+  HqReportStatus,
+  HqReportTargetType,
   HqSafetySection,
   HqSecurityEvent,
   HqSecurityEventList,
   HqSecuritySeverity,
   HqSession,
+  HqTrustSafetyOverview,
   HqUserStatus,
   HqActivitySection,
 } from "./types.ts";
@@ -358,6 +367,11 @@ export function parseAdminEnforcement(value: unknown): HqAdminEnforcement {
   };
 }
 
+export function parseAdminEnforcementResponse(data: unknown): HqAdminEnforcement {
+  const root = requireRecord(data, "enforcement_response");
+  return parseAdminEnforcement(root.enforcement);
+}
+
 function parseReport(value: unknown): HqRecentReport {
   const row = requireRecord(value, "report");
   const status = row.status;
@@ -566,6 +580,167 @@ export function parseDiscoveryDiagnostic(data: unknown): HqDiscoveryDiagnostic {
     eligible: requireBoolean(root.eligible, "eligible"),
     ineligibility_reason: nullableString(root.ineligibility_reason),
     stages: root.stages.map(parseDiscoveryStage),
+  };
+}
+
+function parseReportStatus(value: unknown): HqReportStatus {
+  if (value === "open" || value === "reviewing" || value === "actioned" || value === "dismissed") {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_report_status");
+}
+
+function parseReportReason(value: unknown): HqReportReason {
+  if (
+    value === "inappropriate_content" ||
+    value === "harassment" ||
+    value === "spam" ||
+    value === "fake_profile" ||
+    value === "underage" ||
+    value === "other" ||
+    value === "violence_or_threat" ||
+    value === "non_consensual_content" ||
+    value === "impersonation"
+  ) {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_report_reason");
+}
+
+function parseReportTargetType(value: unknown): HqReportTargetType {
+  if (
+    value === "profile" ||
+    value === "message" ||
+    value === "profile_media" ||
+    value === "hook" ||
+    value === "conversation"
+  ) {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_report_target");
+}
+
+function parseAdminReportParty(value: unknown): HqAdminReportParty {
+  if (value === null) return null;
+  const row = requireRecord(value, "report_party");
+  return {
+    id: requireString(row.id, "report_party_id"),
+    display_name: nullableString(row.display_name),
+  };
+}
+
+function parseEvidence(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new ApiError(502, undefined, "invalid_hq_report_evidence");
+  }
+  return value;
+}
+
+function parseAdminReportBody(value: unknown): HqAdminReport {
+  const row = requireRecord(value, "admin_report");
+  return {
+    id: requireNumber(row.id, "admin_report_id"),
+    status: parseReportStatus(row.status),
+    reason: parseReportReason(row.reason),
+    target_type: parseReportTargetType(row.target_type),
+    evidence: parseEvidence(row.evidence),
+    reporter: parseAdminReportParty(row.reporter),
+    reported: parseAdminReportParty(row.reported),
+    note: nullableString(row.note),
+    resolution_note: nullableString(row.resolution_note),
+    reviewed_by_admin_user_id:
+      row.reviewed_by_admin_user_id === null
+        ? null
+        : requireNumber(row.reviewed_by_admin_user_id, "reviewed_by"),
+    reviewed_at: nullableString(row.reviewed_at),
+    created_at: requireString(row.created_at, "admin_report_created_at"),
+    updated_at: requireString(row.updated_at, "admin_report_updated_at"),
+  };
+}
+
+/** Accepts either a bare AdminReport or `{ report: AdminReport }`. */
+export function parseAdminReport(data: unknown): HqAdminReport {
+  const root = requireRecord(data, "admin_report_response");
+  if ("report" in root) {
+    return parseAdminReportBody(root.report);
+  }
+  return parseAdminReportBody(root);
+}
+
+export function parseAdminReportList(data: unknown): HqAdminReportList {
+  const root = requireRecord(data, "admin_report_list");
+  if (!Array.isArray(root.reports)) {
+    throw new ApiError(502, undefined, "invalid_hq_admin_reports");
+  }
+  return {
+    reports: root.reports.map(parseAdminReportBody),
+    next_cursor: nullableString(root.next_cursor),
+  };
+}
+
+function nullableNumber(value: unknown, label: string): number | null {
+  if (value === null) return null;
+  return requireNumber(value, label);
+}
+
+export function parseTrustSafetyOverview(data: unknown): HqTrustSafetyOverview {
+  const root = requireRecord(data, "trust_safety_overview_response");
+  const overview = requireRecord(root.overview, "trust_safety_overview");
+  const reports = requireRecord(overview.reports, "trust_safety_reports");
+  const enforcements = requireRecord(overview.enforcements, "trust_safety_enforcements");
+  if (reports.sla_status !== "not_configured") {
+    throw new ApiError(502, undefined, "invalid_hq_sla_status");
+  }
+  // overdue must stay null when null — never coerce to 0
+  const overdue = nullableNumber(reports.overdue, "overdue");
+  return {
+    brand: requireString(overview.brand, "overview_brand"),
+    generated_at: requireString(overview.generated_at, "overview_generated_at"),
+    reports: {
+      total: requireNumber(reports.total, "reports_total"),
+      by_status: parseCountMap(reports.by_status, "by_status"),
+      awaiting_decision: requireNumber(reports.awaiting_decision, "awaiting_decision"),
+      oldest_open_report_at: nullableString(reports.oldest_open_report_at),
+      oldest_open_report_age_seconds: nullableNumber(
+        reports.oldest_open_report_age_seconds,
+        "oldest_open_age",
+      ),
+      by_reason: parseCountMap(reports.by_reason, "by_reason"),
+      by_target_type: parseCountMap(reports.by_target_type, "by_target_type"),
+      sla_status: "not_configured",
+      overdue,
+    },
+    enforcements: {
+      total: requireNumber(enforcements.total, "enforcements_total"),
+      active: requireNumber(enforcements.active, "enforcements_active"),
+    },
+  };
+}
+
+function parseRepeatOffender(value: unknown): HqRepeatOffender {
+  const row = requireRecord(value, "repeat_offender");
+  return {
+    profile_id: requireString(row.profile_id, "repeat_profile_id"),
+    display_name: nullableString(row.display_name),
+    member_360_lookup: nullableString(row.member_360_lookup),
+    report_count: requireNumber(row.report_count, "report_count"),
+    awaiting_decision_count: requireNumber(row.awaiting_decision_count, "awaiting_decision_count"),
+    latest_report_at: requireString(row.latest_report_at, "latest_report_at"),
+  };
+}
+
+export function parseRepeatOffenderList(data: unknown): HqRepeatOffenderList {
+  const root = requireRecord(data, "repeat_offender_list");
+  if (!Array.isArray(root.repeat_offenders)) {
+    throw new ApiError(502, undefined, "invalid_hq_repeat_offenders");
+  }
+  if (root.minimum_reports !== 2) {
+    throw new ApiError(502, undefined, "invalid_hq_minimum_reports");
+  }
+  return {
+    repeat_offenders: root.repeat_offenders.map(parseRepeatOffender),
+    minimum_reports: 2,
+    truncated: requireBoolean(root.truncated, "truncated"),
   };
 }
 

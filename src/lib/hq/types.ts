@@ -253,3 +253,109 @@ export type HqHistoryParams = {
   cursor?: string | null;
   limit?: number;
 };
+
+/** Phase 2 Trust & Safety */
+
+export type HqReportStatus = "open" | "reviewing" | "actioned" | "dismissed";
+
+export type HqReportReason =
+  | "inappropriate_content"
+  | "harassment"
+  | "spam"
+  | "fake_profile"
+  | "underage"
+  | "other"
+  | "violence_or_threat"
+  | "non_consensual_content"
+  | "impersonation";
+
+export type HqReportTargetType =
+  | "profile"
+  | "message"
+  | "profile_media"
+  | "hook"
+  | "conversation";
+
+export type HqAdminReportParty = {
+  id: string;
+  display_name: string | null;
+} | null;
+
+export type HqAdminReport = {
+  id: number;
+  status: HqReportStatus;
+  reason: HqReportReason;
+  target_type: HqReportTargetType;
+  evidence: Record<string, unknown>;
+  reporter: HqAdminReportParty;
+  reported: HqAdminReportParty;
+  note: string | null;
+  resolution_note: string | null;
+  reviewed_by_admin_user_id: number | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HqAdminReportList = {
+  reports: HqAdminReport[];
+  next_cursor: string | null;
+};
+
+export type HqTrustSafetyOverview = {
+  brand: string;
+  generated_at: string;
+  reports: {
+    total: number;
+    by_status: Record<string, number>;
+    awaiting_decision: number;
+    oldest_open_report_at: string | null;
+    oldest_open_report_age_seconds: number | null;
+    by_reason: Record<string, number>;
+    by_target_type: Record<string, number>;
+    sla_status: "not_configured";
+    /** Null until an approved SLA exists — never coerce to 0. */
+    overdue: number | null;
+  };
+  enforcements: {
+    total: number;
+    active: number;
+  };
+};
+
+export type HqRepeatOffender = {
+  profile_id: string;
+  display_name: string | null;
+  member_360_lookup: string | null;
+  report_count: number;
+  awaiting_decision_count: number;
+  latest_report_at: string;
+};
+
+export type HqRepeatOffenderList = {
+  repeat_offenders: HqRepeatOffender[];
+  minimum_reports: 2;
+  truncated: boolean;
+};
+
+export type HqTrustSafetyEnforcementParams = {
+  state?: "active" | "reverted" | null;
+  cursor?: string | null;
+  limit?: number;
+};
+
+export type HqAdminReportListParams = {
+  status?: HqReportStatus | null;
+  cursor?: string | null;
+  limit?: number;
+};
+
+export type HqUpdateReportBody = {
+  status: "reviewing" | "actioned" | "dismissed" | "open";
+  note?: string | null;
+};
+
+export type HqSuspendProfileBody = {
+  reason?: string | null;
+  report_id?: number | null;
+};

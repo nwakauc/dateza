@@ -13,6 +13,7 @@ type Props<T> = {
   columns: Array<{ key: string; header: string }>;
   mapRow: (row: T) => Record<string, ReactNode>;
   emptyLabel: string;
+  endLabel?: string;
 };
 
 type LoadState<T> =
@@ -26,6 +27,7 @@ export function HqHistoryPanel<T>({
   columns,
   mapRow,
   emptyLabel,
+  endLabel = "End of history for this member.",
 }: Props<T>) {
   const [load, setLoad] = useState<LoadState<T>>({ status: "loading" });
   const [pendingMore, setPendingMore] = useState(false);
@@ -102,7 +104,7 @@ export function HqHistoryPanel<T>({
       ) : null}
       {load.status === "ready" && !load.next_cursor && load.rows.length > 0 ? (
         <p className="hq-card__subtitle" style={{ marginTop: 8 }}>
-          End of history for this member.
+          {endLabel}
         </p>
       ) : null}
       {load.status === "error" && load.rows.length > 0 ? (

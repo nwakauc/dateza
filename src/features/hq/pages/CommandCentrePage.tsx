@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { MetricCard, ScoreCard, StatusBadge, UnavailableState } from "../components/HqPrimitives.tsx";
 
 const SCORE_LABELS = ["Growth", "Product", "Revenue", "Customer", "Safety", "System"] as const;
@@ -101,19 +102,23 @@ export default function CommandCentrePage() {
         </div>
         <div className="hq-attention-item">
           <div className="hq-attention-item__label">
-            <StatusBadge tone="warning">Honest empty</StatusBadge>
+            <StatusBadge tone="warning">Moderation</StatusBadge>
           </div>
           <p className="hq-attention-item__body">
-            Score cards and charts stay NOT CONFIGURED / INSUFFICIENT DATA until backends exist.
-            Fabricated KPIs are forbidden.
+            Open{" "}
+            <Link className="hq-inline-link" to="/hq/trust-safety">
+              Trust &amp; Safety
+            </Link>{" "}
+            for the live report queue. SLA is not configured — overdue counts are unavailable.
           </p>
         </div>
         <div className="hq-attention-item">
           <div className="hq-attention-item__label">
-            <StatusBadge tone="neutral">Later</StatusBadge>
+            <StatusBadge tone="neutral">Honest empty</StatusBadge>
           </div>
           <p className="hq-attention-item__body">
-            Trust & Safety queue, system health, and growth surfaces arrive in Phases 2–6.
+            Score cards and charts stay NOT CONFIGURED / INSUFFICIENT DATA until backends exist.
+            Fabricated KPIs are forbidden.
           </p>
         </div>
       </aside>
