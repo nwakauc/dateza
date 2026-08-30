@@ -115,6 +115,14 @@ export type EmailChangeResponse = {
   revoked_session_count: number;
 };
 
+export type PhoneChangeResponse = {
+  identifier: {
+    kind: "phone";
+    verified: true;
+  };
+  revoked_session_count: number;
+};
+
 export type CloseAccountResponse = {
   closed: true;
   already_closed: boolean;

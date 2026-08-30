@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../../../lib/api/errors.ts";
 import {
+  banAdminProfile,
   fetchHqAuthAttempts,
   fetchHqDiscoveryDiagnostic,
   fetchHqEnforcements,
@@ -10,7 +11,9 @@ import {
   hqErrorMessage,
   reinstateAdminProfile,
   suspendAdminProfile,
+  unbanAdminProfile,
 } from "../../../lib/hq/api.ts";
+import { canCreateEnforcement, canReinstateEnforcement } from "../../../lib/hq/enforcementAccess.ts";
 import { displayNameForMember } from "../../../lib/hq/parse.ts";
 import type { HqMember360 } from "../../../lib/hq/types.ts";
 import { HqHistoryPanel } from "../../hq/components/HqHistoryPanel.tsx";
@@ -30,9 +33,12 @@ export default function OpsUserDetailPage() {
   const [load, setLoad] = useState<LoadResult | null>(null);
   const [actionError, setActionError] = useState<string>();
   const [actionPending, setActionPending] = useState(false);
-  const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"suspend" | "ban" | null>(null);
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
 
-  const canSuspend = opsCan(operator, "admin.enforcements.manage");
+  const canCreate = canCreateEnforcement(operator);
+  const canReinstate = canReinstateEnforcement(operator);
   const canReadSecurity = opsCan(operator, "hq.member.security_read");
   const canReadDiagnostic = opsCan(operator, "hq.discovery_diagnostics.read");
 
@@ -94,8 +100,13 @@ export default function OpsUserDetailPage() {
     setActionPending(true);
     setActionError(undefined);
     try {
-      await suspendAdminProfile(profile.public_id);
-      setShowSuspendConfirm(false);
+      await suspendAdminProfile(profile.public_id, {
+        reason: reason.trim() ? reason.trim() : null,
+        note: note.trim() ? note.trim() : null,
+      });
+      setPendingAction(null);
+      setReason("");
+      setNote("");
       await reload();
     } catch (error) {
       setActionError(hqErrorMessage(error));
@@ -104,14 +115,46 @@ export default function OpsUserDetailPage() {
     }
   }
 
-  async function onReinstate() {
+  async function onBan() {
     if (!load || load.status !== "ready") return;
     const profile = load.member.sections.profile;
     if (!profile.exists || !profile.public_id) return;
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setActionError("A reason is required to ban a profile.");
+      return;
+    }
     setActionPending(true);
     setActionError(undefined);
     try {
-      await reinstateAdminProfile(profile.public_id);
+      await banAdminProfile(profile.public_id, {
+        reason: trimmedReason,
+        note: note.trim() ? note.trim() : null,
+      });
+      setPendingAction(null);
+      setReason("");
+      setNote("");
+      await reload();
+    } catch (error) {
+      setActionError(hqErrorMessage(error));
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  async function onLiftEnforcement() {
+    if (!load || load.status !== "ready") return;
+    const profile = load.member.sections.profile;
+    if (!profile.exists || !profile.public_id) return;
+    const kind = load.member.sections.safety.active_enforcement?.kind ?? "suspension";
+    setActionPending(true);
+    setActionError(undefined);
+    try {
+      if (kind === "ban") {
+        await unbanAdminProfile(profile.public_id);
+      } else {
+        await reinstateAdminProfile(profile.public_id);
+      }
       await reload();
     } catch (error) {
       setActionError(hqErrorMessage(error));
@@ -141,6 +184,9 @@ export default function OpsUserDetailPage() {
   const profile = member.sections.profile;
   const identity = member.sections.identity;
   const safety = member.sections.safety;
+  const activeEnforcement = safety.active_enforcement;
+  const enforced = activeEnforcement?.state === "active";
+  const enforcementKind = activeEnforcement?.kind ?? null;
   const suspended = profile.exists && profile.status === "suspended";
 
   return (
@@ -149,29 +195,95 @@ export default function OpsUserDetailPage() {
         <Link className="ops-btn" to="/ops/users">
           Back to search
         </Link>
-        {canSuspend && profile.exists ? (
-          suspended ? (
-            <button type="button" className="ops-btn ops-btn--primary" disabled={actionPending} onClick={() => void onReinstate()}>
-              Reinstate profile
-            </button>
-          ) : (
-            <button type="button" className="ops-btn ops-btn--danger" disabled={actionPending} onClick={() => setShowSuspendConfirm(true)}>
+        {canCreate && profile.exists && !enforced ? (
+          <>
+            <button
+              type="button"
+              className="ops-btn ops-btn--danger"
+              disabled={actionPending}
+              onClick={() => {
+                setPendingAction("suspend");
+                setReason("");
+                setNote("");
+                setActionError(undefined);
+              }}
+            >
               Suspend profile
             </button>
-          )
+            <button
+              type="button"
+              className="ops-btn ops-btn--danger"
+              disabled={actionPending}
+              onClick={() => {
+                setPendingAction("ban");
+                setReason("");
+                setNote("");
+                setActionError(undefined);
+              }}
+            >
+              Ban profile
+            </button>
+          </>
+        ) : null}
+        {canReinstate && profile.exists && (enforced || suspended) ? (
+          <button
+            type="button"
+            className="ops-btn ops-btn--primary"
+            disabled={actionPending}
+            onClick={() => void onLiftEnforcement()}
+          >
+            {enforcementKind === "ban" ? "Lift ban" : "Lift suspension"}
+          </button>
         ) : null}
       </div>
 
       {actionError ? <OpsBanner tone="error" title="Action failed" body={actionError} /> : null}
 
-      {showSuspendConfirm ? (
+      {pendingAction ? (
         <div className="ops-card" style={{ marginBottom: 12 }}>
-          <p>Suspend this profile on the current brand? This is audited and enforced server-side.</p>
+          <p>
+            {pendingAction === "ban"
+              ? "Ban this profile on the current brand? A reason is required. This is audited and enforced server-side."
+              : "Suspend this profile on the current brand? This is audited and enforced server-side."}
+          </p>
+          <label className="ops-field">
+            <span>{pendingAction === "ban" ? "Reason (required)" : "Reason (optional)"}</span>
+            <input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              maxLength={500}
+              disabled={actionPending}
+            />
+          </label>
+          <label className="ops-field">
+            <span>Internal note (optional)</span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              maxLength={2000}
+              rows={3}
+              disabled={actionPending}
+            />
+          </label>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="ops-btn ops-btn--danger" disabled={actionPending} onClick={() => void onSuspend()}>
-              Confirm suspension
+            <button
+              type="button"
+              className="ops-btn ops-btn--danger"
+              disabled={actionPending || (pendingAction === "ban" && !reason.trim())}
+              onClick={() => void (pendingAction === "ban" ? onBan() : onSuspend())}
+            >
+              {pendingAction === "ban" ? "Confirm ban" : "Confirm suspension"}
             </button>
-            <button type="button" className="ops-btn" onClick={() => setShowSuspendConfirm(false)}>
+            <button
+              type="button"
+              className="ops-btn"
+              disabled={actionPending}
+              onClick={() => {
+                setPendingAction(null);
+                setReason("");
+                setNote("");
+              }}
+            >
               Cancel
             </button>
           </div>
@@ -271,11 +383,13 @@ export default function OpsUserDetailPage() {
               }))
             }
             columns={[
+              { key: "kind", header: "Kind" },
               { key: "state", header: "State" },
               { key: "reason", header: "Reason" },
               { key: "when", header: "When" },
             ]}
             mapRow={(row) => ({
+              kind: row.kind,
               state: row.state,
               reason: row.reason ?? "—",
               when: formatWhen(row.created_at),

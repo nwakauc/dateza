@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { requestIdentifierVerification, verifyIdentifier } from "../../lib/api/auth.ts";
 import { useSession } from "../session/useSession.ts";
 import { OtpInput, type OtpInputHandle } from "./OtpInput.tsx";
+import { VerificationIdentifierCorrection } from "./VerificationIdentifierCorrection.tsx";
 import {
   requestCodeIssue,
   verificationIssue,
@@ -28,6 +29,7 @@ export function VerificationFlow({ onDone }: Props) {
   const [cooldown, setCooldown] = useState(() =>
     verification.status === "known" ? verification.resendAvailableIn : 0,
   );
+  const [correcting, setCorrecting] = useState(false);
   const statusId = useId();
   const otpRef = useRef<OtpInputHandle>(null);
   const focusRequested = useRef(false);
@@ -56,7 +58,26 @@ export function VerificationFlow({ onDone }: Props) {
   if (verification.status !== "known") return null;
 
   const { kind, maskedDestination } = verification;
-  const noun = kind === "email" ? "email" : "phone";
+  const noun = kind === "email" ? "email" : "phone number";
+  const correctionLabel = kind === "email" ? "Wrong email?" : "Wrong number?";
+
+  if (correcting) {
+    return (
+      <VerificationIdentifierCorrection
+        kind={kind}
+        onBack={() => {
+          setCorrecting(false);
+          setIssue(undefined);
+          setNotice(undefined);
+        }}
+        onVerified={async () => {
+          await refreshSession();
+          setCorrecting(false);
+          setStep("success");
+        }}
+      />
+    );
+  }
 
   function updateCooldown(seconds: number | undefined) {
     if (seconds !== undefined) setCooldown(Math.max(0, seconds));
@@ -166,6 +187,11 @@ export function VerificationFlow({ onDone }: Props) {
           We’ll send a 6-digit code to <strong translate="no">{maskedDestination}</strong> so you can start
           connecting on DateZA.
         </p>
+        <p className="verify-prompt__correction">
+          <button className="verify-prompt__secondary" type="button" onClick={() => setCorrecting(true)} disabled={pending}>
+            {correctionLabel}
+          </button>
+        </p>
         {issue ? <IssueMessage issue={issue} cooldown={cooldown} id={statusId} /> : null}
         <div className="verify-prompt__actions">
           <button className="auth-form__submit" type="button" onClick={() => void sendCode()} disabled={pending}>
@@ -186,6 +212,11 @@ export function VerificationFlow({ onDone }: Props) {
         <h2 className="verify-prompt__title">Enter your code</h2>
         <p className="verify-prompt__body">
           We sent a 6-digit code to <strong translate="no">{maskedDestination}</strong>
+        </p>
+        <p className="verify-prompt__correction">
+          <button className="verify-prompt__secondary" type="button" onClick={() => setCorrecting(true)} disabled={pending}>
+            {correctionLabel}
+          </button>
         </p>
         <form
           className="auth-form verify-code-form"
@@ -209,7 +240,7 @@ export function VerificationFlow({ onDone }: Props) {
             describedBy={issue || notice ? statusId : undefined}
           />
           <button className="auth-form__submit" type="submit" disabled={pending || code.length !== 6}>
-            {pending ? "Verifying…" : `Verify ${noun}`}
+            {pending ? "Verifying…" : kind === "email" ? "Verify email" : "Verify phone number"}
           </button>
         </form>
         <div className="verify-resend">

@@ -275,12 +275,14 @@ export default function OpsDashboardPage() {
           <OpsTable
             columns={[
               { key: "id", header: "ID" },
+              { key: "kind", header: "Kind" },
               { key: "state", header: "State" },
               { key: "profile", header: "Profile" },
               { key: "when", header: "Created" },
             ]}
             rows={data.recentEnforcements.map((row) => ({
               id: row.id,
+              kind: humanizeKey(row.kind),
               state: humanizeKey(row.state),
               profile: row.profile_id ? (
                 <Link className="ops-inline-link" to={`/ops/users/${encodeURIComponent(row.profile_id)}`}>

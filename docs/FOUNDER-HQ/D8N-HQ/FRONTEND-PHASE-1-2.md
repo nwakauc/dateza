@@ -38,6 +38,9 @@ Additional APIs used by `/ops` only:
 - `GET /api/v1/hq/members` — brand directory (cursor pagination, optional `status`)
 - `GET /api/v1/hq/analytics/overview` — signups, active members, gender split,
   brand timezone week/month boundaries (`hq.analytics.read`)
+- `POST|DELETE /api/v1/admin/profiles/{profile_id}/ban` — brand ban create/lift
+  (`admin.enforcements.create` / `admin.enforcements.reinstate|override`)
+- `GET /api/v1/hq/security_alerts` — brand security alert feed (`hq.security_alerts.read`)
 - `GET /api/v1/admin/profile_photos`
 - `PATCH /api/v1/admin/profile_photos/{id}`
 - `GET /api/v1/hq/operators`

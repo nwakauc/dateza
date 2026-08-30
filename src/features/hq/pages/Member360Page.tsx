@@ -530,7 +530,7 @@ export default function Member360Page() {
                 {
                   label: "Active enforcement",
                   value: member.sections.safety.active_enforcement
-                    ? member.sections.safety.active_enforcement.state
+                    ? `${member.sections.safety.active_enforcement.kind} · ${member.sections.safety.active_enforcement.state}`
                     : "None",
                 },
                 {
@@ -577,6 +577,7 @@ export default function Member360Page() {
                   emptyLabel="No enforcements."
                   columns={[
                     { key: "id", header: "Id" },
+                    { key: "kind", header: "Kind" },
                     { key: "state", header: "State" },
                     { key: "reason", header: "Reason" },
                     { key: "admin", header: "Admin" },
@@ -585,6 +586,7 @@ export default function Member360Page() {
                   ]}
                   mapRow={(row) => ({
                     id: row.id,
+                    kind: row.kind,
                     state: row.state,
                     reason: row.reason,
                     admin: row.admin_user_id,

@@ -7,7 +7,8 @@ const DEFAULT_CAPABILITIES: HqCapability[] = [
   "hq.trust_safety.read",
   "admin.reports.read",
   "admin.reports.moderate",
-  "admin.enforcements.manage",
+  "admin.enforcements.create",
+  "admin.enforcements.reinstate",
 ];
 
 export function operatorFixture(overrides: Record<string, unknown> = {}, mfaVerified = true) {

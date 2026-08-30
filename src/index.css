@@ -5753,6 +5753,15 @@ button.onboard-chip:focus-visible {
   color: #5f5566;
 }
 
+.verify-prompt__correction {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.verify-prompt__correction .verify-prompt__secondary {
+  font-size: 0.9375rem;
+}
+
 .verify-code-form { gap: 14px; margin-top: 20px; }
 
 .verify-issue,

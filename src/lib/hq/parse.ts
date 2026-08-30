@@ -37,6 +37,8 @@ import type {
   HqReportStatus,
   HqReportTargetType,
   HqSafetySection,
+  HqSecurityAlert,
+  HqSecurityAlertList,
   HqSecurityEvent,
   HqSecurityEventList,
   HqSecuritySeverity,
@@ -375,11 +377,17 @@ export function parseAdminEnforcement(value: unknown): HqAdminEnforcement {
   if (state !== "active" && state !== "reverted") {
     throw new ApiError(502, undefined, "invalid_hq_enforcement_state");
   }
+  const kind = row.kind;
+  if (kind !== "suspension" && kind !== "ban") {
+    throw new ApiError(502, undefined, "invalid_hq_enforcement_kind");
+  }
   return {
     id: requireNumber(row.id, "enforcement_id"),
+    kind,
     state,
     profile_id: nullableString(row.profile_id),
     reason: nullableString(row.reason),
+    note: nullableString(row.note),
     report_id: row.report_id === null ? null : requireNumber(row.report_id, "report_id"),
     admin_user_id: requireNumber(row.admin_user_id, "admin_user_id"),
     reverted_by_admin_user_id:
@@ -571,6 +579,33 @@ export function parseEnforcementList(data: unknown): HqEnforcementList {
   }
   return {
     enforcements: root.enforcements.map(parseAdminEnforcement),
+    next_cursor: nullableString(root.next_cursor),
+  };
+}
+
+function parseSecurityAlert(value: unknown): HqSecurityAlert {
+  const row = requireRecord(value, "security_alert");
+  const severity = row.severity;
+  if (severity !== "warning" && severity !== "high" && severity !== "critical") {
+    throw new ApiError(502, undefined, "invalid_hq_security_alert_severity");
+  }
+  return {
+    id: requireNumber(row.id, "security_alert_id"),
+    event_type: requireString(row.event_type, "security_alert_event_type"),
+    severity,
+    member_360_lookup: nullableString(row.member_360_lookup),
+    created_at: requireString(row.created_at, "security_alert_created_at"),
+  };
+}
+
+export function parseSecurityAlertList(data: unknown): HqSecurityAlertList {
+  const root = requireRecord(data, "security_alert_list_response");
+  const rows = root.alerts;
+  if (!Array.isArray(rows)) {
+    throw new ApiError(502, undefined, "invalid_hq_security_alert_list");
+  }
+  return {
+    alerts: rows.map(parseSecurityAlert),
     next_cursor: nullableString(root.next_cursor),
   };
 }
@@ -827,6 +862,10 @@ const HQ_CAPABILITIES = new Set<string>([
   "hq.trust_safety.read",
   "admin.reports.read",
   "admin.reports.moderate",
+  "admin.enforcements.read",
+  "admin.enforcements.create",
+  "admin.enforcements.reinstate",
+  "admin.enforcements.override",
   "admin.enforcements.manage",
   "admin.profile_photos.moderate",
   "admin.operators.read",
@@ -834,6 +873,7 @@ const HQ_CAPABILITIES = new Set<string>([
   "admin.brand_operations.manage",
   "hq.system.read",
   "hq.analytics.read",
+  "hq.security_alerts.read",
 ]);
 
 const HQ_OPERATOR_ROLES = new Set<string>([

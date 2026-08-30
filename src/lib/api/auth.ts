@@ -9,6 +9,7 @@ import type {
   PasswordAuthRequest,
   PasswordAuthSessionResponse,
   PasswordResetAuthorization,
+  PhoneChangeResponse,
   VerificationDeliveryResponse,
 } from "./types.ts";
 
@@ -215,6 +216,36 @@ export function confirmEmailChange(email: string, code: string): Promise<EmailCh
     }
     return {
       identifier: { kind: "email", verified: true },
+      revoked_session_count: data.revoked_session_count,
+    };
+  });
+}
+
+export function requestPhoneChange(phone: string, currentPassword: string): Promise<MessageResponse> {
+  return apiRequest(
+    "/api/v1/auth/phone/change",
+    jsonInit("POST", { phone, current_password: currentPassword }),
+    { invalidateOnUnauthorized: false },
+  ).then(parseMessage);
+}
+
+export function confirmPhoneChange(phone: string, code: string): Promise<PhoneChangeResponse> {
+  return apiRequest(
+    "/api/v1/auth/phone/change",
+    jsonInit("PATCH", { phone, code }),
+    { invalidateOnUnauthorized: false },
+  ).then((data) => {
+    if (
+      !isRecord(data) ||
+      !isRecord(data.identifier) ||
+      data.identifier.kind !== "phone" ||
+      data.identifier.verified !== true ||
+      typeof data.revoked_session_count !== "number"
+    ) {
+      throw new ApiError(502, undefined, "invalid_phone_change_response");
+    }
+    return {
+      identifier: { kind: "phone", verified: true },
       revoked_session_count: data.revoked_session_count,
     };
   });

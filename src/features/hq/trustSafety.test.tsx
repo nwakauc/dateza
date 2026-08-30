@@ -235,9 +235,11 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
           enforcements: [
             {
               id: 7,
+              kind: "suspension",
               state: "active",
               profile_id: PROFILE_A,
               reason: "policy",
+              note: null,
               report_id: 42,
               admin_user_id: 1,
               reverted_by_admin_user_id: null,

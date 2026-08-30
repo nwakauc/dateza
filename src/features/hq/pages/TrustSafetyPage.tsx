@@ -460,6 +460,7 @@ function EnforcementsPanel({
       <DataTable
         columns={[
           { key: "id", header: "ID" },
+          { key: "kind", header: "Kind" },
           { key: "state", header: "State" },
           { key: "profile", header: "Profile" },
           { key: "reason", header: "Reason" },
@@ -469,6 +470,7 @@ function EnforcementsPanel({
         ]}
         rows={resolved.rows.map((row) => ({
           id: row.id,
+          kind: row.kind,
           state: (
             <StatusBadge tone={row.state === "active" ? "danger" : "neutral"}>{row.state}</StatusBadge>
           ),

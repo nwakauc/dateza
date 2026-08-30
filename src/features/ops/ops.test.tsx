@@ -88,7 +88,8 @@ describe("DateZA Operations console", () => {
             "hq.trust_safety.read",
             "admin.reports.read",
             "admin.reports.moderate",
-            "admin.enforcements.manage",
+            "admin.enforcements.create",
+            "admin.enforcements.reinstate",
             "hq.analytics.read",
           ],
         });

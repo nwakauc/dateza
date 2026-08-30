@@ -7,6 +7,7 @@ import type { HqMemberDirectoryEntry, HqMembershipStatus } from "../../../lib/hq
 import { HqHistoryPanel } from "../../hq/components/HqHistoryPanel.tsx";
 import { useHqOperator } from "../../hq/useHqOperator.ts";
 import { OpsBadge, OpsBanner } from "../components/OpsPrimitives.tsx";
+import { canCreateEnforcement } from "../../../lib/hq/enforcementAccess.ts";
 import { opsCan } from "../opsCapabilities.ts";
 import { formatWhen, humanizeKey } from "../opsFormat.ts";
 
@@ -40,7 +41,7 @@ export default function OpsUsersPage() {
 
   const canReadReports = opsCan(operator, "admin.reports.read");
   const canModeratePhotos = opsCan(operator, "admin.profile_photos.moderate");
-  const canManageEnforcement = opsCan(operator, "admin.enforcements.manage");
+  const canManageEnforcement = canCreateEnforcement(operator);
 
   const loadDirectoryPage = useCallback(
     async (cursor: string | null) => {

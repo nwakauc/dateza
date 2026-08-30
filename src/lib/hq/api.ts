@@ -19,6 +19,7 @@ import {
   parseManagedOperatorList,
   parseManagedOperatorResponse,
   parseRepeatOffenderList,
+  parseSecurityAlertList,
   parseSecurityEventList,
   parseTrustSafetyOverview,
 } from "./parse.ts";
@@ -29,6 +30,7 @@ import type {
   HqAdminReportListParams,
   HqAnalyticsOverview,
   HqAuthAttemptList,
+  HqBanProfileBody,
   HqCurrentOperator,
   HqDiscoveryDiagnostic,
   HqEnforcementList,
@@ -45,6 +47,7 @@ import type {
   HqProfilePhotoQueue,
   HqUpdateOperatorBody,
   HqRepeatOffenderList,
+  HqSecurityAlertList,
   HqSecurityEventList,
   HqSuspendProfileBody,
   HqTrustSafetyEnforcementParams,
@@ -271,6 +274,53 @@ export async function reinstateAdminProfile(profileId: string): Promise<HqAdminE
     method: "DELETE",
   });
   return parseAdminEnforcementResponse(data);
+}
+
+export async function banAdminProfile(
+  profileId: string,
+  body: HqBanProfileBody,
+): Promise<HqAdminEnforcement> {
+  const trimmed = profileId.trim();
+  if (!trimmed) {
+    throw new ApiError(400, "invalid_lookup", "invalid_lookup");
+  }
+  const reason = body.reason.trim();
+  if (!reason) {
+    throw new ApiError(400, "invalid_reason", "invalid_reason");
+  }
+  const data = await apiRequest(`/api/v1/admin/profiles/${encodeURIComponent(trimmed)}/ban`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      reason,
+      note: body.note ?? null,
+      report_id: body.report_id ?? null,
+    }),
+  });
+  return parseAdminEnforcementResponse(data);
+}
+
+export async function unbanAdminProfile(profileId: string): Promise<HqAdminEnforcement> {
+  const trimmed = profileId.trim();
+  if (!trimmed) {
+    throw new ApiError(400, "invalid_lookup", "invalid_lookup");
+  }
+  const data = await apiRequest(`/api/v1/admin/profiles/${encodeURIComponent(trimmed)}/ban`, {
+    method: "DELETE",
+  });
+  return parseAdminEnforcementResponse(data);
+}
+
+export async function fetchHqSecurityAlerts(params?: {
+  cursor?: string | null;
+  limit?: number;
+}): Promise<HqSecurityAlertList> {
+  const search = new URLSearchParams();
+  if (params?.cursor) search.set("cursor", params.cursor);
+  if (params?.limit !== undefined) search.set("limit", String(params.limit));
+  const query = search.toString();
+  const data = await apiRequest(`/api/v1/hq/security_alerts${query ? `?${query}` : ""}`);
+  return parseSecurityAlertList(data);
 }
 
 export async function fetchProfilePhotoQueue(): Promise<HqProfilePhotoQueue> {

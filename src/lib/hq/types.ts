@@ -153,15 +153,19 @@ export type HqCommsSection = {
 
 export type HqAdminEnforcement = {
   id: number;
+  kind: HqEnforcementKind;
   state: "active" | "reverted";
   profile_id: string | null;
   reason: string | null;
+  note: string | null;
   report_id: number | null;
   admin_user_id: number;
   reverted_by_admin_user_id: number | null;
   created_at: string;
   reverted_at: string | null;
 };
+
+export type HqEnforcementKind = "suspension" | "ban";
 
 export type HqRecentReport = {
   id: number;
@@ -409,7 +413,28 @@ export type HqUpdateReportBody = {
 
 export type HqSuspendProfileBody = {
   reason?: string | null;
+  note?: string | null;
   report_id?: number | null;
+};
+
+export type HqBanProfileBody = {
+  reason: string;
+  note?: string | null;
+  report_id?: number | null;
+};
+
+/** Brand-scoped security alert from GET /api/v1/hq/security_alerts. */
+export type HqSecurityAlert = {
+  id: number;
+  event_type: string;
+  severity: "warning" | "high" | "critical";
+  member_360_lookup: string | null;
+  created_at: string;
+};
+
+export type HqSecurityAlertList = {
+  alerts: HqSecurityAlert[];
+  next_cursor: string | null;
 };
 
 /** Authoritative HQ permissions — never infer from role labels. */
@@ -420,13 +445,19 @@ export type HqCapability =
   | "hq.trust_safety.read"
   | "admin.reports.read"
   | "admin.reports.moderate"
+  | "admin.enforcements.read"
+  | "admin.enforcements.create"
+  | "admin.enforcements.reinstate"
+  | "admin.enforcements.override"
+  /** @deprecated legacy umbrella — prefer granular enforcement capabilities */
   | "admin.enforcements.manage"
   | "admin.profile_photos.moderate"
   | "admin.operators.read"
   | "admin.operators.manage"
   | "admin.brand_operations.manage"
   | "hq.system.read"
-  | "hq.analytics.read";
+  | "hq.analytics.read"
+  | "hq.security_alerts.read";
 
 export type HqOperatorRole =
   | "founder"

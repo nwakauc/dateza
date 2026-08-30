@@ -4,10 +4,13 @@ import { ApiError } from "../../../lib/api/errors.ts";
 import {
   fetchAdminReport,
   hqErrorMessage,
+  banAdminProfile,
   reinstateAdminProfile,
   suspendAdminProfile,
+  unbanAdminProfile,
   updateAdminReport,
 } from "../../../lib/hq/api.ts";
+import { canCreateEnforcement, canReinstateEnforcement } from "../../../lib/hq/enforcementAccess.ts";
 import type { HqAdminReport, HqReportStatus, HqUpdateReportBody } from "../../../lib/hq/types.ts";
 import {
   MetricCard,
@@ -116,6 +119,8 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
   const { operator } = useHqOperator();
   const canModerateReports =
     routePrefix === "ops" ? opsCan(operator, "admin.reports.moderate") : true;
+  const canCreateEnforcementAction = canCreateEnforcement(operator);
+  const canReinstateEnforcementAction = canReinstateEnforcement(operator);
   const { reportId: reportIdParam } = useParams();
   const reportId = Number.parseInt(reportIdParam ?? "", 10);
   const validId = Number.isFinite(reportId) && reportId > 0;
@@ -127,9 +132,13 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
   const [pendingStatus, setPendingStatus] = useState<TransitionTarget | null>(null);
   const [note, setNote] = useState("");
   const [suspendOpen, setSuspendOpen] = useState(false);
+  const [banOpen, setBanOpen] = useState(false);
   const [reinstateOpen, setReinstateOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
+  const [suspendNote, setSuspendNote] = useState("");
+  const [banReason, setBanReason] = useState("");
+  const [banNote, setBanNote] = useState("");
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const requestKey = `${validId ? reportId : "invalid"}:${reloadNonce}`;
@@ -202,11 +211,35 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
     try {
       await suspendAdminProfile(profileId, {
         reason: suspendReason.trim() ? suspendReason.trim() : null,
+        note: suspendNote.trim() ? suspendNote.trim() : null,
         report_id: report.id,
       });
       setSuspendOpen(false);
       setConfirmText("");
       setSuspendReason("");
+      setAction({ status: "idle" });
+      refresh();
+    } catch (caught) {
+      setAction({ status: "error", message: hqErrorMessage(caught) });
+    }
+  }
+
+  async function applyBan() {
+    if (!report || action.status === "pending") return;
+    const profileId = report.reported?.id;
+    const trimmedReason = banReason.trim();
+    if (!profileId || confirmText !== "BAN" || !trimmedReason) return;
+    setAction({ status: "pending" });
+    try {
+      await banAdminProfile(profileId, {
+        reason: trimmedReason,
+        note: banNote.trim() ? banNote.trim() : null,
+        report_id: report.id,
+      });
+      setBanOpen(false);
+      setConfirmText("");
+      setBanReason("");
+      setBanNote("");
       setAction({ status: "idle" });
       refresh();
     } catch (caught) {
@@ -220,7 +253,15 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
     if (!profileId || confirmText !== "REINSTATE") return;
     setAction({ status: "pending" });
     try {
-      await reinstateAdminProfile(profileId);
+      try {
+        await reinstateAdminProfile(profileId);
+      } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 409) {
+          await unbanAdminProfile(profileId);
+        } else {
+          throw caught;
+        }
+      }
       setReinstateOpen(false);
       setConfirmText("");
       setAction({ status: "idle" });
@@ -425,34 +466,62 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
 
         <div className="hq-ts-actions" style={{ marginTop: 16 }}>
           <p className="hq-card__subtitle">Account enforcement (separate from report status)</p>
-          <div className="hq-filter-bar">
-            <button
-              type="button"
-              className="hq-btn hq-btn--ghost"
-              disabled={!report.reported?.id || action.status === "pending"}
-              onClick={() => {
-                setSuspendOpen(true);
-                setReinstateOpen(false);
-                setConfirmText("");
-                setAction({ status: "idle" });
-              }}
-            >
-              Suspend reported profile
-            </button>
-            <button
-              type="button"
-              className="hq-btn hq-btn--ghost"
-              disabled={!report.reported?.id || action.status === "pending"}
-              onClick={() => {
-                setReinstateOpen(true);
-                setSuspendOpen(false);
-                setConfirmText("");
-                setAction({ status: "idle" });
-              }}
-            >
-              Reinstate reported profile
-            </button>
-          </div>
+          {!canCreateEnforcementAction && !canReinstateEnforcementAction ? (
+            <p className="hq-card__subtitle">
+              Your role cannot create or lift brand-level enforcement actions.
+            </p>
+          ) : (
+            <div className="hq-filter-bar">
+              {canCreateEnforcementAction ? (
+                <>
+                  <button
+                    type="button"
+                    className="hq-btn hq-btn--ghost"
+                    disabled={!report.reported?.id || action.status === "pending"}
+                    onClick={() => {
+                      setSuspendOpen(true);
+                      setBanOpen(false);
+                      setReinstateOpen(false);
+                      setConfirmText("");
+                      setAction({ status: "idle" });
+                    }}
+                  >
+                    Suspend reported profile
+                  </button>
+                  <button
+                    type="button"
+                    className="hq-btn hq-btn--ghost"
+                    disabled={!report.reported?.id || action.status === "pending"}
+                    onClick={() => {
+                      setBanOpen(true);
+                      setSuspendOpen(false);
+                      setReinstateOpen(false);
+                      setConfirmText("");
+                      setAction({ status: "idle" });
+                    }}
+                  >
+                    Ban reported profile
+                  </button>
+                </>
+              ) : null}
+              {canReinstateEnforcementAction ? (
+                <button
+                  type="button"
+                  className="hq-btn hq-btn--ghost"
+                  disabled={!report.reported?.id || action.status === "pending"}
+                  onClick={() => {
+                    setReinstateOpen(true);
+                    setSuspendOpen(false);
+                    setBanOpen(false);
+                    setConfirmText("");
+                    setAction({ status: "idle" });
+                  }}
+                >
+                  Lift suspension or ban
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {suspendOpen ? (
@@ -466,6 +535,16 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
                 value={suspendReason}
                 onChange={(event) => setSuspendReason(event.target.value)}
                 maxLength={500}
+                disabled={action.status === "pending"}
+              />
+            </label>
+            <label className="hq-field">
+              <span>Internal note (optional)</span>
+              <textarea
+                value={suspendNote}
+                onChange={(event) => setSuspendNote(event.target.value)}
+                maxLength={2000}
+                rows={3}
                 disabled={action.status === "pending"}
               />
             </label>
@@ -495,6 +574,66 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
                   setSuspendOpen(false);
                   setConfirmText("");
                   setSuspendReason("");
+                  setSuspendNote("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {banOpen ? (
+          <div className="hq-confirm-panel" role="dialog" aria-label="Confirm ban">
+            <p>
+              Type <strong>BAN</strong> to confirm a brand-level ban. A reason is required.
+            </p>
+            <label className="hq-field">
+              <span>Reason (required)</span>
+              <input
+                value={banReason}
+                onChange={(event) => setBanReason(event.target.value)}
+                maxLength={500}
+                disabled={action.status === "pending"}
+              />
+            </label>
+            <label className="hq-field">
+              <span>Internal note (optional)</span>
+              <textarea
+                value={banNote}
+                onChange={(event) => setBanNote(event.target.value)}
+                maxLength={2000}
+                rows={3}
+                disabled={action.status === "pending"}
+              />
+            </label>
+            <label className="hq-field">
+              <span>Confirmation</span>
+              <input
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+                disabled={action.status === "pending"}
+                autoComplete="off"
+              />
+            </label>
+            <div className="hq-confirm-panel__actions">
+              <button
+                type="button"
+                className="hq-btn hq-btn--primary"
+                disabled={confirmText !== "BAN" || !banReason.trim() || action.status === "pending"}
+                onClick={() => void applyBan()}
+              >
+                {action.status === "pending" ? "Banning…" : "Ban"}
+              </button>
+              <button
+                type="button"
+                className="hq-btn hq-btn--ghost"
+                disabled={action.status === "pending"}
+                onClick={() => {
+                  setBanOpen(false);
+                  setConfirmText("");
+                  setBanReason("");
+                  setBanNote("");
                 }}
               >
                 Cancel
@@ -506,7 +645,7 @@ export default function ReportDetailPage({ routePrefix = "hq" }: ReportDetailPag
         {reinstateOpen ? (
           <div className="hq-confirm-panel" role="dialog" aria-label="Confirm reinstatement">
             <p>
-              Type <strong>REINSTATE</strong> to lift the brand-level suspension.
+              Type <strong>REINSTATE</strong> to lift an active brand-level suspension or ban.
             </p>
             <label className="hq-field">
               <span>Confirmation</span>

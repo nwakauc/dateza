@@ -1,33 +1,49 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  fetchHqSecurityAlerts,
   fetchRepeatOffenders,
   fetchTrustSafetyEnforcements,
   fetchTrustSafetyOverview,
   hqErrorMessage,
 } from "../../../lib/hq/api.ts";
-import type { HqRepeatOffenderList, HqTrustSafetyOverview } from "../../../lib/hq/types.ts";
+import { canReadSecurityAlerts } from "../../../lib/hq/enforcementAccess.ts";
+import type { HqRepeatOffenderList, HqSecurityAlertList, HqTrustSafetyOverview } from "../../../lib/hq/types.ts";
+import { useHqOperator } from "../../hq/useHqOperator.ts";
 import { OpsBanner, OpsMetricCard, OpsTable } from "../components/OpsPrimitives.tsx";
 import { formatAgeSeconds, formatWhen, humanizeKey } from "../opsFormat.ts";
 
 export default function OpsSafetyPage() {
+  const { operator } = useHqOperator();
   const [overview, setOverview] = useState<HqTrustSafetyOverview | null>(null);
   const [offenders, setOffenders] = useState<HqRepeatOffenderList | null>(null);
   const [enforcements, setEnforcements] = useState<Awaited<ReturnType<typeof fetchTrustSafetyEnforcements>> | null>(null);
+  const [alerts, setAlerts] = useState<HqSecurityAlertList | null>(null);
   const [error, setError] = useState<string>();
+
+  const canAlerts = canReadSecurityAlerts(operator);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([
+    const requests: Promise<unknown>[] = [
       fetchTrustSafetyOverview(),
       fetchRepeatOffenders(100),
       fetchTrustSafetyEnforcements({ limit: 25 }),
-    ])
-      .then(([ov, off, enf]) => {
+    ];
+    if (canAlerts) {
+      requests.push(fetchHqSecurityAlerts({ limit: 25 }));
+    }
+
+    void Promise.all(requests)
+      .then((results) => {
         if (cancelled) return;
-        setOverview(ov);
-        setOffenders(off);
-        setEnforcements(enf);
+        const [ov, off, enf, alertPage] = results;
+        setOverview(ov as HqTrustSafetyOverview);
+        setOffenders(off as HqRepeatOffenderList);
+        setEnforcements(enf as Awaited<ReturnType<typeof fetchTrustSafetyEnforcements>>);
+        if (alertPage) {
+          setAlerts(alertPage as HqSecurityAlertList);
+        }
       })
       .catch((caught) => {
         if (!cancelled) setError(hqErrorMessage(caught));
@@ -35,7 +51,7 @@ export default function OpsSafetyPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [canAlerts]);
 
   if (error) {
     return <OpsBanner tone="error" title="Safety data unavailable" body={error} />;
@@ -59,6 +75,34 @@ export default function OpsSafetyPage() {
         <OpsMetricCard label="Oldest open case" value={formatAgeSeconds(reports.oldest_open_report_age_seconds)} />
         <OpsMetricCard label="Active enforcements" value={overview.enforcements.active} />
       </div>
+
+      {canAlerts ? (
+        <section className="ops-card" style={{ marginBottom: 16 }}>
+          <h3>Security alerts</h3>
+          <p className="ops-muted">Warning, high, and critical brand events. Read-only — acknowledgement is not available yet.</p>
+          <OpsTable
+            columns={[
+              { key: "event", header: "Event" },
+              { key: "severity", header: "Severity" },
+              { key: "member", header: "Member" },
+              { key: "when", header: "When" },
+            ]}
+            rows={(alerts?.alerts ?? []).map((row) => ({
+              event: humanizeKey(row.event_type),
+              severity: row.severity,
+              member: row.member_360_lookup ? (
+                <Link className="ops-inline-link" to={`/ops/users/${encodeURIComponent(row.member_360_lookup)}`}>
+                  Open
+                </Link>
+              ) : (
+                "—"
+              ),
+              when: formatWhen(row.created_at),
+            }))}
+            empty="No security alerts on this brand."
+          />
+        </section>
+      ) : null}
 
       <section className="ops-card" style={{ marginBottom: 16 }}>
         <h3>Repeat offenders</h3>
@@ -91,12 +135,14 @@ export default function OpsSafetyPage() {
         <OpsTable
           columns={[
             { key: "id", header: "ID" },
+            { key: "kind", header: "Kind" },
             { key: "state", header: "State" },
             { key: "profile", header: "Profile" },
             { key: "when", header: "Created" },
           ]}
           rows={(enforcements?.enforcements ?? []).map((row) => ({
             id: row.id,
+            kind: humanizeKey(row.kind),
             state: humanizeKey(row.state),
             profile: row.profile_id ? (
               <Link className="ops-inline-link" to={`/ops/users/${encodeURIComponent(row.profile_id)}`}>

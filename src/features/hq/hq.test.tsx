@@ -413,9 +413,11 @@ describe("D8N HQ Phase 1 integration", () => {
           enforcements: [
             {
               id: 3,
+              kind: "ban",
               state: "reverted",
               profile_id: PROFILE_ID,
               reason: "policy",
+              note: "internal note",
               report_id: 8,
               admin_user_id: 1,
               reverted_by_admin_user_id: 1,

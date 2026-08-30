@@ -536,6 +536,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/phone/change:
+    post:
+      operationId: requestPhoneChange
+      tags: [Authentication]
+      summary: Request a verification code for a replacement login phone number
+      description: |
+        Requires a bearer session issued from the phone/password credential being
+        changed plus the current password in this request. The replacement is
+        normalized and must not already belong to another D8N identity. D8N sends
+        a single-use 10-minute code to the proposed phone while leaving the current
+        identifier, password credential, and login behavior untouched. Malformed,
+        unchanged, and occupied replacement numbers share one
+        `phone_change_unavailable` response after successful reauthentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneChangeRequest"
+      responses:
+        "202":
+          description: A purpose- and session-bound code was queued for the proposed phone number.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: The bearer session or current password is invalid (`invalid_current_password`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The current session is not backed by a password credential (`password_credential_required`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The proposed number is malformed, unchanged, or unavailable (`phone_change_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          description: The configured SMS delivery channel is unavailable (`delivery_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: confirmPhoneChange
+      tags: [Authentication]
+      summary: Confirm and activate a replacement login phone number
+      description: |
+        Submit the exact proposed phone number and its six-digit code from the same
+        brand-bound session that requested the change. On success D8N updates the
+        existing identity identifier in place, marks the new phone verified,
+        preserves its password credential and the current session, consumes other
+        outstanding challenges for that identifier, and revokes every other active
+        session backed by the affected credential across brands. The old number
+        remains active until this atomic confirmation succeeds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneChangeConfirmation"
+      responses:
+        "200":
+          description: The verified replacement phone is now the login identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhoneChangeResponse"
+        "401":
+          description: Session, proposed phone, or code is unavailable or invalid (`verification_code_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The purpose-bound code has already been consumed (`verification_code_used`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: The purpose-bound code has expired (`verification_code_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: The code exhausted its permitted verification attempts (`verification_attempts_exhausted`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The proposed phone became occupied before confirmation (`phone_change_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/auth/password/recovery:
     post:
       operationId: requestPasswordRecovery
@@ -3184,7 +3291,8 @@ paths:
       tags: [Admin]
       summary: Apply a brand-level suspension to a profile's owner
       description: |
-        Requires verified admin MFA and `admin.enforcements.manage`. Brand-level enforcement: suspends the target's
+        Requires verified admin MFA and `admin.enforcements.create` (or legacy
+        `admin.enforcements.manage`). Brand-level enforcement: suspends the target's
         membership in this brand, revokes all of their sessions for this brand, and
         records an audited, reversible `AccountEnforcement`. Everything happens in
         one transaction. The target's network identity and any other-brand access
@@ -3236,7 +3344,9 @@ paths:
       tags: [Admin]
       summary: Lift a brand-level suspension
       description: |
-        Requires verified admin MFA and `admin.enforcements.manage`. Reactivates the membership and marks the
+        Requires verified admin MFA and `admin.enforcements.reinstate` or
+        `admin.enforcements.override` (or legacy `admin.enforcements.manage`).
+        Reactivates the membership and marks the
         enforcement reverted, audited, in one transaction. Restores ONLY what
         suspension changed — it does not revive revoked sessions (the user logs in
         again), ended matches, blocks, or deleted data. Reinstating a profile that
@@ -3262,6 +3372,85 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: The target is not currently suspended (`not_suspended`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/admin/profiles/{profile_id}/ban:
+    post:
+      operationId: banProfile
+      tags: [Admin]
+      summary: Apply a brand-level ban to a profile's owner
+      description: |
+        Requires verified admin MFA and `admin.enforcements.create` (or legacy
+        `admin.enforcements.manage`). Records an audited, reversible ban
+        enforcement. A `reason` is required. Optional `note` is stored for
+        operator context only.
+      parameters:
+        - $ref: "#/components/parameters/PublicProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanProfileRequest"
+      responses:
+        "201":
+          description: The ban was applied.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEnforcementResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
+        "404":
+          description: Target is unknown or belongs to another brand (`profile_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The target is already banned (`already_banned`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Missing/oversized `reason` or invalid `report_id`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: unbanProfile
+      tags: [Admin]
+      summary: Lift a brand-level ban
+      description: |
+        Requires verified admin MFA and `admin.enforcements.reinstate` or
+        `admin.enforcements.override` (or legacy `admin.enforcements.manage`).
+      parameters:
+        - $ref: "#/components/parameters/PublicProfileId"
+      responses:
+        "200":
+          description: The ban was lifted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEnforcementResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
+        "404":
+          description: Target is unknown or belongs to another brand (`profile_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The target is not currently banned (`not_banned`).
           content:
             application/json:
               schema:
@@ -3486,6 +3675,36 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/AdminForbidden"
+  /api/v1/hq/security_alerts:
+    get:
+      operationId: listHqSecurityAlerts
+      tags: [Hq]
+      summary: Brand-scoped security alert feed
+      description: |
+        Requires verified admin MFA and `hq.security_alerts.read`. Returns warning,
+        high, and critical security events for the host-resolved brand. Read-only;
+        acknowledgement and escalation workflows are not implemented yet. Audited
+        as `hq.security_alerts_viewed`.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/HqHistoryLimit"
+      responses:
+        "200":
+          description: A page of security alerts and an opaque next cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HqSecurityAlertListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
+        "422":
+          description: Invalid `limit` or `cursor`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/hq/trust_safety/overview:
     get:
       operationId: getHqTrustSafetyOverview
@@ -4282,6 +4501,10 @@ components:
         - hq.trust_safety.read
         - admin.reports.read
         - admin.reports.moderate
+        - admin.enforcements.read
+        - admin.enforcements.create
+        - admin.enforcements.reinstate
+        - admin.enforcements.override
         - admin.enforcements.manage
         - admin.profile_photos.moderate
         - admin.operators.read
@@ -4289,6 +4512,7 @@ components:
         - admin.brand_operations.manage
         - hq.system.read
         - hq.analytics.read
+        - hq.security_alerts.read
     HqOperatorAssignment:
       type: object
       required: [brand, role, effective_capabilities]
@@ -4667,6 +4891,46 @@ components:
           properties:
             kind:
               const: email
+            verified:
+              const: true
+        revoked_session_count:
+          type: integer
+          minimum: 0
+          description: Other active sessions revoked because the login identifier changed.
+    PhoneChangeRequest:
+      type: object
+      required: [phone, current_password]
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+          description: Proposed replacement login phone number. It is not activated until code confirmation.
+        current_password:
+          type: string
+          format: password
+          description: Current password for the phone-backed credential used by this session.
+    PhoneChangeConfirmation:
+      type: object
+      required: [phone, code]
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+          description: The same proposed phone number supplied to the request step.
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: Single-use code delivered to the proposed phone number; expires after 10 minutes.
+    PhoneChangeResponse:
+      type: object
+      required: [identifier, revoked_session_count]
+      properties:
+        identifier:
+          type: object
+          required: [kind, verified]
+          properties:
+            kind:
+              const: phone
             verified:
               const: true
         revoked_session_count:
@@ -6857,17 +7121,39 @@ components:
           type: [string, "null"]
           maxLength: 500
           description: Optional short moderator reason (audited, never exposed publicly).
+        note:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Optional internal operator note (audited, never exposed publicly).
+        report_id:
+          type: [integer, "null"]
+          description: Optional id of the report that motivated the enforcement (same brand).
+    BanProfileRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          description: Required moderator reason for the ban (audited).
+        note:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Optional internal operator note (audited).
         report_id:
           type: [integer, "null"]
           description: Optional id of the report that motivated the enforcement (same brand).
     AdminEnforcement:
       type: object
       required:
-        [id, state, profile_id, reason, report_id, admin_user_id,
+        [id, kind, state, profile_id, reason, note, report_id, admin_user_id,
          reverted_by_admin_user_id, created_at, reverted_at]
       properties:
         id:
           type: integer
+        kind:
+          type: string
+          enum: [suspension, ban]
         state:
           type: string
           enum: [active, reverted]
@@ -6877,6 +7163,9 @@ components:
           format: uuid
         reason:
           type: [string, "null"]
+        note:
+          type: [string, "null"]
+          description: Internal operator note when recorded.
         report_id:
           type: [integer, "null"]
         admin_user_id:
@@ -6942,6 +7231,33 @@ components:
                   type: integer
             total_registered_members:
               type: integer
+    HqSecurityAlert:
+      type: object
+      required: [id, event_type, severity, member_360_lookup, created_at]
+      properties:
+        id:
+          type: integer
+        event_type:
+          type: string
+        severity:
+          type: string
+          enum: [warning, high, critical]
+        member_360_lookup:
+          type: [string, "null"]
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+    HqSecurityAlertListResponse:
+      type: object
+      required: [alerts, next_cursor]
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/HqSecurityAlert"
+        next_cursor:
+          type: [string, "null"]
     HqTrustSafetyOverviewResponse:
       type: object
       required: [overview]

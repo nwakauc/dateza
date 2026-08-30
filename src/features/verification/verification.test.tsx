@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { MeResponse } from "../../lib/api/types.ts";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
@@ -15,6 +16,15 @@ const unverified: VerificationState = {
   kind: "email",
   verified: false,
   maskedDestination: "a••@example.com",
+  codeDispatched: true,
+  resendAvailableIn: 0,
+};
+
+const unverifiedPhone: VerificationState = {
+  status: "known",
+  kind: "phone",
+  verified: false,
+  maskedDestination: "+27 ••• 4567",
   codeDispatched: true,
   resendAvailableIn: 0,
 };
@@ -39,14 +49,14 @@ function methodOf(init?: RequestInit): string {
   return init?.method ?? "GET";
 }
 
-function renderFlow(refreshSession = vi.fn(async () => undefined), onDone = vi.fn()) {
+function renderFlow(refreshSession = vi.fn(async () => undefined), onDone = vi.fn(), verification = unverified) {
   function Harness({ children }: { children: ReactNode }) {
-    const [verification, setVerification] = useState(unverified);
+    const [verificationState, setVerification] = useState(verification);
     return (
       <SessionContext.Provider
         value={{
           session: { status: "authenticated", user: sessionUser },
-          verification,
+          verification: verificationState,
           setVerification,
           refreshSession,
         }}
@@ -57,7 +67,13 @@ function renderFlow(refreshSession = vi.fn(async () => undefined), onDone = vi.f
   }
 
   setBearerToken("opaque-session-token");
-  render(<Harness><VerificationFlow onDone={onDone} /></Harness>);
+  render(
+    <MemoryRouter>
+      <Harness>
+        <VerificationFlow onDone={onDone} />
+      </Harness>
+    </MemoryRouter>,
+  );
   return { refreshSession, onDone };
 }
 
@@ -142,6 +158,69 @@ describe("identifier verification recovery", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't verify your code.");
     expect(screen.getByRole("alert")).toHaveTextContent("Please try again.");
     expect(screen.queryByText(/isn't right/i)).not.toBeInTheDocument();
+  });
+
+  it("lets an email member correct a typo before verifying", async () => {
+    const user = userEvent.setup();
+    const refreshSession = vi.fn(async () => undefined);
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(202, { message: "sent", resend_available_in: 0 }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          identifier: { kind: "email", verified: true },
+          revoked_session_count: 0,
+        }),
+      );
+    renderFlow(refreshSession);
+
+    await user.click(screen.getByRole("button", { name: /wrong email\?/i }));
+    await user.type(screen.getByLabelText(/^email address$/i), "fixed@example.co.za");
+    await user.type(screen.getByLabelText(/^password$/i), "secret12");
+    await user.click(screen.getByRole("button", { name: /send code to new email/i }));
+
+    expect(await screen.findByText(/fixed@example\.co\.za/i)).toBeInTheDocument();
+    enterCode("654321");
+    await user.click(screen.getByRole("button", { name: /confirm email/i }));
+
+    expect(await screen.findByRole("heading", { name: /email verified/i })).toBeInTheDocument();
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls.map((call) => methodOf(call[1]))).toEqual(["POST", "PATCH"]);
+  });
+
+  it("lets a phone member correct a typo before verifying", async () => {
+    const user = userEvent.setup();
+    const refreshSession = vi.fn(async () => undefined);
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(202, { message: "sent" }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          identifier: { kind: "phone", verified: true },
+          revoked_session_count: 0,
+        }),
+      );
+    renderFlow(refreshSession, vi.fn(), unverifiedPhone);
+
+    await user.click(screen.getByRole("button", { name: /wrong number\?/i }));
+    await user.type(screen.getByLabelText(/^phone number$/i), "+27821234567");
+    await user.type(screen.getByLabelText(/^password$/i), "secret12");
+    await user.click(screen.getByRole("button", { name: /send code to new number/i }));
+
+    expect(await screen.findByText(/\+27821234567/i)).toBeInTheDocument();
+    enterCode("654321");
+    await user.click(screen.getByRole("button", { name: /confirm number/i }));
+
+    expect(await screen.findByRole("heading", { name: /phone verified/i })).toBeInTheDocument();
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(fetch).mock.calls.some(
+        (call) => String(call[0]).endsWith("/api/v1/auth/phone/change") && methodOf(call[1]) === "POST",
+      ),
+    ).toBe(true);
+    expect(
+      vi.mocked(fetch).mock.calls.some(
+        (call) => String(call[0]).endsWith("/api/v1/auth/phone/change") && methodOf(call[1]) === "PATCH",
+      ),
+    ).toBe(true);
   });
 
   it("prevents duplicate verification and refreshes the member after success", async () => {
