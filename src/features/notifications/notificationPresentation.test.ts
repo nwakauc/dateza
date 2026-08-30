@@ -9,6 +9,7 @@ import {
   notificationCopy,
   notificationFilterFor,
   notificationKind,
+  unreadChatNotificationsForConversation,
   unreadCountForFilter,
 } from "./notificationPresentation.ts";
 
@@ -53,6 +54,35 @@ describe("notification presentation", () => {
         notice({ id: "l1", type: "dateza.like_received" }),
       ]),
     ).toBe(2);
+  });
+
+  it("finds unread chat notifications for a specific conversation target", () => {
+    const message = notice({
+      id: "m1",
+      type: "dateza.message_received",
+      payload: {
+        actor: { profile_id: "p1" },
+        target: { type: "conversation", id: "c1" },
+      },
+    });
+    const otherConversation = notice({
+      id: "m2",
+      type: "dateza.message_received",
+      payload: {
+        actor: { profile_id: "p2" },
+        target: { type: "conversation", id: "c2" },
+      },
+    });
+    const opener = notice({
+      id: "o1",
+      type: "dateza.opener_received",
+      payload: {
+        actor: { profile_id: "p3" },
+        target: { type: "opener", id: "o1" },
+      },
+    });
+
+    expect(unreadChatNotificationsForConversation([message, otherConversation, opener], "c1")).toEqual([message]);
   });
 
   it("uses the actor name for likes and matches, and keeps D8N copy when the profile is unavailable", () => {

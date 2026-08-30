@@ -5,38 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
-
-function json(status: number, body: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
-
-function meOk() {
-  return json(200, {
-    user_id: 1,
-    brand: { slug: "dateza", name: "DateZA" },
-    session: { id: 2, expires_at: "2026-12-01T00:00:00Z", authentication_mode: "bearer" },
-    identifier: { kind: "email", verified: true, masked_destination: "o••@d8n.tech" },
-    verification_required: false,
-    verification: { code_dispatched: false, resend_available_in: 0 },
-  });
-}
-
-function adminReportsOk() {
-  return json(200, { reports: [], next_cursor: null });
-}
-
-function urlOf(input: RequestInfo | URL): string {
-  return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-}
-
-function isAdminProbe(url: string): boolean {
-  return /\/api\/v1\/admin\/reports\?limit=1(?:&|$)/.test(url) || url.endsWith("/api/v1/admin/reports?limit=1");
-}
+import { json, meOk, operatorOk, urlOf } from "./testFixtures.ts";
 
 function isReportDetail(url: string): boolean {
   return /\/api\/v1\/admin\/reports\/\d+/.test(url);
@@ -133,7 +102,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       return json(404, { error: "not_found" });
     });
@@ -152,7 +121,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       if (isReportList(url)) {
         if (url.includes("status=open")) {
@@ -188,7 +157,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (isReportDetail(url)) return json(200, { report: reportFixture() });
       return json(404, { error: "not_found" });
     });
@@ -211,7 +180,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       if (url.includes("/api/v1/hq/trust_safety/repeat_offenders")) {
         return json(200, {
@@ -256,7 +225,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       if (url.includes("/api/v1/hq/trust_safety/enforcements")) {
         if (url.includes("cursor=")) {
@@ -296,7 +265,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
       const url = urlOf(input);
       const method = (init?.method ?? "GET").toUpperCase();
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (isReportDetail(url) && method === "PATCH") {
         current = { ...current, status: "reviewing", resolution_note: "looking" };
         return json(200, { report: current });
@@ -321,7 +290,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
       const url = urlOf(input);
       const method = (init?.method ?? "GET").toUpperCase();
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (isReportDetail(url) && method === "PATCH") {
         return json(422, { error: "invalid_transition" });
       }
@@ -341,7 +310,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) {
         return json(403, { error: "forbidden" });
       }
@@ -350,14 +319,14 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
 
     renderAt("/hq/trust-safety");
     expect(await screen.findByRole("heading", { name: /^Forbidden$/i })).toBeInTheDocument();
-    expect(screen.getByText(/not an admin for this brand/i)).toBeInTheDocument();
+    expect(screen.getByText(/not authorized for this action/i)).toBeInTheDocument();
   });
 
   it("shows report unavailable for unknown or cross-brand report ids", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (isReportDetail(url)) return json(404, { error: "report_unavailable" });
       return json(404, { error: "not_found" });
     });
@@ -371,7 +340,9 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (isAdminProbe(url) || isReportList(url)) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator") || isReportList(url)) {
+        return isReportList(url) ? json(200, { reports: [], next_cursor: null }) : operatorOk();
+      }
       return json(404, { error: "not_found" });
     });
 

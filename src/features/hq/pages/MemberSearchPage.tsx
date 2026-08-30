@@ -129,7 +129,7 @@ export default function MemberSearchPage() {
               <StateBanner
                 tone="forbidden"
                 title="Forbidden"
-                body={error ?? "You are not an admin for this brand."}
+                body={error ?? "You are not authorized for this action on this brand."}
               />
             </div>
           ) : null}

@@ -171,6 +171,72 @@ describe("premium Chats experience", () => {
     setBearerToken("opaque-token");
   });
 
+  it("marks unread message notifications read when a conversation is opened", async () => {
+    const user = userEvent.setup();
+    const readCalls: string[] = [];
+    let notificationPoll = 0;
+    installHandler((url, method) => {
+      if (url.endsWith("/api/v1/notifications") && method === "GET") {
+        notificationPoll += 1;
+        if (notificationPoll === 1) {
+          return jsonResponse(200, {
+            unread_count: 1,
+            notifications: [{
+              id: "n-msg",
+              type: "dateza.message_received",
+              title: "New message",
+              body: "The trail sounds perfect.",
+              payload: {
+                actor: { profile_id: "p1" },
+                target: { type: "conversation", id: "c1" },
+              },
+              read_at: null,
+              created_at: "2026-08-26T09:00:00Z",
+            }],
+          });
+        }
+        return jsonResponse(200, {
+          unread_count: 0,
+          notifications: [{
+            id: "n-msg",
+            type: "dateza.message_received",
+            title: "New message",
+            body: "The trail sounds perfect.",
+            payload: {
+              actor: { profile_id: "p1" },
+              target: { type: "conversation", id: "c1" },
+            },
+            read_at: "2026-08-26T09:01:00Z",
+            created_at: "2026-08-26T09:00:00Z",
+          }],
+        });
+      }
+      if (method === "PATCH" && url.endsWith("/api/v1/notifications/n-msg/read")) {
+        readCalls.push(url);
+        return jsonResponse(200, {
+          notification: {
+            id: "n-msg",
+            type: "dateza.message_received",
+            title: "New message",
+            body: "The trail sounds perfect.",
+            payload: {
+              actor: { profile_id: "p1" },
+              target: { type: "conversation", id: "c1" },
+            },
+            read_at: "2026-08-26T09:01:00Z",
+            created_at: "2026-08-26T09:00:00Z",
+          },
+        });
+      }
+    });
+    renderChats("/chats?conversation=c1");
+
+    expect(await screen.findByText("The trail sounds perfect.")).toBeInTheDocument();
+    await waitFor(() => expect(readCalls).toEqual([expect.stringContaining("/api/v1/notifications/n-msg/read")]));
+    await waitFor(() => expect(screen.queryByLabelText("1 unread chats")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText("1 unread notifications")).not.toBeInTheDocument());
+  });
+
   it("selects a conversation, renders real context, and sends confirmed text", async () => {
     const user = userEvent.setup();
     let sentBody = "";

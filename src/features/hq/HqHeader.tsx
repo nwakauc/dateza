@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHqBrand } from "./useHqBrand.ts";
+import { formatOperatorRole } from "../../lib/hq/capabilities.ts";
 
 export function BrandSelector() {
   const { status, brandName, brandSlug } = useHqBrand();
@@ -117,8 +118,9 @@ function GlobalSearchPaletteOpen({ onClose }: { onClose: () => void }) {
 }
 
 export function OperatorIdentity() {
-  const { operatorLabel } = useHqBrand();
+  const { operatorLabel, operator } = useHqBrand();
   const initial = operatorLabel.trim().slice(0, 1).toUpperCase() || "O";
+  const roleLabel = operator ? formatOperatorRole(operator.role) : "Operator";
 
   return (
     <div className="hq-operator" aria-label="Signed-in operator">
@@ -127,7 +129,7 @@ export function OperatorIdentity() {
       </div>
       <div className="hq-operator__meta">
         <span className="hq-operator__name">{operatorLabel}</span>
-        <span className="hq-operator__role">Moderator</span>
+        <span className="hq-operator__role">{roleLabel}</span>
       </div>
     </div>
   );

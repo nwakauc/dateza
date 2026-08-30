@@ -6,33 +6,18 @@ import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
 import { lookupHqMember } from "../../lib/hq/api.ts";
+import { json, meOk, operatorOk, urlOf } from "./testFixtures.ts";
 
-function json(status: number, body: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
-
-function meOk() {
-  return json(200, {
-    user_id: 1,
-    brand: { slug: "dateza", name: "DateZA" },
-    session: { id: 2, expires_at: "2026-12-01T00:00:00Z", authentication_mode: "bearer" },
-    identifier: { kind: "email", verified: true, masked_destination: "o••@d8n.tech" },
-    verification_required: false,
-    verification: { code_dispatched: false, resend_available_in: 0 },
-  });
-}
-
-function adminReportsOk() {
-  return json(200, { reports: [], next_cursor: null });
-}
-
-function urlOf(input: RequestInfo | URL): string {
-  return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+function withOperator(
+  handler: (url: string) => ReturnType<typeof json> | undefined,
+  mfaVerified = true,
+) {
+  return (input: RequestInfo | URL) => {
+    const url = urlOf(input);
+    if (url.includes("/api/v1/me")) return meOk();
+    if (url.includes("/api/v1/hq/operator")) return operatorOk(mfaVerified);
+    return handler(url) ?? json(404, { error: "not_found" });
+  };
 }
 
 const PROFILE_ID = "11111111-1111-1111-1111-111111111111";
@@ -220,24 +205,27 @@ describe("D8N HQ Phase 1 integration", () => {
     ).toBeInTheDocument();
   });
 
-  it("blocks signed-in non-admins from /hq", async () => {
+  it("blocks signed-in non-operators from /hq", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return json(403, { error: "forbidden" });
+      if (url.includes("/api/v1/hq/operator")) return json(403, { error: "forbidden" });
       return json(404, { error: "not_found" });
     });
     renderAt("/hq");
-    expect(await screen.findByRole("heading", { name: /hq is for admins only/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /hq is for authorized operators/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("requires MFA step-up before loading HQ surfaces", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined, false));
+    renderAt("/hq");
+    expect(await screen.findByRole("heading", { name: /confirm it is you/i })).toBeInTheDocument();
   });
 
   it("shows host brand context without inventing All Company", async () => {
-    vi.mocked(fetch).mockImplementation((input) => {
-      const url = urlOf(input);
-      if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
-      return json(404, { error: "not_found" });
-    });
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
     renderAt("/hq");
     expect(await screen.findByLabelText("Brand context")).toHaveTextContent(/DateZA/i);
     expect(screen.queryByRole("option", { name: /all company/i })).not.toBeInTheDocument();
@@ -245,10 +233,8 @@ describe("D8N HQ Phase 1 integration", () => {
 
   it("looks up a member and navigates to Member 360 via profile public id", async () => {
     const user = userEvent.setup();
-    vi.mocked(fetch).mockImplementation((input) => {
-      const url = urlOf(input);
-      if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+    vi.mocked(fetch).mockImplementation(
+      withOperator((url) => {
       if (url.includes("/api/v1/hq/members/")) {
         if (url.includes("/discovery_diagnostic")) {
           return json(200, {
@@ -275,8 +261,9 @@ describe("D8N HQ Phase 1 integration", () => {
         }
         return member360Ok();
       }
-      return json(404, { error: "not_found" });
-    });
+      return undefined;
+      }),
+    );
 
     renderAt("/hq/members");
     await screen.findByLabelText(/member lookup/i);
@@ -293,7 +280,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/members/")) return json(404, { error: "member_unavailable" });
       return json(404, { error: "not_found" });
     });
@@ -310,7 +297,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/members/")) return json(403, { error: "forbidden" });
       return json(404, { error: "not_found" });
     });
@@ -318,14 +305,14 @@ describe("D8N HQ Phase 1 integration", () => {
     await screen.findByLabelText(/member lookup/i);
     await user.type(screen.getByLabelText(/member lookup/i), "x@example.com");
     await user.click(screen.getByRole("button", { name: /look up/i }));
-    expect(await screen.findByText(/not an admin for this brand/i)).toBeInTheDocument();
+    expect(await screen.findByText(/not authorized for this action/i)).toBeInTheDocument();
   });
 
   it("renders profile-not-existing state from exists:false", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(404, { error: "profile_unavailable" });
       }
@@ -343,7 +330,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/security_events")) {
         if (url.includes("cursor=")) {
           return json(200, {
@@ -394,7 +381,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/auth_attempts")) {
         return json(200, {
           auth_attempts: [
@@ -450,7 +437,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(200, {
           eligible: true,
@@ -489,7 +476,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/discovery_diagnostic")) {
         return json(200, { eligible: false, ineligibility_reason: "suspended", stages: [] });
       }
@@ -507,7 +494,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       if (url.includes("/api/v1/hq/members/")) return json(500, { error: "server_error" });
       return json(404, { error: "not_found" });
     });
@@ -519,7 +506,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/admin/reports")) return adminReportsOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
       return json(404, { error: "not_found" });
     });
     renderAt("/hq");

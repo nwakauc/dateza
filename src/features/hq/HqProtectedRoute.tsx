@@ -41,7 +41,7 @@ export function HqProtectedRoute({ children }: Props) {
     return (
       <SessionStatusPage
         title="Checking HQ access…"
-        body="Confirming whether this account can open D8N HQ for this brand."
+        body="Confirming whether this account is an authorized operator for this brand."
         busy
       />
     );
@@ -50,8 +50,8 @@ export function HqProtectedRoute({ children }: Props) {
   if (adminAccess === "forbidden") {
     return (
       <SessionStatusPage
-        title="HQ is for admins only"
-        body="This account is signed in, but it is not an admin for this brand."
+        title="HQ is for authorized operators"
+        body="This account is signed in, but it does not have an active operator assignment for this brand."
       />
     );
   }

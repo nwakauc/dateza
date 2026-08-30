@@ -61,6 +61,23 @@ export function countUnreadChatNotifications(items: readonly ProductNotification
   return count;
 }
 
+/** Unread chat notification rows tied to a specific conversation target. */
+export function unreadChatNotificationsForConversation(
+  items: readonly ProductNotification[],
+  conversationId: string,
+): ProductNotification[] {
+  const matches: ProductNotification[] = [];
+  for (const item of items) {
+    if (item.read_at) continue;
+    const kind = notificationKind(item.type);
+    if (kind !== "message" && kind !== "opener") continue;
+    const payload = parseDatingEventPayload(item.payload);
+    if (!payload || payload.target.type !== "conversation" || payload.target.id !== conversationId) continue;
+    matches.push(item);
+  }
+  return matches;
+}
+
 export function actorProfileIds(items: ProductNotification[]): string[] {
   const ids = new Set<string>();
   for (const item of items) {

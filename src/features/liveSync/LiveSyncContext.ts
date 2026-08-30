@@ -21,6 +21,8 @@ export type LiveSyncValue = {
   refreshNow: () => Promise<void>;
   subscribeChatsInbox: (handler: (snapshot: ChatsLiveSnapshot) => void) => () => void;
   setActiveConversation: (id: string | null) => void;
+  /** Marks unread message notifications for this conversation read on D8N and refreshes badges. */
+  acknowledgeConversationRead: (conversationId: string) => Promise<void>;
   subscribeMessages: (handler: (conversationId: string, messages: Message[]) => void) => () => void;
 };
 

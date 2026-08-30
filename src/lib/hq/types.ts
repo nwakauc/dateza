@@ -359,3 +359,90 @@ export type HqSuspendProfileBody = {
   reason?: string | null;
   report_id?: number | null;
 };
+
+/** Authoritative HQ permissions — never infer from role labels. */
+export type HqCapability =
+  | "hq.member.sensitive_read"
+  | "hq.member.security_read"
+  | "hq.discovery_diagnostics.read"
+  | "hq.trust_safety.read"
+  | "admin.reports.read"
+  | "admin.reports.moderate"
+  | "admin.enforcements.manage"
+  | "admin.profile_photos.moderate"
+  | "admin.operators.read"
+  | "admin.operators.manage"
+  | "admin.brand_operations.manage"
+  | "hq.system.read"
+  | "hq.analytics.read";
+
+export type HqOperatorRole =
+  | "founder"
+  | "super_admin"
+  | "operations"
+  | "trust_safety"
+  | "support"
+  | "engineering"
+  | "marketing"
+  | "analyst"
+  | "moderator";
+
+export type HqOperatorStatus = "active" | "suspended" | "disabled";
+
+export type HqMfaLifecycleState = "not_enrolled" | "pending" | "active";
+
+export type HqMfaState = {
+  state: HqMfaLifecycleState;
+  required: true;
+  verified: boolean;
+  recovery_codes_remaining: number | null;
+};
+
+export type HqOperatorAssignment = {
+  brand: string;
+  role: HqOperatorRole;
+  effective_capabilities: HqCapability[];
+};
+
+export type HqCurrentOperator = {
+  admin_user_id: number;
+  user_id: number;
+  status: HqOperatorStatus;
+  current_brand: string;
+  role: HqOperatorRole;
+  effective_capabilities: HqCapability[];
+  grantable_roles: HqOperatorRole[];
+  brand_assignments: HqOperatorAssignment[];
+  mfa: HqMfaState;
+};
+
+export type HqCurrentOperatorResponse = {
+  operator: HqCurrentOperator;
+};
+
+export type HqMfaEnrollment = {
+  state: "pending";
+  secret: string;
+  provisioning_uri: string;
+};
+
+export type HqMfaEnrollmentResponse = {
+  mfa: HqMfaEnrollment;
+};
+
+export type HqMfaConfirmation = {
+  mfa: {
+    state: "active";
+    verified: true;
+  };
+  recovery_codes: string[];
+};
+
+export type HqMfaChallengeResult = {
+  mfa: {
+    state: "active";
+    verified: true;
+    method: "totp" | "recovery_code";
+    recovery_codes_remaining: number;
+  };
+};

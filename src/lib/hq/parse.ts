@@ -40,6 +40,18 @@ import type {
   HqTrustSafetyOverview,
   HqUserStatus,
   HqActivitySection,
+  HqCapability,
+  HqCurrentOperator,
+  HqCurrentOperatorResponse,
+  HqMfaChallengeResult,
+  HqMfaConfirmation,
+  HqMfaEnrollment,
+  HqMfaEnrollmentResponse,
+  HqMfaLifecycleState,
+  HqMfaState,
+  HqOperatorAssignment,
+  HqOperatorRole,
+  HqOperatorStatus,
 } from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -763,4 +775,177 @@ export function displayNameForMember(member: HqMember360): string {
     return parts.join(" ");
   }
   return member.member.profile_id ?? `User ${member.member.user_id}`;
+}
+
+const HQ_CAPABILITIES = new Set<string>([
+  "hq.member.sensitive_read",
+  "hq.member.security_read",
+  "hq.discovery_diagnostics.read",
+  "hq.trust_safety.read",
+  "admin.reports.read",
+  "admin.reports.moderate",
+  "admin.enforcements.manage",
+  "admin.profile_photos.moderate",
+  "admin.operators.read",
+  "admin.operators.manage",
+  "admin.brand_operations.manage",
+  "hq.system.read",
+  "hq.analytics.read",
+]);
+
+const HQ_OPERATOR_ROLES = new Set<string>([
+  "founder",
+  "super_admin",
+  "operations",
+  "trust_safety",
+  "support",
+  "engineering",
+  "marketing",
+  "analyst",
+  "moderator",
+]);
+
+const HQ_OPERATOR_STATUSES = new Set<string>(["active", "suspended", "disabled"]);
+const HQ_MFA_STATES = new Set<string>(["not_enrolled", "pending", "active"]);
+
+function parseCapabilityList(value: unknown, label: string): HqCapability[] {
+  if (!Array.isArray(value)) {
+    throw new ApiError(502, undefined, `invalid_hq_${label}`);
+  }
+  const capabilities: HqCapability[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || !HQ_CAPABILITIES.has(item)) {
+      throw new ApiError(502, undefined, `invalid_hq_${label}`);
+    }
+    if (!capabilities.includes(item as HqCapability)) {
+      capabilities.push(item as HqCapability);
+    }
+  }
+  return capabilities;
+}
+
+function parseOperatorRole(value: unknown): HqOperatorRole {
+  const role = requireString(value, "operator_role");
+  if (!HQ_OPERATOR_ROLES.has(role)) {
+    throw new ApiError(502, undefined, "invalid_hq_operator_role");
+  }
+  return role as HqOperatorRole;
+}
+
+function parseOperatorStatus(value: unknown): HqOperatorStatus {
+  const status = requireString(value, "operator_status");
+  if (!HQ_OPERATOR_STATUSES.has(status)) {
+    throw new ApiError(502, undefined, "invalid_hq_operator_status");
+  }
+  return status as HqOperatorStatus;
+}
+
+function parseMfaLifecycleState(value: unknown): HqMfaLifecycleState {
+  const state = requireString(value, "mfa_state");
+  if (!HQ_MFA_STATES.has(state)) {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_state");
+  }
+  return state as HqMfaLifecycleState;
+}
+
+function parseMfaState(value: unknown): HqMfaState {
+  const row = requireRecord(value, "mfa");
+  if (row.required !== true) {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_required");
+  }
+  const recovery = row.recovery_codes_remaining;
+  if (recovery !== null && (typeof recovery !== "number" || recovery < 0)) {
+    throw new ApiError(502, undefined, "invalid_hq_recovery_codes_remaining");
+  }
+  return {
+    state: parseMfaLifecycleState(row.state),
+    required: true,
+    verified: requireBoolean(row.verified, "mfa_verified"),
+    recovery_codes_remaining: recovery === null ? null : recovery,
+  };
+}
+
+function parseOperatorAssignment(value: unknown): HqOperatorAssignment {
+  const row = requireRecord(value, "operator_assignment");
+  return {
+    brand: requireString(row.brand, "assignment_brand"),
+    role: parseOperatorRole(row.role),
+    effective_capabilities: parseCapabilityList(row.effective_capabilities, "assignment_capabilities"),
+  };
+}
+
+function parseCurrentOperator(value: unknown): HqCurrentOperator {
+  const row = requireRecord(value, "operator");
+  return {
+    admin_user_id: requireNumber(row.admin_user_id, "admin_user_id"),
+    user_id: requireNumber(row.user_id, "user_id"),
+    status: parseOperatorStatus(row.status),
+    current_brand: requireString(row.current_brand, "current_brand"),
+    role: parseOperatorRole(row.role),
+    effective_capabilities: parseCapabilityList(row.effective_capabilities, "effective_capabilities"),
+    grantable_roles: Array.isArray(row.grantable_roles)
+      ? row.grantable_roles.map(parseOperatorRole)
+      : [],
+    brand_assignments: Array.isArray(row.brand_assignments)
+      ? row.brand_assignments.map(parseOperatorAssignment)
+      : [],
+    mfa: parseMfaState(row.mfa),
+  };
+}
+
+export function parseCurrentOperatorResponse(data: unknown): HqCurrentOperatorResponse {
+  const root = requireRecord(data, "current_operator");
+  return { operator: parseCurrentOperator(root.operator) };
+}
+
+function parseMfaEnrollment(value: unknown): HqMfaEnrollment {
+  const row = requireRecord(value, "mfa_enrollment");
+  if (row.state !== "pending") {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_enrollment_state");
+  }
+  return {
+    state: "pending",
+    secret: requireString(row.secret, "mfa_secret"),
+    provisioning_uri: requireString(row.provisioning_uri, "mfa_provisioning_uri"),
+  };
+}
+
+export function parseMfaEnrollmentResponse(data: unknown): HqMfaEnrollmentResponse {
+  const root = requireRecord(data, "mfa_enrollment_response");
+  return { mfa: parseMfaEnrollment(root.mfa) };
+}
+
+export function parseMfaConfirmationResponse(data: unknown): HqMfaConfirmation {
+  const root = requireRecord(data, "mfa_confirmation");
+  if (!Array.isArray(root.recovery_codes) || root.recovery_codes.length < 8) {
+    throw new ApiError(502, undefined, "invalid_hq_recovery_codes");
+  }
+  const mfa = requireRecord(root.mfa, "mfa_confirmation_state");
+  if (mfa.state !== "active" || mfa.verified !== true) {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_confirmation_state");
+  }
+  return {
+    mfa: { state: "active", verified: true },
+    recovery_codes: root.recovery_codes.map((code) => requireString(code, "recovery_code")),
+  };
+}
+
+export function parseMfaChallengeResponse(data: unknown): HqMfaChallengeResult {
+  const root = requireRecord(data, "mfa_challenge");
+  const mfa = requireRecord(root.mfa, "mfa_challenge_state");
+  if (mfa.state !== "active" || mfa.verified !== true) {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_challenge_state");
+  }
+  const method = requireString(mfa.method, "mfa_method");
+  if (method !== "totp" && method !== "recovery_code") {
+    throw new ApiError(502, undefined, "invalid_hq_mfa_method");
+  }
+  return {
+    mfa: {
+      state: "active",
+      verified: true,
+      method,
+      recovery_codes_remaining: requireNumber(mfa.recovery_codes_remaining, "recovery_codes_remaining"),
+    },
+  };
 }

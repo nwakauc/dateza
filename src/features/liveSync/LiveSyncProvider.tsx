@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { getProfileDetail } from "../../lib/api/find.ts";
-import { listNotifications, parseDatingEventPayload } from "../../lib/api/notifications.ts";
+import { listNotifications, markNotificationRead, parseDatingEventPayload } from "../../lib/api/notifications.ts";
 import type { ProductNotification } from "../../lib/api/notificationTypes.ts";
 import { listReceivedOpeners } from "../../lib/api/opener.ts";
 import { listConversations, listMatches, listMessages } from "../../lib/api/social.ts";
@@ -10,6 +10,7 @@ import {
   actorFromProfile,
   countUnreadChatNotifications,
   notificationKind,
+  unreadChatNotificationsForConversation,
 } from "../notifications/notificationPresentation.ts";
 import { selectIncomingNotificationToasts, shouldPlayIncomingSound } from "../toasts/incomingToastPolicy.ts";
 import type { ToastTone } from "../toasts/toastTypes.ts";
@@ -49,6 +50,7 @@ export function LiveSyncProvider({ onUnreadCount, onUnreadChats, refreshKey, chi
   const chatsHandlers = useRef(new Set<(snapshot: ChatsLiveSnapshot) => void>());
   const messageHandler = useRef<((conversationId: string, messages: Message[]) => void) | null>(null);
   const activeConversationRef = useRef<string | null>(null);
+  const acknowledgingRef = useRef<Map<string, Promise<void>>>(new Map());
   const notifyTickRef = useRef<() => Promise<void>>(async () => undefined);
 
   useEffect(() => {
@@ -207,15 +209,38 @@ export function LiveSyncProvider({ onUnreadCount, onUnreadChats, refreshKey, chi
     setActiveConversationId(id);
   }, []);
 
+  const acknowledgeConversationRead = useCallback(async (conversationId: string) => {
+    const inFlight = acknowledgingRef.current.get(conversationId);
+    if (inFlight) return inFlight;
+
+    const work = (async () => {
+      try {
+        const result = await listNotifications();
+        const toMark = unreadChatNotificationsForConversation(result.notifications, conversationId);
+        if (toMark.length === 0) return;
+        await Promise.all(toMark.map((item) => markNotificationRead(item.id)));
+        await notifyTickRef.current();
+      } catch {
+        /* keep badges until the next poll */
+      } finally {
+        acknowledgingRef.current.delete(conversationId);
+      }
+    })();
+
+    acknowledgingRef.current.set(conversationId, work);
+    return work;
+  }, []);
+
   const value = useMemo<LiveSyncValue>(
     () => ({
       inbox,
       refreshNow,
       subscribeChatsInbox,
       setActiveConversation,
+      acknowledgeConversationRead,
       subscribeMessages,
     }),
-    [inbox, refreshNow, setActiveConversation, subscribeChatsInbox, subscribeMessages],
+    [acknowledgeConversationRead, inbox, refreshNow, setActiveConversation, subscribeChatsInbox, subscribeMessages],
   );
 
   return <LiveSyncContext.Provider value={value}>{children}</LiveSyncContext.Provider>;

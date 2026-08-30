@@ -5,9 +5,13 @@ import {
   parseAdminReport,
   parseAdminReportList,
   parseAuthAttemptList,
+  parseCurrentOperatorResponse,
   parseDiscoveryDiagnostic,
   parseEnforcementList,
   parseMember360,
+  parseMfaChallengeResponse,
+  parseMfaConfirmationResponse,
+  parseMfaEnrollmentResponse,
   parseRepeatOffenderList,
   parseSecurityEventList,
   parseTrustSafetyOverview,
@@ -18,10 +22,14 @@ import type {
   HqAdminReportList,
   HqAdminReportListParams,
   HqAuthAttemptList,
+  HqCurrentOperator,
   HqDiscoveryDiagnostic,
   HqEnforcementList,
   HqHistoryParams,
   HqMember360,
+  HqMfaChallengeResult,
+  HqMfaConfirmation,
+  HqMfaEnrollmentResponse,
   HqRepeatOffenderList,
   HqSecurityEventList,
   HqSuspendProfileBody,
@@ -34,6 +42,34 @@ import type {
  * HQ + reused admin moderation client.
  * Brand is host-derived by D8N; never send a client brand parameter.
  */
+
+export async function fetchHqOperator(): Promise<HqCurrentOperator> {
+  const data = await apiRequest("/api/v1/hq/operator");
+  return parseCurrentOperatorResponse(data).operator;
+}
+
+export async function startHqMfaEnrollment(): Promise<HqMfaEnrollmentResponse> {
+  const data = await apiRequest("/api/v1/hq/mfa/enrollment", { method: "POST" });
+  return parseMfaEnrollmentResponse(data);
+}
+
+export async function confirmHqMfaEnrollment(code: string): Promise<HqMfaConfirmation> {
+  const data = await apiRequest("/api/v1/hq/mfa/enrollment", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  return parseMfaConfirmationResponse(data);
+}
+
+export async function challengeHqMfa(code: string): Promise<HqMfaChallengeResult> {
+  const data = await apiRequest("/api/v1/hq/mfa/challenge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  return parseMfaChallengeResponse(data);
+}
 
 function memberPath(lookup: string, suffix = ""): string {
   const trimmed = lookup.trim();
@@ -209,7 +245,10 @@ export function hqErrorMessage(error: unknown): string {
     return "Your session expired. Sign in again to continue.";
   }
   if (error.status === 403) {
-    return "You are signed in, but you are not an admin for this brand.";
+    if (error.code === "admin_mfa_required") {
+      return "Complete multi-factor authentication to continue.";
+    }
+    return "You are signed in, but you are not authorized for this action on this brand.";
   }
   if (error.status === 404) {
     if (error.code === "report_unavailable") {
@@ -233,6 +272,9 @@ export function hqErrorMessage(error: unknown): string {
     return "This action conflicts with the current state. Refresh and try again.";
   }
   if (error.status === 422) {
+    if (error.code === "admin_mfa_code_invalid") {
+      return "That code was not accepted. Check your authenticator app or recovery code.";
+    }
     if (error.code === "invalid_cursor") {
       return "That page cursor is no longer valid. Start again from the first page.";
     }
@@ -246,6 +288,12 @@ export function hqErrorMessage(error: unknown): string {
       return "That status change is not allowed from the report's current state.";
     }
     return "The request was rejected. Check the lookup or paging parameters.";
+  }
+  if (error.status === 429 && error.code === "admin_mfa_rate_limited") {
+    const wait = error.retryAfterSeconds;
+    return wait
+      ? `Too many MFA attempts. Wait ${wait} seconds and try again.`
+      : "Too many MFA attempts. Wait a moment and try again.";
   }
   if (error.status >= 500 || error.message.startsWith("invalid_hq_")) {
     return "The HQ API returned an unexpected response.";

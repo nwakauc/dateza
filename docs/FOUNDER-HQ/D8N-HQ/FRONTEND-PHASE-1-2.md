@@ -2,7 +2,8 @@
 
 Status: **SHIPPED in DateZA client** (not committed by this handoff). Backend
 contracts live in `docs/api/openapi.yaml` (tags `Hq` and `Admin`). Backend
-Phase 2 notes: `PHASE-2-IMPLEMENTATION.md`.
+Phase 2 notes: `PHASE-2-IMPLEMENTATION.md`. Foundation/security handoff:
+`FOUNDATION-SECURITY-IMPLEMENTATION.md`.
 
 ## Routes
 
@@ -14,19 +15,32 @@ Phase 2 notes: `PHASE-2-IMPLEMENTATION.md`.
 | `/hq/trust-safety` | Trust & Safety | Tabs via `?tab=overview\|queue\|offenders\|enforcements` |
 | `/hq/trust-safety/reports/:reportId` | Report detail | Lifecycle + suspension/reinstatement |
 
+MFA enrollment/challenge is inline inside `/hq` (no separate route). Operators
+with `mfa.verified: false` see the step-up screen before HQ surfaces load.
+
 Nav item `trust-safety` is `ready`. `findHqNavItem` resolves
-`/hq/trust-safety/reports/:id` to Trust & Safety.
+`/hq/trust-safety/reports/:id` to Trust & Safety. Sidebar items are filtered by
+`effective_capabilities`, never role labels.
 
 ## APIs consumed
 
-### Phase 1 (unchanged)
+### Foundation / security (Phase 0)
+
+- `GET /api/v1/hq/operator` — bootstrap probe, capabilities, MFA state
+- `POST /api/v1/hq/mfa/enrollment` — start TOTP enrollment
+- `PATCH /api/v1/hq/mfa/enrollment` — confirm enrollment; recovery codes once
+- `POST /api/v1/hq/mfa/challenge` — session step-up with TOTP or recovery code
+
+Consumer-shell HQ entry and `/hq` route gate use `GET /api/v1/hq/operator`
+(200 = show entry; 403 = hide/block). MFA is not required for the probe.
+
+### Phase 1
 
 - `GET /api/v1/hq/members/{lookup}`
 - `GET /api/v1/hq/members/{lookup}/security_events`
 - `GET /api/v1/hq/members/{lookup}/auth_attempts`
 - `GET /api/v1/hq/members/{lookup}/enforcements`
 - `GET /api/v1/hq/members/{lookup}/discovery_diagnostic`
-- Admin probe: `GET /api/v1/admin/reports?limit=1`
 
 ### Phase 2
 
@@ -39,7 +53,8 @@ Nav item `trust-safety` is `ready`. `findHqNavItem` resolves
 - `POST /api/v1/admin/profiles/{profile_id}/suspension` body `{ reason?, report_id? }`
 - `DELETE /api/v1/admin/profiles/{profile_id}/suspension`
 
-Brand is always host-derived. No client `brand_id`.
+Brand is always host-derived. No client `brand_id`. Navigation and actions use
+`effective_capabilities` from the operator response.
 
 ## UI states
 
@@ -47,19 +62,29 @@ Brand is always host-derived. No client `brand_id`.
 | --- | --- |
 | Loading | Explicit loading copy per panel |
 | Empty | Empty / unavailable primitives; zero maps still render |
-| `403` | Forbidden banner; no role inference |
+| `401` | Re-authenticate |
+| `403 forbidden` | Unauthorized/revoked; not an MFA prompt |
+| `403 admin_mfa_required` | MFA challenge (protected HQ/admin calls) |
 | `404 report_unavailable` | Report unavailable; no existence claims |
 | `404 member_unavailable` / `profile_unavailable` | Existing Member 360 copy |
 | `409 already_suspended` / `not_suspended` / `report_conflict` | Action error; no optimistic success |
-| `422 invalid_cursor` / `invalid_filter` / `invalid_limit` / `invalid_transition` | Validation / action error; enforcement invalid cursor is **not** silently reset |
+| `422 admin_mfa_code_invalid` | Recoverable MFA validation error |
+| `429 admin_mfa_rate_limited` | Retry after server `Retry-After` |
+| `422 invalid_cursor` / `invalid_filter` / `invalid_limit` / `invalid_transition` | Validation / action error |
 | `5xx` / parse failure | Error + manual retry; never substitute fake zeros |
 | SLA | Always `sla_status: not_configured`; `overdue: null` never shown as `0 overdue` |
+| MFA `not_enrolled` / `pending` | Enrollment flow with one-time secret display |
+| MFA `active` + `verified: false` | TOTP/recovery challenge before HQ loads |
 
 Overview loads first on Trust & Safety. Queue, repeat offenders, and
 enforcements load on demand when their tab is selected.
 
+Enrollment secrets, TOTP codes, and recovery codes are never stored in
+localStorage, logged, or sent to analytics.
+
 ## Limitations (honest)
 
+- No operator-management UI (`/api/v1/hq/operators`) in Phase 1–2 surfaces.
 - No SLA overdue numbers or reports-per-1,000 inventing.
 - No reason / target-type queue filters (overview breakdowns only).
 - Repeat offenders are bounded + `truncated`, not cursor-paginated.
@@ -69,14 +94,17 @@ enforcements load on demand when their tab is selected.
 
 ## Tests
 
-- `src/features/hq/hq.test.tsx` — Phase 1 Member 360 / shell
+- `src/features/hq/hq.test.tsx` — Phase 1 Member 360 / shell / MFA gate
 - `src/features/hq/trustSafety.test.tsx` — Phase 2 overview, queue, detail,
   offenders, enforcements, moderation success/failure, 403, 404
+- `src/features/shell/hqEntry.test.tsx` — consumer HQ entry via operator probe
+- `src/features/hq/testFixtures.ts` — shared operator/session mocks
 
 Run:
 
 ```sh
-npx vitest run src/features/hq
+npx vitest run src/features/hq src/features/shell/hqEntry.test.tsx
 npm run lint
 npm run typecheck
+npm run build
 ```

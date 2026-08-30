@@ -159,6 +159,11 @@ export default function ChatsPage() {
   const liveThreadReady = Boolean(selectedId && loadedConversationId === selectedId);
 
   useEffect(() => {
+    if (!liveSync || !selectedId) return;
+    void liveSync.acknowledgeConversationRead(selectedId);
+  }, [liveSync, selectedId]);
+
+  useEffect(() => {
     if (!liveSync) return;
     liveSync.setActiveConversation(liveThreadReady ? selectedId : null);
     return () => liveSync.setActiveConversation(null);

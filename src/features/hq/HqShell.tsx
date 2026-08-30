@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { findHqNavItem } from "./navConfig.ts";
 import { HqBrandProvider } from "./HqBrandContext.tsx";
+import { HqMfaGate } from "./HqMfaGate.tsx";
 import { GlobalSearchPalette, HqHeader } from "./HqHeader.tsx";
 import { HqSidebar } from "./HqSidebar.tsx";
 import "./hq.css";
@@ -81,7 +82,9 @@ function HqShellInner() {
 export default function HqShell() {
   return (
     <HqBrandProvider>
-      <HqShellInner />
+      <HqMfaGate>
+        <HqShellInner />
+      </HqMfaGate>
     </HqBrandProvider>
   );
 }

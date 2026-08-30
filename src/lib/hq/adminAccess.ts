@@ -1,23 +1,23 @@
-import { apiRequest } from "../api/client.ts";
+import { fetchHqOperator } from "./api.ts";
 import { ApiError } from "../api/errors.ts";
 
-export type BrandAdminAccess = "unknown" | "allowed" | "forbidden" | "unavailable";
+export type HqOperatorAccess = "unknown" | "allowed" | "forbidden" | "unavailable";
 
-let cached: { userId: number; access: Exclude<BrandAdminAccess, "unknown"> } | null = null;
+let cached: { userId: number; access: Exclude<HqOperatorAccess, "unknown"> } | null = null;
 
 /**
- * Whether the current session is an authorized moderator for this brand.
- * OpenAPI does not expose admin status on GET /me, so we use the same
- * ModeratorContext gate as HQ: a minimal admin list call.
- * 200 → admin; 403 → not an admin for this brand.
+ * Whether the current session has an active operator assignment on this brand.
+ * Uses GET /api/v1/hq/operator — MFA step-up is not required for this probe.
  */
-export async function probeBrandAdminAccess(userId: number): Promise<Exclude<BrandAdminAccess, "unknown">> {
+export async function probeHqOperatorAccess(
+  userId: number,
+): Promise<Exclude<HqOperatorAccess, "unknown">> {
   if (cached?.userId === userId) {
     return cached.access;
   }
 
   try {
-    await apiRequest("/api/v1/admin/reports?limit=1");
+    await fetchHqOperator();
     cached = { userId, access: "allowed" };
     return "allowed";
   } catch (error: unknown) {
@@ -29,6 +29,14 @@ export async function probeBrandAdminAccess(userId: number): Promise<Exclude<Bra
   }
 }
 
-export function clearBrandAdminAccessCache(): void {
+export function clearHqOperatorAccessCache(): void {
   cached = null;
 }
+
+/** @deprecated Use probeHqOperatorAccess */
+export const probeBrandAdminAccess = probeHqOperatorAccess;
+
+/** @deprecated Use clearHqOperatorAccessCache */
+export const clearBrandAdminAccessCache = clearHqOperatorAccessCache;
+
+export type BrandAdminAccess = HqOperatorAccess;
