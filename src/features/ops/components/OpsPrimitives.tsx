@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { HqGenderSplit } from "../../../lib/hq/types.ts";
 
 export function OpsBadge({
   tone = "neutral",
@@ -98,13 +99,72 @@ export function OpsDashboardSection({
   );
 }
 
-export function OpsGenderSplitPlaceholder({ message }: { message: string }) {
-  return (
-    <div className="ops-gender-chart" aria-label="Gender split unavailable">
-      <div className="ops-gender-chart__ring" aria-hidden="true">
-        <span>—</span>
+export function OpsGenderSplitChart({
+  split,
+  unavailable,
+}: {
+  split: HqGenderSplit;
+  unavailable?: string;
+}) {
+  if (unavailable) {
+    return (
+      <div className="ops-gender-chart" aria-label="Gender split unavailable">
+        <div className="ops-gender-chart__ring" aria-hidden="true">
+          <span>—</span>
+        </div>
+        <p className="ops-muted">{unavailable}</p>
       </div>
-      <p className="ops-muted">{message}</p>
+    );
+  }
+
+  const total = split.woman + split.man + split.other + split.unknown;
+  const segments = [
+    { key: "woman", label: "Women", value: split.woman, color: "#e85d8a" },
+    { key: "man", label: "Men", value: split.man, color: "#4a7fd4" },
+    { key: "other", label: "Other", value: split.other, color: "#9b7fd4" },
+    { key: "unknown", label: "Unknown", value: split.unknown, color: "#c9c0b5" },
+  ] as const;
+
+  if (total === 0) {
+    return (
+      <div className="ops-gender-chart ops-gender-chart--live" aria-label="Gender split">
+        <div className="ops-gender-chart__ring ops-gender-chart__ring--empty" aria-hidden="true">
+          <span>0</span>
+        </div>
+        <p className="ops-muted">No registered members yet.</p>
+      </div>
+    );
+  }
+
+  let cursor = 0;
+  const gradient = segments
+    .filter((segment) => segment.value > 0)
+    .map((segment) => {
+      const share = (segment.value / total) * 100;
+      const start = cursor;
+      cursor += share;
+      return `${segment.color} ${start}% ${cursor}%`;
+    })
+    .join(", ");
+
+  return (
+    <div className="ops-gender-chart ops-gender-chart--live" aria-label="Gender split among registered members">
+      <div
+        className="ops-gender-chart__ring ops-gender-chart__ring--filled"
+        style={{ background: `conic-gradient(${gradient})` }}
+        aria-hidden="true"
+      >
+        <span>{total}</span>
+      </div>
+      <ul className="ops-gender-chart__legend">
+        {segments.map((segment) => (
+          <li key={segment.key}>
+            <span className="ops-gender-chart__swatch" style={{ background: segment.color }} />
+            <span>{segment.label}</span>
+            <strong>{segment.value}</strong>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

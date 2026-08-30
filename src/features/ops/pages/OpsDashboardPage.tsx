@@ -4,12 +4,11 @@ import { useHqOperator } from "../../hq/useHqOperator.ts";
 import {
   OpsBanner,
   OpsDashboardSection,
-  OpsGenderSplitPlaceholder,
+  OpsGenderSplitChart,
   OpsMetricCard,
   OpsTable,
 } from "../components/OpsPrimitives.tsx";
 import { useOpsDashboard } from "../hooks/useOpsDashboard.ts";
-import { OPS_ANALYTICS_UNAVAILABLE } from "../opsAnalyticsContract.ts";
 import { formatAgeSeconds, formatWhen, humanizeKey } from "../opsFormat.ts";
 import { opsCan } from "../opsCapabilities.ts";
 
@@ -77,12 +76,15 @@ export default function OpsDashboardPage() {
 
   const { data, updatedAt } = state;
   const overview = data.overview;
+  const analytics = data.analytics;
   const openReports = overview?.reports.by_status.open ?? null;
   const reviewingReports = overview?.reports.by_status.reviewing ?? null;
   const awaiting = overview?.reports.awaiting_decision ?? null;
   const oldestAge = overview?.reports.oldest_open_report_age_seconds ?? null;
   const activeEnforcement = overview?.enforcements.active ?? null;
-  const analyticsNote = OPS_ANALYTICS_UNAVAILABLE;
+  const growthDescription = analytics
+    ? `Rollups for ${analytics.brand} in ${analytics.time_zone}. Week = Sunday–Saturday; month = calendar month from the 1st.`
+    : "Signup and active-member rollups require hq.analytics.read. Week = Sunday–Saturday; month = calendar month from the 1st (brand timezone).";
 
   return (
     <div className="ops-stack">
@@ -103,42 +105,54 @@ export default function OpsDashboardPage() {
         />
       ) : null}
 
-      <OpsDashboardSection
-        title="Growth & activity"
-        description="Signup and active-member rollups need a verified analytics overview from D8N. Week = Sunday–Saturday; month = calendar month from the 1st (brand timezone)."
-      >
+      <OpsDashboardSection title="Growth & activity" description={growthDescription}>
         {!canAnalytics ? (
           <OpsBanner
             tone="neutral"
             title="Growth analytics not enabled"
             body="Your role does not include hq.analytics.read. Ask an admin to grant analytics access, or use the member directory for newest signups."
           />
-        ) : (
+        ) : analytics ? (
           <div className="ops-metrics">
-            <OpsMetricCard label="Signups today" unavailable={analyticsNote} value={null} />
+            <OpsMetricCard label="Signups today" value={analytics.signups_today} />
             <OpsMetricCard
               label="Signups this week"
-              unavailable={analyticsNote}
-              value={null}
+              value={analytics.signups_this_week}
               hint="Sun–Sat, brand timezone"
             />
             <OpsMetricCard
               label="Signups this month"
-              unavailable={analyticsNote}
-              value={null}
+              value={analytics.signups_this_month}
               hint="From 1st of month"
             />
-            <OpsMetricCard label="Active today" unavailable={analyticsNote} value={null} />
-            <OpsMetricCard label="Active 7 days" unavailable={analyticsNote} value={null} />
-            <OpsMetricCard label="Active 30 days" unavailable={analyticsNote} value={null} />
-            <OpsMetricCard label="Total members" unavailable={analyticsNote} value={null} />
+            <OpsMetricCard label="Active today" value={analytics.active_today} />
+            <OpsMetricCard label="Active 7 days" value={analytics.active_7d} />
+            <OpsMetricCard label="Active 30 days" value={analytics.active_30d} />
+            <OpsMetricCard label="Total members" value={analytics.total_registered_members} />
           </div>
+        ) : (
+          <OpsBanner
+            tone="warning"
+            title="Growth analytics unavailable"
+            body="Could not load the brand analytics overview. Try refreshing, or check that D8N has deployed the analytics endpoint."
+          />
         )}
       </OpsDashboardSection>
 
       <OpsDashboardSection title="Demographics">
         <div className="ops-dashboard-grid-2">
-          <OpsGenderSplitPlaceholder message="Female vs male split requires the brand analytics overview endpoint. DateZA will not estimate gender from partial directory pages." />
+          {canAnalytics && analytics ? (
+            <OpsGenderSplitChart split={analytics.gender_split} />
+          ) : (
+            <OpsGenderSplitChart
+              split={{ woman: 0, man: 0, other: 0, unknown: 0 }}
+              unavailable={
+                canAnalytics
+                  ? "Gender split loads with the analytics overview."
+                  : "Your role does not include hq.analytics.read."
+              }
+            />
+          )}
           <div className="ops-card">
             <h3 style={{ marginTop: 0 }}>What you will see here</h3>
             <ul className="ops-muted" style={{ margin: 0, paddingLeft: 18 }}>

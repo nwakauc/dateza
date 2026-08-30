@@ -4,6 +4,7 @@ import type {
   HqAdminEnforcement,
   HqAdminReport,
   HqAdminReportList,
+  HqAnalyticsOverview,
   HqAdminReportParty,
   HqAuthAttempt,
   HqAuthAttemptKind,
@@ -15,6 +16,7 @@ import type {
   HqDiscoveryStage,
   HqDiscoveryStageName,
   HqEnforcementList,
+  HqGenderSplit,
   HqIdentitySection,
   HqIdentifier,
   HqMember360,
@@ -703,6 +705,37 @@ export function parseAdminReportList(data: unknown): HqAdminReportList {
 function nullableNumber(value: unknown, label: string): number | null {
   if (value === null) return null;
   return requireNumber(value, label);
+}
+
+function parseGenderSplit(value: unknown): HqGenderSplit {
+  const row = requireRecord(value, "gender_split");
+  return {
+    woman: requireNumber(row.woman, "gender_woman"),
+    man: requireNumber(row.man, "gender_man"),
+    other: requireNumber(row.other, "gender_other"),
+    unknown: requireNumber(row.unknown, "gender_unknown"),
+  };
+}
+
+export function parseAnalyticsOverview(data: unknown): HqAnalyticsOverview {
+  const root = requireRecord(data, "analytics_overview_response");
+  const overview = requireRecord(root.overview, "analytics_overview");
+  return {
+    brand: requireString(overview.brand, "analytics_brand"),
+    generated_at: requireString(overview.generated_at, "analytics_generated_at"),
+    time_zone: requireString(overview.time_zone, "analytics_time_zone"),
+    signups_today: requireNumber(overview.signups_today, "signups_today"),
+    signups_this_week: requireNumber(overview.signups_this_week, "signups_this_week"),
+    signups_this_month: requireNumber(overview.signups_this_month, "signups_this_month"),
+    active_today: requireNumber(overview.active_today, "active_today"),
+    active_7d: requireNumber(overview.active_7d, "active_7d"),
+    active_30d: requireNumber(overview.active_30d, "active_30d"),
+    gender_split: parseGenderSplit(overview.gender_split),
+    total_registered_members: requireNumber(
+      overview.total_registered_members,
+      "total_registered_members",
+    ),
+  };
 }
 
 export function parseTrustSafetyOverview(data: unknown): HqTrustSafetyOverview {

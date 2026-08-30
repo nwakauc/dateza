@@ -4,6 +4,7 @@ import {
   parseAdminEnforcementResponse,
   parseAdminReport,
   parseAdminReportList,
+  parseAnalyticsOverview,
   parseAuthAttemptList,
   parseCurrentOperatorResponse,
   parseDiscoveryDiagnostic,
@@ -26,6 +27,7 @@ import type {
   HqAdminReport,
   HqAdminReportList,
   HqAdminReportListParams,
+  HqAnalyticsOverview,
   HqAuthAttemptList,
   HqCurrentOperator,
   HqDiscoveryDiagnostic,
@@ -177,6 +179,11 @@ function appendQuery(base: string, params: URLSearchParams): string {
 export async function fetchTrustSafetyOverview(): Promise<HqTrustSafetyOverview> {
   const data = await apiRequest("/api/v1/hq/trust_safety/overview");
   return parseTrustSafetyOverview(data);
+}
+
+export async function fetchHqAnalyticsOverview(): Promise<HqAnalyticsOverview> {
+  const data = await apiRequest("/api/v1/hq/analytics/overview");
+  return parseAnalyticsOverview(data);
 }
 
 export async function fetchRepeatOffenders(limit?: number): Promise<HqRepeatOffenderList> {

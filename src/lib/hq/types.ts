@@ -332,6 +332,28 @@ export type HqAdminReportList = {
   next_cursor: string | null;
 };
 
+export type HqGenderSplit = {
+  woman: number;
+  man: number;
+  other: number;
+  unknown: number;
+};
+
+/** Brand-scoped growth snapshot from GET /api/v1/hq/analytics/overview. */
+export type HqAnalyticsOverview = {
+  brand: string;
+  generated_at: string;
+  time_zone: string;
+  signups_today: number;
+  signups_this_week: number;
+  signups_this_month: number;
+  active_today: number;
+  active_7d: number;
+  active_30d: number;
+  gender_split: HqGenderSplit;
+  total_registered_members: number;
+};
+
 export type HqTrustSafetyOverview = {
   brand: string;
   generated_at: string;

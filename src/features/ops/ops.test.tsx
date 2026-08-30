@@ -8,6 +8,24 @@ import { SessionProvider } from "../session/SessionProvider.tsx";
 import OpsDashboardPage from "./pages/OpsDashboardPage.tsx";
 import { HqOperatorProvider } from "../hq/HqOperatorProvider.tsx";
 
+function analyticsOk() {
+  return json(200, {
+    overview: {
+      brand: "dateza",
+      generated_at: "2026-08-30T01:00:00Z",
+      time_zone: "Africa/Johannesburg",
+      signups_today: 3,
+      signups_this_week: 12,
+      signups_this_month: 45,
+      active_today: 8,
+      active_7d: 120,
+      active_30d: 400,
+      gender_split: { woman: 60, man: 35, other: 2, unknown: 3 },
+      total_registered_members: 500,
+    },
+  });
+}
+
 function overviewOk() {
   return json(200, {
     overview: {
@@ -75,6 +93,7 @@ describe("DateZA Operations console", () => {
           ],
         });
       }
+      if (url.includes("/api/v1/hq/analytics/overview")) return analyticsOk();
       if (url.includes("/api/v1/hq/trust_safety/overview")) return overviewOk();
       if (url.includes("/api/v1/hq/trust_safety/repeat_offenders")) {
         return json(200, { repeat_offenders: [], minimum_reports: 2, truncated: false });
@@ -104,7 +123,9 @@ describe("DateZA Operations console", () => {
     expect(await screen.findByText("Open reports")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText(/signups today/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/not configured/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("500")).toBeInTheDocument();
+    expect(screen.getByText(/pending selfies/i)).toBeInTheDocument();
     expect(screen.queryByText(/total users/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/revenue/i)).not.toBeInTheDocument();
   });

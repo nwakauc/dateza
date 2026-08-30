@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ApiError } from "../../../lib/api/errors.ts";
 import {
+  fetchHqAnalyticsOverview,
   fetchHqMemberDirectory,
   fetchProfilePhotoQueue,
   fetchRepeatOffenders,
@@ -8,11 +9,17 @@ import {
   fetchTrustSafetyOverview,
   hqErrorMessage,
 } from "../../../lib/hq/api.ts";
-import type { HqAdminEnforcement, HqMemberDirectoryEntry, HqTrustSafetyOverview } from "../../../lib/hq/types.ts";
+import type {
+  HqAdminEnforcement,
+  HqAnalyticsOverview,
+  HqMemberDirectoryEntry,
+  HqTrustSafetyOverview,
+} from "../../../lib/hq/types.ts";
 import { opsCan } from "../opsCapabilities.ts";
 
 export type OpsDashboardData = {
   generatedAt: string;
+  analytics: HqAnalyticsOverview | null;
   overview: HqTrustSafetyOverview | null;
   pendingPhotos: number | null;
   repeatOffenderCount: number | null;
@@ -35,6 +42,7 @@ export function useOpsDashboard(operator: ReturnType<typeof import("../../hq/use
     const errors: string[] = [];
     const data: OpsDashboardData = {
       generatedAt: new Date().toISOString(),
+      analytics: null,
       overview: null,
       pendingPhotos: null,
       repeatOffenderCount: null,
@@ -42,6 +50,15 @@ export function useOpsDashboard(operator: ReturnType<typeof import("../../hq/use
       recentEnforcements: [],
       recentSignups: [],
     };
+
+    if (opsCan(operator, "hq.analytics.read")) {
+      try {
+        data.analytics = await fetchHqAnalyticsOverview();
+        data.generatedAt = data.analytics.generated_at;
+      } catch (error) {
+        errors.push(hqErrorMessage(error));
+      }
+    }
 
     if (opsCan(operator, "hq.member.sensitive_read")) {
       try {
@@ -88,7 +105,7 @@ export function useOpsDashboard(operator: ReturnType<typeof import("../../hq/use
     }
 
     const updatedAt = new Date().toISOString();
-    if (!data.overview && errors.length > 0 && errors.every((e) => e.includes("authorized"))) {
+    if (!data.overview && !data.analytics && errors.length > 0 && errors.every((e) => e.includes("authorized"))) {
       setState({ status: "error", message: errors[0] ?? "Could not load dashboard." });
       return;
     }

@@ -28,17 +28,16 @@ Consumer shell entry: `OpsEntryLink` (chip + account menus) when
 `/ops` as “DateZA Admin”.
 
 Dashboard metrics use only verified endpoints (overview, photo queue length,
-repeat offenders, recent enforcements). No signup, revenue, health, or activity
-fabrication. Growth rollups (signups, active members, gender split) require a
-future `GET /api/v1/hq/analytics/overview` (`hq.analytics.read`). The dashboard
-shows honest NOT CONFIGURED cards until that ships; newest members come from the
-member directory.
+repeat offenders, recent enforcements, and analytics overview when
+`hq.analytics.read` is granted). No revenue, health, or engagement fabrication.
+Growth rollups (signups, active members, gender split) load from
+`GET /api/v1/hq/analytics/overview`; newest members come from the member directory.
 
 Additional APIs used by `/ops` only:
 
 - `GET /api/v1/hq/members` — brand directory (cursor pagination, optional `status`)
-- `GET /api/v1/hq/analytics/overview` — **REQUESTED, not implemented** (signups,
-  active members, gender split, brand timezone week/month boundaries)
+- `GET /api/v1/hq/analytics/overview` — signups, active members, gender split,
+  brand timezone week/month boundaries (`hq.analytics.read`)
 - `GET /api/v1/admin/profile_photos`
 - `PATCH /api/v1/admin/profile_photos/{id}`
 - `GET /api/v1/hq/operators`

@@ -3464,6 +3464,28 @@ paths:
           $ref: "#/components/responses/InvalidInput"
         "429":
           $ref: "#/components/responses/AdminMfaRateLimited"
+  /api/v1/hq/analytics/overview:
+    get:
+      operationId: getHqAnalyticsOverview
+      tags: [Hq]
+      summary: Current-brand growth and activity overview
+      description: |
+        Requires verified admin MFA and `hq.analytics.read`; brand-scoped and read-only. Returns
+        signup and active-member rollups, gender split, and total registered members for the
+        host-resolved brand. Week boundaries are Sunday through Saturday; month boundaries start on
+        the first day of the calendar month, both in the brand timezone. The read is audited as
+        `hq.analytics_overview_viewed`.
+      responses:
+        "200":
+          description: Current analytics overview for the host-resolved brand.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HqAnalyticsOverviewResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
   /api/v1/hq/trust_safety/overview:
     get:
       operationId: getHqTrustSafetyOverview
@@ -6873,6 +6895,53 @@ components:
       properties:
         enforcement:
           $ref: "#/components/schemas/AdminEnforcement"
+    HqAnalyticsOverviewResponse:
+      type: object
+      required: [overview]
+      properties:
+        overview:
+          type: object
+          required:
+            [brand, generated_at, time_zone, signups_today, signups_this_week,
+             signups_this_month, active_today, active_7d, active_30d, gender_split,
+             total_registered_members]
+          properties:
+            brand:
+              type: string
+            generated_at:
+              type: string
+              format: date-time
+            time_zone:
+              type: string
+              description: IANA timezone used for rollup boundaries.
+            signups_today:
+              type: integer
+            signups_this_week:
+              type: integer
+              description: Sunday through Saturday in the brand timezone.
+            signups_this_month:
+              type: integer
+              description: From the first day of the calendar month in the brand timezone.
+            active_today:
+              type: integer
+            active_7d:
+              type: integer
+            active_30d:
+              type: integer
+            gender_split:
+              type: object
+              required: [woman, man, other, unknown]
+              properties:
+                woman:
+                  type: integer
+                man:
+                  type: integer
+                other:
+                  type: integer
+                unknown:
+                  type: integer
+            total_registered_members:
+              type: integer
     HqTrustSafetyOverviewResponse:
       type: object
       required: [overview]

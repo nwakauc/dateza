@@ -234,6 +234,52 @@
   color: var(--ops-text-muted);
 }
 
+.ops-gender-chart--live {
+  border-style: solid;
+  background: var(--ops-surface);
+}
+
+.ops-gender-chart__ring--filled,
+.ops-gender-chart__ring--empty {
+  border: none;
+  position: relative;
+}
+
+.ops-gender-chart__ring--filled span,
+.ops-gender-chart__ring--empty span {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--ops-surface);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+}
+
+.ops-gender-chart__legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ops-gender-chart__legend li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.ops-gender-chart__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
 .ops-reason-list {
   margin: 0;
   padding: 0;
