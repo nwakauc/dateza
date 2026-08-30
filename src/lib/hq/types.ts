@@ -13,6 +13,36 @@ export type HqMemberSummary = {
   membership_status: HqMembershipStatus;
 };
 
+export type HqProfileStatus = "draft" | "active" | "suspended";
+export type HqProfileVisibility = "hidden" | "visible";
+
+/** Safe operational row from GET /api/v1/hq/members — not full Member 360. */
+export type HqMemberDirectoryEntry = {
+  user_id: number;
+  profile_id: string | null;
+  display_name: string | null;
+  user_status: HqUserStatus;
+  membership_status: HqMembershipStatus;
+  profile_status: HqProfileStatus | null;
+  profile_visibility: HqProfileVisibility | null;
+  joined_at: string;
+  user_created_at: string;
+  reports_received_count: number;
+  pending_photo_count: number;
+  active_enforcement: boolean;
+};
+
+export type HqMemberDirectoryList = {
+  members: HqMemberDirectoryEntry[];
+  next_cursor: string | null;
+};
+
+export type HqMemberDirectoryParams = {
+  status?: HqMembershipStatus | null;
+  cursor?: string | null;
+  limit?: number;
+};
+
 export type HqIdentifier = {
   kind: "email" | "phone";
   value: string;

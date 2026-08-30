@@ -18,6 +18,8 @@ import type {
   HqIdentitySection,
   HqIdentifier,
   HqMember360,
+  HqMemberDirectoryEntry,
+  HqMemberDirectoryList,
   HqMemberSummary,
   HqMembershipStatus,
   HqProductSection,
@@ -58,6 +60,8 @@ import type {
   HqProfilePhotoModerationResult,
   HqProfilePhotoQueue,
   HqProfilePhotoQueueEntry,
+  HqProfileStatus,
+  HqProfileVisibility,
 } from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1054,4 +1058,49 @@ export function parseManagedOperatorList(data: unknown): HqManagedOperator[] {
     throw new ApiError(502, undefined, "invalid_hq_operators");
   }
   return root.operators.map(parseManagedOperator);
+}
+
+function parseProfileStatus(value: unknown): HqProfileStatus | null {
+  if (value === null) return null;
+  if (value === "draft" || value === "active" || value === "suspended") {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_profile_status");
+}
+
+function parseProfileVisibility(value: unknown): HqProfileVisibility | null {
+  if (value === null) return null;
+  if (value === "hidden" || value === "visible") {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_profile_visibility");
+}
+
+function parseMemberDirectoryEntry(value: unknown): HqMemberDirectoryEntry {
+  const row = requireRecord(value, "member_directory_entry");
+  return {
+    user_id: requireNumber(row.user_id, "member_directory_user_id"),
+    profile_id: nullableString(row.profile_id),
+    display_name: nullableString(row.display_name),
+    user_status: parseUserStatus(row.user_status),
+    membership_status: parseMembershipStatus(row.membership_status),
+    profile_status: parseProfileStatus(row.profile_status),
+    profile_visibility: parseProfileVisibility(row.profile_visibility),
+    joined_at: requireString(row.joined_at, "member_directory_joined_at"),
+    user_created_at: requireString(row.user_created_at, "member_directory_user_created_at"),
+    reports_received_count: requireNumber(row.reports_received_count, "reports_received_count"),
+    pending_photo_count: requireNumber(row.pending_photo_count, "pending_photo_count"),
+    active_enforcement: requireBoolean(row.active_enforcement, "active_enforcement"),
+  };
+}
+
+export function parseMemberDirectoryList(data: unknown): HqMemberDirectoryList {
+  const root = requireRecord(data, "member_directory_list");
+  if (!Array.isArray(root.members)) {
+    throw new ApiError(502, undefined, "invalid_hq_member_directory");
+  }
+  return {
+    members: root.members.map(parseMemberDirectoryEntry),
+    next_cursor: nullableString(root.next_cursor),
+  };
 }

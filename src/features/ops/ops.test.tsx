@@ -93,17 +93,57 @@ describe("DateZA Operations console", () => {
     expect(screen.queryByText(/revenue/i)).not.toBeInTheDocument();
   });
 
-  it("keeps the users page search-first without a directory feed", async () => {
+  it("loads the brand member directory with pagination", async () => {
+    const PROFILE_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/hq/members/")) return json(404, { error: "not_found" });
+      if (url.includes("/api/v1/hq/members")) {
+        return json(200, {
+          members: [
+            {
+              user_id: 42,
+              profile_id: PROFILE_A,
+              display_name: "Naledi",
+              user_status: "active",
+              membership_status: "active",
+              profile_status: "active",
+              profile_visibility: "visible",
+              joined_at: "2026-08-28T12:00:00Z",
+              user_created_at: "2026-08-27T12:00:00Z",
+              reports_received_count: 2,
+              pending_photo_count: 1,
+              active_enforcement: false,
+            },
+          ],
+          next_cursor: null,
+        });
+      }
+      return json(404, { error: "not_found" });
+    });
+
     const OpsUsersPage = (await import("./pages/OpsUsersPage.tsx")).default;
 
     render(
       <MemoryRouter>
-        <OpsUsersPage />
+        <SessionProvider>
+          <HqOperatorProvider>
+            <OpsUsersPage />
+          </HqOperatorProvider>
+        </SessionProvider>
       </MemoryRouter>,
     );
 
     expect(screen.getByRole("heading", { name: /find a member/i })).toBeInTheDocument();
-    expect(screen.getByText(/user directory not yet available/i)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Naledi" })).toHaveAttribute(
+      "href",
+      `/ops/users/${PROFILE_A}`,
+    );
+    expect(screen.getByRole("link", { name: "Member 360" })).toBeInTheDocument();
+    expect(screen.queryByText(/user directory not yet available/i)).not.toBeInTheDocument();
   });
 
   it("filters ops navigation by effective capabilities", async () => {

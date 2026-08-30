@@ -29,11 +29,12 @@ Consumer shell entry: `OpsEntryLink` (chip + account menus) when
 
 Dashboard metrics use only verified endpoints (overview, photo queue length,
 repeat offenders, recent enforcements). No signup, revenue, health, or activity
-fabrication. Users page is search-first; paginated directory awaits a backend
-contract.
+fabrication. Users page combines exact lookup with the brand member directory
+(`GET /api/v1/hq/members`).
 
 Additional APIs used by `/ops` only:
 
+- `GET /api/v1/hq/members` — brand directory (cursor pagination, optional `status`)
 - `GET /api/v1/admin/profile_photos`
 - `PATCH /api/v1/admin/profile_photos/{id}`
 - `GET /api/v1/hq/operators`
@@ -71,6 +72,7 @@ Consumer-shell HQ entry and `/hq` route gate use `GET /api/v1/hq/operator`
 
 ### Phase 1
 
+- `GET /api/v1/hq/members` — brand directory (cursor pagination, optional `status`)
 - `GET /api/v1/hq/members/{lookup}`
 - `GET /api/v1/hq/members/{lookup}/security_events`
 - `GET /api/v1/hq/members/{lookup}/auth_attempts`
@@ -119,7 +121,6 @@ localStorage, logged, or sent to analytics.
 
 ## Limitations (honest)
 
-- No brand-scoped paginated member directory on `/ops/users` (search-first only).
 - No operator-management UI in `/hq` (available under `/ops/operators` when entitled).
 - No SLA overdue numbers or reports-per-1,000 inventing.
 - No reason / target-type queue filters (overview breakdowns only).

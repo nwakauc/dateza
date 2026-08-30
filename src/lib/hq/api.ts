@@ -9,6 +9,7 @@ import {
   parseDiscoveryDiagnostic,
   parseEnforcementList,
   parseMember360,
+  parseMemberDirectoryList,
   parseMfaChallengeResponse,
   parseMfaConfirmationResponse,
   parseMfaEnrollmentResponse,
@@ -36,6 +37,8 @@ import type {
   HqMfaEnrollmentResponse,
   HqCreateOperatorBody,
   HqManagedOperator,
+  HqMemberDirectoryList,
+  HqMemberDirectoryParams,
   HqProfilePhotoModerationResult,
   HqProfilePhotoQueue,
   HqUpdateOperatorBody,
@@ -103,6 +106,23 @@ function historyQuery(params: HqHistoryParams | undefined): string {
 export async function fetchHqMember360(lookup: string): Promise<HqMember360> {
   const data = await apiRequest(memberPath(lookup));
   return parseMember360(data);
+}
+
+export async function fetchHqMemberDirectory(
+  params?: HqMemberDirectoryParams,
+): Promise<HqMemberDirectoryList> {
+  const query = new URLSearchParams();
+  if (params?.status) {
+    query.set("status", params.status);
+  }
+  if (params?.cursor) {
+    query.set("cursor", params.cursor);
+  }
+  if (params?.limit !== undefined) {
+    query.set("limit", String(params.limit));
+  }
+  const data = await apiRequest(appendQuery("/api/v1/hq/members", query));
+  return parseMemberDirectoryList(data);
 }
 
 /** Lookup = Member 360 GET. 404 `member_unavailable` means not found on this brand. */

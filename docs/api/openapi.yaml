@@ -3554,6 +3554,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/hq/members:
+    get:
+      operationId: listHqMembers
+      tags: [Hq]
+      summary: List members for the current brand
+      description: |
+        Requires verified admin MFA and `hq.member.sensitive_read`. Results are
+        limited to kept memberships on the host-resolved brand and are ordered
+        newest-first by membership creation time. Safe operational summaries only;
+        contact identifiers and Member 360 detail remain behind the member lookup
+        endpoint. Reads are audited as `hq.member_directory_viewed`.
+      parameters:
+        - $ref: "#/components/parameters/HqMemberDirectoryStatus"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/HqMemberDirectoryLimit"
+      responses:
+        "200":
+          description: A page of member directory rows and an opaque next cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HqMemberDirectoryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminForbidden"
+        "422":
+          description: Invalid `status`, `limit`, or `cursor` (`invalid_filter` / `invalid_limit` / `invalid_cursor`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/hq/members/{lookup}:
     get:
       operationId: getMember360
@@ -4006,6 +4038,24 @@ components:
       schema:
         type: string
         enum: [active, reverted]
+    HqMemberDirectoryStatus:
+      name: status
+      in: query
+      required: false
+      description: Restrict the member directory to one membership status.
+      schema:
+        type: string
+        enum: [active, suspended, left, deactivated]
+    HqMemberDirectoryLimit:
+      name: limit
+      in: query
+      required: false
+      description: Page size for the brand member directory.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
   responses:
     Unauthorized:
       description: Missing, invalid, expired, revoked, or wrong-brand session. Cookie bootstrap may return `session_expired` or `session_revoked`; other cases return `unauthorized`.
@@ -7247,6 +7297,53 @@ components:
               created_at:
                 type: string
                 format: date-time
+    HqMemberDirectoryEntry:
+      type: object
+      required:
+        [user_id, profile_id, display_name, user_status, membership_status,
+         profile_status, profile_visibility, joined_at, user_created_at,
+         reports_received_count, pending_photo_count, active_enforcement]
+      properties:
+        user_id:
+          type: integer
+        profile_id:
+          type: [string, "null"]
+        display_name:
+          type: [string, "null"]
+        user_status:
+          type: string
+          enum: [active, suspended, closed]
+        membership_status:
+          type: string
+          enum: [active, suspended, left, deactivated]
+        profile_status:
+          type: [string, "null"]
+          enum: [draft, active, suspended, null]
+        profile_visibility:
+          type: [string, "null"]
+          enum: [hidden, visible, null]
+        joined_at:
+          type: string
+          format: date-time
+        user_created_at:
+          type: string
+          format: date-time
+        reports_received_count:
+          type: integer
+        pending_photo_count:
+          type: integer
+        active_enforcement:
+          type: boolean
+    HqMemberDirectoryListResponse:
+      type: object
+      required: [members, next_cursor]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/HqMemberDirectoryEntry"
+        next_cursor:
+          type: [string, "null"]
     HqMember360Response:
       type: object
       required: [member, sections]
