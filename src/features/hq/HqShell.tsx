@@ -15,7 +15,7 @@ function HqShellInner() {
   const { mode } = useHqMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const navItem = findHqNavItem(location.pathname);
+  const navItem = findHqNavItem(location.pathname, location.search);
   const isCommandCentre =
     location.pathname === "/hq" || location.pathname.replace(/\/$/, "") === "/hq";
   const isReportDetail = /\/hq\/trust-safety\/reports\//.test(location.pathname);
@@ -30,8 +30,10 @@ function HqShellInner() {
       ? "Real-time overview of everything happening across D8N."
       : title === "Members" || title === "Member 360"
         ? "Look up a member and inspect operational state for the selected brand."
-        : title === "Trust & Safety"
+        : title === "Trust & Safety" || title === "Overview"
           ? "Moderation queue, repeat offenders, and enforcement history for this brand."
+          : title === "Reports" || title === "Photo moderation" || title === "Enforcements" || title === "Repeat offenders"
+            ? "Trust & Safety operations for this brand."
           : title === "Report detail"
             ? "Inspect evidence and apply lifecycle or account enforcement actions."
             : navItem?.availability === "ready"

@@ -858,7 +858,7 @@ describe("D8N HQ Phase 1 integration", () => {
     );
     renderAt("/hq");
     await screen.findByRole("heading", { name: "Command Centre" });
-    expect(screen.queryByRole("link", { name: /^alerts$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /security alerts/i })).not.toBeInTheDocument();
   });
 
   it("applies founder shell on member directory route", async () => {
@@ -984,11 +984,12 @@ describe("D8N HQ Phase 1 integration", () => {
     expect(await screen.findByRole("heading", { name: /^lebo$/i })).toBeInTheDocument();
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
 
-    await user.click(screen.getByRole("link", { name: /^trust & safety$/i }));
+    await user.click(screen.getByRole("button", { name: /trust & safety/i }));
+    await user.click(screen.getByRole("link", { name: /^overview$/i }));
     await screen.findByRole("tab", { name: /^overview$/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
 
-    await user.click(screen.getByRole("link", { name: /^alerts$/i }));
+    await user.click(screen.getByRole("link", { name: /security alerts/i }));
     expect(await screen.findByText(/failed login/i)).toBeInTheDocument();
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
     expect(window.localStorage.getItem("hq:experience-mode:v1")).toBe("founder");
@@ -996,6 +997,51 @@ describe("D8N HQ Phase 1 integration", () => {
     await user.click(screen.getByRole("link", { name: /^command centre$/i }));
     await screen.findByRole("heading", { name: /Founder/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+  });
+
+  it("expands the trust & safety accordion when a child route is active", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq/trust-safety?tab=queue");
+    const trigger = await screen.findByRole("button", { name: /trust & safety/i });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /^reports$/i })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("toggles accordion groups from the keyboard", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    const peopleTrigger = await screen.findByRole("button", { name: /^people$/i });
+    expect(peopleTrigger).toHaveAttribute("aria-expanded", "false");
+    peopleTrigger.focus();
+    await user.keyboard("{Enter}");
+    expect(peopleTrigger).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard(" ");
+    expect(peopleTrigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows coming-soon people items in ops mode but hides them in founder mode", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    window.localStorage.setItem("hq:experience-mode:v1", "ops");
+    renderAt("/hq");
+    const peopleTrigger = await screen.findByRole("button", { name: /^people$/i });
+    await user.click(peopleTrigger);
+    expect(await screen.findByRole("link", { name: /customers & support/i })).toBeInTheDocument();
+
+    cleanup();
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    renderAt("/hq");
+    await screen.findByRole("link", { name: /^members$/i });
+    expect(screen.queryByRole("link", { name: /customers & support/i })).not.toBeInTheDocument();
+  });
+
+  it("does not render hidden roadmap engineering items in the sidebar", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    await screen.findByRole("link", { name: /command centre/i });
+    expect(screen.queryByRole("button", { name: /^engineering$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /deployments/i })).not.toBeInTheDocument();
   });
 });
 
