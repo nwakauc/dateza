@@ -1,127 +1,95 @@
 import type { HqCommandCentreHealth } from "../../../lib/hq/types.ts";
 import { presentMetric } from "../commandCentreMetric.ts";
+import { FounderIcon, type FounderIconName } from "./founderIcons.tsx";
 import { FounderMetricInfo, FounderMetricValue } from "./FounderMetricInfo.tsx";
 
 const ENGAGEMENT = [
   {
     key: "likes",
     label: "Likes",
-    emoji: "♡",
-    tone: "pink",
+    icon: "heart" as FounderIconName,
     pick: (h: HqCommandCentreHealth) => h.marketplace.likes_created.today,
   },
   {
     key: "matches",
     label: "Matches",
-    emoji: "💗",
-    tone: "rose",
+    icon: "heart" as FounderIconName,
     pick: (h: HqCommandCentreHealth) => h.marketplace.matches_created.today,
   },
   {
     key: "conversations",
     label: "Conversations",
-    emoji: "💬",
-    tone: "violet",
+    icon: "message-circle" as FounderIconName,
     pick: (h: HqCommandCentreHealth) => h.marketplace.conversations_created.today,
-  },
-  {
-    key: "no-likes",
-    label: "Profiles w/o likes",
-    emoji: "💔",
-    tone: "orange",
-    pick: (h: HqCommandCentreHealth) => h.marketplace.published_without_likes,
   },
 ] as const;
 
 const FRICTION = [
   {
     key: "zero",
-    label: "Zero-discovery",
-    emoji: "📂",
-    tone: "pink",
+    label: "Zero discovery",
     pick: (h: HqCommandCentreHealth) => h.marketplace.zero_discovery_allocations.yesterday,
-    windowKey: "yesterday" as const,
   },
   {
     key: "no-likes",
-    label: "Published w/o likes",
-    emoji: "🖼️",
-    tone: "orange",
+    label: "Published without likes",
     pick: (h: HqCommandCentreHealth) => h.marketplace.published_without_likes,
-    windowKey: null,
   },
   {
     key: "no-matches",
-    label: "Published w/o matches",
-    emoji: "💬",
-    tone: "blue",
+    label: "Published without matches",
     pick: (h: HqCommandCentreHealth) => h.marketplace.published_without_matches,
-    windowKey: null,
   },
 ] as const;
 
 export function FounderMarketplacePulse({ health }: { health: HqCommandCentreHealth }) {
   return (
-    <section className="founder-panel" aria-labelledby="founder-marketplace-title">
+    <section className="founder-panel founder-panel--marketplace" aria-labelledby="founder-marketplace-title">
       <header className="founder-panel__header founder-panel__header--compact">
-        <div>
-          <h2 id="founder-marketplace-title" className="founder-panel__title">
-            Marketplace pulse
-          </h2>
-          <p className="founder-panel__subtitle">Engagement and friction at a glance</p>
-        </div>
+        <h2 id="founder-marketplace-title" className="founder-panel__title">
+          Marketplace pulse
+        </h2>
       </header>
 
-      <div className="founder-marketplace-sections">
-        <div>
-          <header className="founder-marketplace-section__head">
-            <h3>Engagement today</h3>
-            <FounderMetricInfo
-              metric={ENGAGEMENT[0].pick(health)}
-              label="Marketplace engagement"
-              windowLabel={health.windows.today?.label}
-            />
-          </header>
-          <ul className="founder-tile-grid founder-tile-grid--4">
-            {ENGAGEMENT.map((item) => {
-              const metric = item.pick(health);
-              const presentation = presentMetric(metric);
-              return (
-                <li key={item.key} className={`founder-tile founder-tile--${item.tone}`}>
-                  <span className="founder-tile__emoji" aria-hidden="true">
-                    {item.emoji}
-                  </span>
-                  <span className="founder-tile__label">{item.label}</span>
-                  <FounderMetricValue presentation={presentation} />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      <div className="founder-marketplace-engagement">
+        {ENGAGEMENT.map((item) => {
+          const metric = item.pick(health);
+          const presentation = presentMetric(metric);
+          return (
+            <article key={item.key} className="founder-marketplace-stat">
+              <span className="founder-marketplace-stat__label">
+                <FounderIcon name={item.icon} size={16} className="founder-marketplace-stat__icon" />
+                {item.label}
+                {item.key === "likes" ? (
+                  <FounderMetricInfo
+                    metric={metric}
+                    label="Marketplace engagement"
+                    windowLabel={health.windows.today?.label}
+                  />
+                ) : null}
+              </span>
+              <FounderMetricValue presentation={presentation} large />
+            </article>
+          );
+        })}
+      </div>
 
-        <div>
-          <header className="founder-marketplace-section__head">
-            <h3>Friction indicators</h3>
-            <span className="founder-marketplace-section__meta">
-              {health.windows.yesterday?.label ?? "Yesterday"}
-            </span>
-          </header>
-          <ul className="founder-tile-grid founder-tile-grid--3">
-            {FRICTION.map((item) => {
-              const metric = item.pick(health);
-              const presentation = presentMetric(metric);
-              return (
-                <li key={item.key} className={`founder-tile founder-tile--${item.tone}`}>
-                  <span className="founder-tile__emoji" aria-hidden="true">
-                    {item.emoji}
-                  </span>
-                  <span className="founder-tile__label">{item.label}</span>
-                  <FounderMetricValue presentation={presentation} />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      <hr className="founder-marketplace-divider" />
+
+      <div className="founder-marketplace-friction">
+        <h3 className="founder-marketplace-friction__title">Friction</h3>
+        <ul className="founder-marketplace-friction__list">
+          {FRICTION.map((item) => {
+            const metric = item.pick(health);
+            const presentation = presentMetric(metric);
+            return (
+              <li key={item.key} className="founder-marketplace-friction__row">
+                <span>{item.label}</span>
+                <FounderMetricValue presentation={presentation} />
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );

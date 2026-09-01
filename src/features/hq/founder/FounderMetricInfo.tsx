@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { HqMetricValue } from "../../../lib/hq/types.ts";
+import { FounderIcon } from "./founderIcons.tsx";
 
 export function FounderMetricInfo({
   metric,
@@ -23,7 +24,7 @@ export function FounderMetricInfo({
         aria-label={`Definition for ${label}`}
         onClick={() => setOpen((value) => !value)}
       >
-        ⓘ
+        <FounderIcon name="info" size={14} />
       </button>
       {open ? (
         <span id={popoverId} role="tooltip" className="founder-metric-info__popover">

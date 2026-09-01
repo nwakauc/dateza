@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import type { HqSecurityAlertList } from "../../../lib/hq/types.ts";
-import { formatWhenShort } from "../commandCentreMetric.ts";
+import type { HqSecurityAlertList, HqSecuritySeverity } from "../../../lib/hq/types.ts";
+import { formatRelativeTime } from "./formatRelativeTime.ts";
+import { FounderIcon } from "./founderIcons.tsx";
+import { humanizeSecurityEvent } from "./securityEventLabels.ts";
 
-function humanizeKey(key: string): string {
-  return key.replace(/_/g, " ");
+function severityIcon(severity: HqSecuritySeverity): "alert-triangle" | "shield" {
+  return severity === "warning" ? "alert-triangle" : "shield";
 }
 
 export function FounderSecurityAlerts({
@@ -28,7 +30,7 @@ export function FounderSecurityAlerts({
 
   return (
     <section className="founder-panel founder-panel--compact" aria-labelledby="founder-alerts-title">
-      <header className="founder-panel__header">
+      <header className="founder-panel__header founder-panel__header--compact">
         <h2 id="founder-alerts-title" className="founder-panel__title">
           Security alerts
         </h2>
@@ -41,12 +43,19 @@ export function FounderSecurityAlerts({
       ) : (
         <ul className="founder-alerts-list">
           {rows.slice(0, 5).map((row) => (
-            <li key={`${row.event_type}-${row.created_at}`}>
-              <span className={`founder-alerts-list__severity founder-alerts-list__severity--${row.severity}`}>
-                {row.severity}
+            <li key={`${row.event_type}-${row.created_at}`} className="founder-alerts-list__item">
+              <span
+                className={`founder-alerts-list__icon founder-alerts-list__icon--${row.severity}`}
+                aria-hidden="true"
+              >
+                <FounderIcon name={severityIcon(row.severity)} size={16} />
               </span>
-              <span className="founder-alerts-list__event">{humanizeKey(row.event_type)}</span>
-              <time className="founder-alerts-list__when">{formatWhenShort(row.created_at)}</time>
+              <span className="founder-alerts-list__label" title={row.event_type}>
+                {humanizeSecurityEvent(row.event_type)}
+              </span>
+              <time className="founder-alerts-list__when" dateTime={row.created_at}>
+                {formatRelativeTime(row.created_at)}
+              </time>
             </li>
           ))}
         </ul>

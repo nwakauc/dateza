@@ -1,6 +1,6 @@
 import type { HqCommandCentreHealth } from "../../../lib/hq/types.ts";
 import { presentMetric } from "../commandCentreMetric.ts";
-import { FounderPulseAreaChart } from "./charts/FounderCharts.tsx";
+import { FounderPulseGroupedBarChart } from "./charts/FounderCharts.tsx";
 import { FounderMetricInfo } from "./FounderMetricInfo.tsx";
 
 const PULSE_WINDOWS = [
@@ -13,41 +13,42 @@ const PULSE_METRICS = [
   {
     key: "active",
     title: "Active users",
-    color: "#3b82f6",
+    color: "#2563eb",
+    dataKey: "active" as const,
     pick: (health: HqCommandCentreHealth, windowKey: string) =>
       health.activity.active_users[windowKey],
   },
   {
     key: "new",
     title: "New members",
-    color: "#22c55e",
+    color: "#16a34a",
+    dataKey: "newMembers" as const,
     pick: (health: HqCommandCentreHealth, windowKey: string) =>
       health.audience.memberships_new[windowKey],
   },
   {
     key: "matches",
     title: "Matches",
-    color: "#ec4899",
+    color: "#e11d48",
+    dataKey: "matches" as const,
     pick: (health: HqCommandCentreHealth, windowKey: string) =>
       health.marketplace.matches_created[windowKey],
   },
 ] as const;
 
 export function FounderCompanyPulse({ health }: { health: HqCommandCentreHealth }) {
-  const series = PULSE_METRICS.map((metric) => ({
-    key: metric.key,
-    label: metric.title,
-    color: metric.color,
-    points: PULSE_WINDOWS.map((window) => {
-      const metricValue = metric.pick(health, window.key);
-      const presentation = presentMetric(metricValue);
-      return {
-        window: health.windows[window.key]?.label ?? window.label,
-        value: presentation.numeric,
-        unavailable: presentation.status === "unavailable",
-      };
-    }),
-  }));
+  const chartRows = PULSE_WINDOWS.map((window) => {
+    const active = presentMetric(PULSE_METRICS[0].pick(health, window.key));
+    const newMembers = presentMetric(PULSE_METRICS[1].pick(health, window.key));
+    const matches = presentMetric(PULSE_METRICS[2].pick(health, window.key));
+
+    return {
+      window: health.windows[window.key]?.label ?? window.label,
+      active: active.numeric ?? 0,
+      newMembers: newMembers.numeric ?? 0,
+      matches: matches.numeric ?? 0,
+    };
+  });
 
   return (
     <section className="founder-panel founder-panel--pulse" aria-labelledby="founder-pulse-title">
@@ -57,7 +58,7 @@ export function FounderCompanyPulse({ health }: { health: HqCommandCentreHealth 
             Company pulse
           </h2>
           <p className="founder-panel__subtitle">
-            Snapshot windows — today, 7 days, and 30 days.
+            Aggregate windows — not a historical time series.
           </p>
         </div>
         <FounderMetricInfo
@@ -68,9 +69,9 @@ export function FounderCompanyPulse({ health }: { health: HqCommandCentreHealth 
       </header>
 
       <div className="founder-pulse-layout">
-        <FounderPulseAreaChart
-          series={series}
-          ariaLabel="Active users, new members, and matches across snapshot windows"
+        <FounderPulseGroupedBarChart
+          rows={chartRows}
+          ariaLabel="Active users, new members, and matches grouped by snapshot window"
         />
         <ul className="founder-pulse-legend">
           {PULSE_METRICS.map((metric) => (
