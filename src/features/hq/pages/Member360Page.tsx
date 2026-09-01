@@ -226,7 +226,7 @@ export default function Member360Page() {
   );
 
   return (
-    <div className="hq-content">
+    <div className="hq-content hq-page-member360">
       <nav className="hq-breadcrumbs" aria-label="Breadcrumb">
         <Link to="/hq">Command Centre</Link>
         <span className="hq-breadcrumbs__sep">/</span>

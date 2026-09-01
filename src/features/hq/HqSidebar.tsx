@@ -2,10 +2,13 @@ import { Link, NavLink } from "react-router-dom";
 import { canAccessNavItem } from "../../lib/hq/capabilities.ts";
 import { HqSiteLink } from "./HqSiteLink.tsx";
 import { HQ_NAV_GROUPS } from "./navConfig.ts";
+import { useHqMode } from "./useHqMode.ts";
 import { useHqOperator } from "./useHqOperator.ts";
 
 export function HqSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { operator } = useHqOperator();
+  const { mode } = useHqMode();
+  const founderMode = mode === "founder";
 
   return (
     <aside className="hq-sidebar" aria-label="D8N HQ navigation">
@@ -31,12 +34,19 @@ export function HqSidebar({ onNavigate }: { onNavigate?: () => void }) {
               <NavLink
                 key={item.id}
                 to={item.path}
-                className="hq-nav-link"
+                className={() =>
+                  [
+                    "hq-nav-link",
+                    founderMode && item.availability !== "ready" ? "hq-nav-link--later" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                }
                 end={item.path === "/hq"}
                 onClick={onNavigate}
               >
                 <span className="hq-nav-link__label">{item.label}</span>
-                {item.availability !== "ready" ? (
+                {!founderMode && item.availability !== "ready" ? (
                   <span className="hq-nav-link__meta">Later</span>
                 ) : null}
               </NavLink>

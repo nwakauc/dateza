@@ -7,7 +7,6 @@ import { FounderBrandComparison } from "./FounderBrandComparison.tsx";
 import { FounderCompanyPulse } from "./FounderCompanyPulse.tsx";
 import { FounderHeroMetrics, FounderHeroMetricsSkeleton } from "./FounderHeroMetrics.tsx";
 import { FounderMarketplacePulse } from "./FounderMarketplacePulse.tsx";
-import { FounderModeToggle } from "./FounderModeToggle.tsx";
 import { FounderProfileHealth } from "./FounderProfileHealth.tsx";
 import { FounderSecurityAlerts } from "./FounderSecurityAlerts.tsx";
 import { FounderTrustSafety } from "./FounderTrustSafety.tsx";
@@ -57,7 +56,6 @@ export function FounderOverview({
           </p>
         </div>
         <div className="founder-intro__actions">
-          <FounderModeToggle />
           <button type="button" className="founder-refresh" onClick={onRefresh}>
             Refresh
           </button>

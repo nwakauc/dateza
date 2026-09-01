@@ -621,7 +621,7 @@ export default function TrustSafetyPage() {
   }
 
   return (
-    <div className="hq-content">
+    <div className="hq-content hq-page-trust-safety">
       <div className="hq-tabs" role="tablist" aria-label="Trust and Safety sections">
         {(
           [

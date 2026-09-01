@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HqSiteLink } from "./HqSiteLink.tsx";
+import { FounderModeToggle } from "./founder/FounderModeToggle.tsx";
 import { useHqBrand } from "./useHqBrand.ts";
 import { formatOperatorRole } from "../../lib/hq/capabilities.ts";
 
@@ -164,6 +165,7 @@ export function HqHeader({
         </div>
       </div>
       <div className="hq-header__controls">
+        <FounderModeToggle compact />
         <HqSiteLink variant="header" />
         <BrandSelector />
         <DateRangeSelector />

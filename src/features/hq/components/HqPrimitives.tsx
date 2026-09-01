@@ -140,17 +140,23 @@ export function DataTable({
   columns,
   rows,
   empty,
+  tableClassName,
+  wrapClassName,
 }: {
   columns: Array<{ key: string; header: string }>;
   rows: Array<Record<string, ReactNode>>;
   empty?: string;
+  tableClassName?: string;
+  wrapClassName?: string;
 }) {
   if (rows.length === 0) {
     return <p className="hq-loading">{empty ?? "No rows."}</p>;
   }
+  const tableClass = tableClassName ? `hq-table ${tableClassName}` : "hq-table";
+  const wrapClass = wrapClassName ? `hq-table-wrap ${wrapClassName}` : "hq-table-wrap";
   return (
-    <div className="hq-table-wrap" role="region" aria-label="Data table" tabIndex={0}>
-      <table className="hq-table">
+    <div className={wrapClass} role="region" aria-label="Data table" tabIndex={0}>
+      <table className={tableClass}>
         <thead>
           <tr>
             {columns.map((col) => (
@@ -164,7 +170,9 @@ export function DataTable({
           {rows.map((row, index) => (
             <tr key={index}>
               {columns.map((col) => (
-                <td key={col.key}>{row[col.key] ?? "—"}</td>
+                <td key={col.key} data-label={col.header}>
+                  {row[col.key] ?? "—"}
+                </td>
               ))}
             </tr>
           ))}

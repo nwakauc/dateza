@@ -860,6 +860,143 @@ describe("D8N HQ Phase 1 integration", () => {
     await screen.findByRole("heading", { name: "Command Centre" });
     expect(screen.queryByRole("link", { name: /^alerts$/i })).not.toBeInTheDocument();
   });
+
+  it("applies founder shell on member directory route", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk();
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq/members");
+    expect(await screen.findByText("Sam Directory")).toBeInTheDocument();
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+  });
+
+  it("preserves founder mode when loading a child route directly", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk();
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq/members");
+    await screen.findByText("Sam Directory");
+    expect(window.localStorage.getItem("hq:experience-mode:v1")).toBe("founder");
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+  });
+
+  it("applies ops shell on child routes when ops mode is selected", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "ops");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk();
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq/members");
+    await screen.findByText("Sam Directory");
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "ops");
+  });
+
+  it("switches to ops mode from member directory header toggle", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk();
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq/members");
+    await screen.findByText("Sam Directory");
+    const opsButtons = screen.getAllByRole("button", { name: /^Ops$/i });
+    await user.click(opsButtons[0]!);
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "ops");
+    expect(window.localStorage.getItem("hq:experience-mode:v1")).toBe("ops");
+  });
+
+  it("persists founder mode across HQ route navigation", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      const commandCentre = commandCentreRouteOk(url);
+      if (commandCentre) return commandCentre;
+      if (isMemberDirectoryList(url)) return memberDirectoryOk();
+      if (url.includes("/api/v1/hq/members/")) return member360Ok();
+      if (url.includes("/api/v1/hq/trust_safety/overview")) {
+        return json(200, {
+          overview: {
+            brand: "dateza",
+            generated_at: "2026-08-29T15:00:00Z",
+            reports: {
+              total: 0,
+              by_status: { open: 0, reviewing: 0, actioned: 0, dismissed: 0 },
+              awaiting_decision: 0,
+              oldest_open_report_at: null,
+              oldest_open_report_age_seconds: null,
+              by_reason: {},
+              by_target_type: {},
+              sla_status: "not_configured",
+            },
+            enforcements: { active: 0, reverted: 0 },
+            photo_reviews: { pending: 0 },
+            repeat_offenders: { count: 0 },
+          },
+        });
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) {
+        return json(200, {
+          alerts: [
+            {
+              id: 1,
+              event_type: "failed_login",
+              severity: "warning",
+              metadata: { user_id: 42 },
+              ip_address: "203.0.113.10",
+              created_at: "2026-01-01T12:00:00Z",
+            },
+          ],
+        });
+      }
+      return json(404, { error: "not_found" });
+    });
+
+    renderAt("/hq");
+    await screen.findByText(/D8N at a glance/i);
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+
+    await user.click(screen.getByRole("link", { name: /^members$/i }));
+    await screen.findByText("Member directory");
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+
+    await user.click(screen.getByRole("link", { name: /^sam directory$/i }));
+    expect(await screen.findByRole("heading", { name: /^lebo$/i })).toBeInTheDocument();
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+
+    await user.click(screen.getByRole("link", { name: /^trust & safety$/i }));
+    await screen.findByRole("tab", { name: /^overview$/i });
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+
+    await user.click(screen.getByRole("link", { name: /^alerts$/i }));
+    expect(await screen.findByText(/failed login/i)).toBeInTheDocument();
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+    expect(window.localStorage.getItem("hq:experience-mode:v1")).toBe("founder");
+
+    await user.click(screen.getByRole("link", { name: /^command centre$/i }));
+    await screen.findByText(/D8N at a glance/i);
+    expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
+  });
 });
 
 describe("HQ API adapter", () => {

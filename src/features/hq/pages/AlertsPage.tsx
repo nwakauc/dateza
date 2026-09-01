@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchHqSecurityAlerts, hqErrorMessage } from "../../../lib/hq/api.ts";
 import { canReadSecurityAlerts } from "../../../lib/hq/enforcementAccess.ts";
 import type { HqSecurityAlertList } from "../../../lib/hq/types.ts";
+import type { HqSecuritySeverity } from "../../../lib/hq/types.ts";
 import { DataTable, MetricCard, StateBanner, StatusBadge } from "../components/HqPrimitives.tsx";
 import { useHqOperator } from "../useHqOperator.ts";
 
@@ -13,6 +14,24 @@ function formatWhen(value: string | null | undefined): string {
 
 function humanizeKey(key: string): string {
   return key.replace(/_/g, " ");
+}
+
+function severityTone(severity: HqSecuritySeverity): "neutral" | "warning" | "danger" {
+  if (severity === "critical" || severity === "high") return "danger";
+  if (severity === "warning") return "warning";
+  return "neutral";
+}
+
+function alertContext(metadata: Record<string, unknown>): string {
+  const preferred = ["user_id", "identifier", "lookup", "actor", "email", "reason"] as const;
+  for (const key of preferred) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value;
+    if (typeof value === "number") return String(value);
+  }
+  const entries = Object.entries(metadata).slice(0, 2);
+  if (!entries.length) return "—";
+  return entries.map(([key, value]) => `${humanizeKey(key)}: ${String(value)}`).join(" · ");
 }
 
 function TableSkeleton() {
@@ -55,16 +74,25 @@ function AlertsTable({ limit }: { limit: number }) {
 
   return (
     <DataTable
+      wrapClassName="hq-event-stream"
+      tableClassName="hq-event-stream"
       columns={[
-        { key: "event", header: "Event" },
         { key: "severity", header: "Severity" },
-        { key: "ip", header: "IP" },
+        { key: "event", header: "Event" },
+        { key: "context", header: "Context" },
         { key: "when", header: "When" },
       ]}
       rows={(alerts?.alerts ?? []).map((row) => ({
-        event: humanizeKey(row.event_type),
-        severity: row.severity,
-        ip: row.ip_address ?? "—",
+        severity: <StatusBadge tone={severityTone(row.severity)}>{row.severity}</StatusBadge>,
+        event: (
+          <>
+            {humanizeKey(row.event_type)}
+            {row.ip_address ? (
+              <span className="hq-table__meta">{row.ip_address}</span>
+            ) : null}
+          </>
+        ),
+        context: alertContext(row.metadata),
         when: formatWhen(row.created_at),
       }))}
       empty="No security alerts on this brand."
@@ -93,7 +121,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="hq-content hq-content--stack">
+    <div className="hq-content hq-content--stack hq-page-alerts">
       <MetricCard
         title="Security alerts"
         action={<StatusBadge tone="accent">Brand scope</StatusBadge>}

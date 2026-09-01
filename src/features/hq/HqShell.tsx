@@ -8,6 +8,7 @@ import { useHqMode } from "./useHqMode.ts";
 import { GlobalSearchPalette, HqHeader } from "./HqHeader.tsx";
 import { HqSidebar } from "./HqSidebar.tsx";
 import "./hq.css";
+import "./hq-founder-shell.css";
 
 function HqShellInner() {
   const location = useLocation();
@@ -62,7 +63,7 @@ function HqShellInner() {
     <div
       className="hq-root"
       data-sidebar-open={sidebarOpen ? "true" : "false"}
-      data-hq-experience={isCommandCentre ? mode : "ops"}
+      data-hq-experience={mode}
       data-hq-page={isCommandCentre ? "command-centre" : undefined}
     >
       <HqSidebar onNavigate={closeSidebar} />
@@ -79,10 +80,9 @@ function HqShellInner() {
       {sidebarOpen ? (
         <button
           type="button"
-          className="hq-palette"
+          className="hq-scrim"
           aria-label="Close navigation"
           onClick={closeSidebar}
-          style={{ background: "rgba(0,0,0,0.4)", zIndex: 19 }}
         />
       ) : null}
     </div>

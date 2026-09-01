@@ -189,6 +189,7 @@ function DirectoryResults({
       {load.status !== "loading" ? (
         <>
           <DataTable
+            tableClassName="hq-directory-table"
             columns={[
               { key: "member", header: "Member" },
               { key: "account", header: "Account" },

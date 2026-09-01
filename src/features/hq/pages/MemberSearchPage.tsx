@@ -57,7 +57,7 @@ export default function MemberSearchPage() {
   }
 
   return (
-    <div className="hq-content hq-content--stack">
+    <div className="hq-content hq-content--stack hq-page-members">
       <MetricCard title="Exact member lookup" action={<StatusBadge tone="accent">Direct</StatusBadge>}>
         <p className="hq-card__subtitle" style={{ marginBottom: 12 }}>
           Jump straight to Member 360 by exact email, phone, or profile id on{" "}
