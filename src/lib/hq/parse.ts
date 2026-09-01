@@ -5,6 +5,14 @@ import type {
   HqAdminReport,
   HqAdminReportList,
   HqAnalyticsOverview,
+  HqAttentionSignal,
+  HqCommandCentreBrandEntry,
+  HqCommandCentreBrandsResponse,
+  HqCommandCentreHealth,
+  HqMetricStatus,
+  HqMetricUnit,
+  HqMetricValue,
+  HqMetricWindow,
   HqAdminReportParty,
   HqAuthAttempt,
   HqAuthAttemptKind,
@@ -37,7 +45,6 @@ import type {
   HqReportStatus,
   HqReportTargetType,
   HqSafetySection,
-  HqSecurityAlert,
   HqSecurityAlertList,
   HqSecurityEvent,
   HqSecurityEventList,
@@ -583,21 +590,6 @@ export function parseEnforcementList(data: unknown): HqEnforcementList {
   };
 }
 
-function parseSecurityAlert(value: unknown): HqSecurityAlert {
-  const row = requireRecord(value, "security_alert");
-  const severity = row.severity;
-  if (severity !== "warning" && severity !== "high" && severity !== "critical") {
-    throw new ApiError(502, undefined, "invalid_hq_security_alert_severity");
-  }
-  return {
-    id: requireNumber(row.id, "security_alert_id"),
-    event_type: requireString(row.event_type, "security_alert_event_type"),
-    severity,
-    member_360_lookup: nullableString(row.member_360_lookup),
-    created_at: requireString(row.created_at, "security_alert_created_at"),
-  };
-}
-
 export function parseSecurityAlertList(data: unknown): HqSecurityAlertList {
   const root = requireRecord(data, "security_alert_list_response");
   const rows = root.alerts;
@@ -605,8 +597,24 @@ export function parseSecurityAlertList(data: unknown): HqSecurityAlertList {
     throw new ApiError(502, undefined, "invalid_hq_security_alert_list");
   }
   return {
-    alerts: rows.map(parseSecurityAlert),
-    next_cursor: nullableString(root.next_cursor),
+    alerts: rows.map(parseSecurityEvent),
+  };
+}
+
+export function parseVersionInfo(data: unknown): import("./types.ts").HqVersionInfo {
+  const row = requireRecord(data, "version");
+  if (row.app !== "d8n") {
+    throw new ApiError(502, undefined, "invalid_hq_version_app");
+  }
+  return {
+    app: "d8n",
+    git_sha: nullableString(row.git_sha),
+    release: nullableString(row.release),
+    image_version: nullableString(row.image_version),
+    environment: requireString(row.environment, "version_environment"),
+    rails_environment: requireString(row.rails_environment, "version_rails_environment"),
+    build_timestamp: nullableString(row.build_timestamp),
+    booted_at: requireString(row.booted_at, "version_booted_at"),
   };
 }
 
@@ -1149,6 +1157,14 @@ function parseProfileVisibility(value: unknown): HqProfileVisibility | null {
   throw new ApiError(502, undefined, "invalid_hq_profile_visibility");
 }
 
+function parseContactVerification(value: unknown): HqMemberDirectoryEntry["contact_verification"] {
+  const row = requireRecord(value, "contact_verification");
+  return {
+    email: requireBoolean(row.email, "contact_verification_email"),
+    phone: requireBoolean(row.phone, "contact_verification_phone"),
+  };
+}
+
 function parseMemberDirectoryEntry(value: unknown): HqMemberDirectoryEntry {
   const row = requireRecord(value, "member_directory_entry");
   return {
@@ -1161,6 +1177,8 @@ function parseMemberDirectoryEntry(value: unknown): HqMemberDirectoryEntry {
     profile_visibility: parseProfileVisibility(row.profile_visibility),
     joined_at: requireString(row.joined_at, "member_directory_joined_at"),
     user_created_at: requireString(row.user_created_at, "member_directory_user_created_at"),
+    last_active_at: nullableString(row.last_active_at),
+    contact_verification: parseContactVerification(row.contact_verification),
     reports_received_count: requireNumber(row.reports_received_count, "reports_received_count"),
     pending_photo_count: requireNumber(row.pending_photo_count, "pending_photo_count"),
     active_enforcement: requireBoolean(row.active_enforcement, "active_enforcement"),
@@ -1175,5 +1193,192 @@ export function parseMemberDirectoryList(data: unknown): HqMemberDirectoryList {
   return {
     members: root.members.map(parseMemberDirectoryEntry),
     next_cursor: nullableString(root.next_cursor),
+  };
+}
+
+function parseMetricStatus(value: unknown): HqMetricStatus {
+  if (value === "available" || value === "unavailable" || value === "insufficient_data") {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_metric_status");
+}
+
+function parseMetricUnit(value: unknown): HqMetricUnit {
+  if (value === null) {
+    return null;
+  }
+  if (value === "count" || value === "ratio" || value === "seconds" || value === "metrics") {
+    return value;
+  }
+  throw new ApiError(502, undefined, "invalid_hq_metric_unit");
+}
+
+function parseMetricScalarValue(value: unknown, label: string): number | Record<string, number> {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return parseCountMap(value, label);
+  }
+  throw new ApiError(502, undefined, "invalid_hq_metric_value");
+}
+
+function parseMetricValue(value: unknown): HqMetricValue {
+  const row = requireRecord(value, "metric_value");
+  const status = parseMetricStatus(row.status);
+  const metric: HqMetricValue = {
+    metric_id: requireString(row.metric_id, "metric_id"),
+    version: requireNumber(row.version, "metric_version"),
+    definition: requireString(row.definition, "metric_definition"),
+    status,
+    unit: parseMetricUnit(row.unit),
+    limitations: Array.isArray(row.limitations)
+      ? row.limitations.map((item, index) => requireString(item, `metric_limitation_${index}`))
+      : [],
+  };
+  if (status === "available" && row.value !== undefined && row.value !== null) {
+    metric.value = parseMetricScalarValue(row.value, "metric_value");
+  }
+  if (row.numerator !== undefined && row.numerator !== null) {
+    metric.numerator = requireNumber(row.numerator, "metric_numerator");
+  }
+  if (row.denominator !== undefined && row.denominator !== null) {
+    metric.denominator = requireNumber(row.denominator, "metric_denominator");
+  }
+  return metric;
+}
+
+function parseMetricWindowMap(value: unknown): Record<string, HqMetricWindow> {
+  const row = requireRecord(value, "metric_windows");
+  const windows: Record<string, HqMetricWindow> = {};
+  for (const [key, entry] of Object.entries(row)) {
+    const window = requireRecord(entry, `window_${key}`);
+    windows[key] = {
+      label: requireString(window.label, `window_label_${key}`),
+      start_at: requireString(window.start_at, `window_start_${key}`),
+      end_at: requireString(window.end_at, `window_end_${key}`),
+    };
+  }
+  return windows;
+}
+
+function parseWindowedMetrics(value: unknown, label: string): Record<string, HqMetricValue> {
+  const row = requireRecord(value, label);
+  const metrics: Record<string, HqMetricValue> = {};
+  for (const [key, entry] of Object.entries(row)) {
+    metrics[key] = parseMetricValue(entry);
+  }
+  return metrics;
+}
+
+function parseAttentionSignal(value: unknown): HqAttentionSignal {
+  const row = requireRecord(value, "attention_signal");
+  const severity = row.severity;
+  if (severity !== "info" && severity !== "warning") {
+    throw new ApiError(502, undefined, "invalid_hq_attention_severity");
+  }
+  return {
+    signal: requireString(row.signal, "attention_signal_id"),
+    severity,
+    title: requireString(row.title, "attention_title"),
+    reason: requireString(row.reason, "attention_reason"),
+    value: requireNumber(row.value, "attention_value"),
+    unit: requireString(row.unit, "attention_unit"),
+  };
+}
+
+export function parseCommandCentreHealth(data: unknown): HqCommandCentreHealth {
+  const root = requireRecord(data, "command_centre_health_response");
+  const health = requireRecord(root.brand_health, "brand_health");
+  return parseCommandCentreHealthPayload(health);
+}
+
+function parseCommandCentreHealthPayload(health: Record<string, unknown>): HqCommandCentreHealth {
+  const audience = requireRecord(health.audience, "audience");
+  const activity = requireRecord(health.activity, "activity");
+  const profileHealth = requireRecord(health.profile_health, "profile_health");
+  const marketplace = requireRecord(health.marketplace, "marketplace");
+  const zeroDiscovery = requireRecord(marketplace.zero_discovery_allocations, "zero_discovery");
+  const trustSafety = requireRecord(health.trust_safety, "trust_safety");
+  if (!Array.isArray(health.attention_signals)) {
+    throw new ApiError(502, undefined, "invalid_hq_attention_signals");
+  }
+  if (health.time_zone !== "Africa/Johannesburg") {
+    throw new ApiError(502, undefined, "invalid_hq_time_zone");
+  }
+
+  return {
+    brand: requireString(health.brand, "brand_health_brand"),
+    generated_at: requireString(health.generated_at, "brand_health_generated_at"),
+    time_zone: "Africa/Johannesburg",
+    windows: parseMetricWindowMap(health.windows),
+    audience: {
+      memberships_total: parseMetricValue(audience.memberships_total),
+      memberships_new: parseWindowedMetrics(audience.memberships_new, "memberships_new"),
+    },
+    activity: {
+      active_users: parseWindowedMetrics(activity.active_users, "active_users"),
+    },
+    profile_health: {
+      by_status: parseMetricValue(profileHealth.by_status),
+      visible_published: parseMetricValue(profileHealth.visible_published),
+      activation_ratio: parseMetricValue(profileHealth.activation_ratio),
+    },
+    marketplace: {
+      likes_created: parseWindowedMetrics(marketplace.likes_created, "likes_created"),
+      matches_created: parseWindowedMetrics(marketplace.matches_created, "matches_created"),
+      conversations_created: parseWindowedMetrics(
+        marketplace.conversations_created,
+        "conversations_created",
+      ),
+      zero_discovery_allocations: {
+        yesterday: parseMetricValue(zeroDiscovery.yesterday),
+        last_7d: parseMetricValue(zeroDiscovery.last_7d),
+        last_30d: parseMetricValue(zeroDiscovery.last_30d),
+      },
+      published_without_likes: parseMetricValue(marketplace.published_without_likes),
+      published_without_matches: parseMetricValue(marketplace.published_without_matches),
+      time_to_first_like_median: parseMetricValue(marketplace.time_to_first_like_median),
+      time_to_first_match_median: parseMetricValue(marketplace.time_to_first_match_median),
+      time_to_first_conversation_median: parseMetricValue(
+        marketplace.time_to_first_conversation_median,
+      ),
+    },
+    trust_safety: {
+      open_reports: parseMetricValue(trustSafety.open_reports),
+      awaiting_decision: parseMetricValue(trustSafety.awaiting_decision),
+      active_enforcements: parseMetricValue(trustSafety.active_enforcements),
+      pending_photo_reviews: parseMetricValue(trustSafety.pending_photo_reviews),
+      oldest_open_report_age_seconds: parseMetricValue(trustSafety.oldest_open_report_age_seconds),
+    },
+    attention_signals: health.attention_signals.map(parseAttentionSignal),
+  };
+}
+
+function parseCommandCentreBrandEntry(value: unknown): HqCommandCentreBrandEntry {
+  const row = requireRecord(value, "brand_entry");
+  if (row.accessible !== true) {
+    throw new ApiError(502, undefined, "invalid_hq_brand_accessible");
+  }
+  return {
+    brand: requireString(row.brand, "brand_entry_brand"),
+    accessible: true,
+    role: requireString(row.role, "brand_entry_role"),
+    brand_health: parseCommandCentreHealthPayload(requireRecord(row.brand_health, "brand_health")),
+  };
+}
+
+export function parseCommandCentreBrands(data: unknown): HqCommandCentreBrandsResponse {
+  const root = requireRecord(data, "command_centre_brands_response");
+  if (!Array.isArray(root.brands)) {
+    throw new ApiError(502, undefined, "invalid_hq_brand_list");
+  }
+  if (root.time_zone !== "Africa/Johannesburg") {
+    throw new ApiError(502, undefined, "invalid_hq_time_zone");
+  }
+  return {
+    generated_at: requireString(root.generated_at, "brands_generated_at"),
+    time_zone: "Africa/Johannesburg",
+    brands: root.brands.map(parseCommandCentreBrandEntry),
   };
 }

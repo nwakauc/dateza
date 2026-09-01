@@ -5,6 +5,8 @@ import {
   parseAdminReport,
   parseAdminReportList,
   parseAnalyticsOverview,
+  parseCommandCentreBrands,
+  parseCommandCentreHealth,
   parseAuthAttemptList,
   parseCurrentOperatorResponse,
   parseDiscoveryDiagnostic,
@@ -22,6 +24,7 @@ import {
   parseSecurityAlertList,
   parseSecurityEventList,
   parseTrustSafetyOverview,
+  parseVersionInfo,
 } from "./parse.ts";
 import type {
   HqAdminEnforcement,
@@ -29,6 +32,8 @@ import type {
   HqAdminReportList,
   HqAdminReportListParams,
   HqAnalyticsOverview,
+  HqCommandCentreBrandsResponse,
+  HqCommandCentreHealth,
   HqAuthAttemptList,
   HqBanProfileBody,
   HqCurrentOperator,
@@ -117,8 +122,38 @@ export async function fetchHqMemberDirectory(
   params?: HqMemberDirectoryParams,
 ): Promise<HqMemberDirectoryList> {
   const query = new URLSearchParams();
+  if (params?.search) {
+    query.set("search", params.search);
+  }
   if (params?.status) {
     query.set("status", params.status);
+  }
+  if (params?.profile_status) {
+    query.set("profile_status", params.profile_status);
+  }
+  if (params?.profile_visibility) {
+    query.set("visibility", params.profile_visibility);
+  }
+  if (params?.contact_verification && params.contact_verification !== "any") {
+    query.set("contact_verification", params.contact_verification);
+  }
+  if (params?.enforcement && params.enforcement !== "any") {
+    query.set("enforcement", params.enforcement);
+  }
+  if (params?.created_from) {
+    query.set("created_from", params.created_from);
+  }
+  if (params?.created_to) {
+    query.set("created_to", params.created_to);
+  }
+  if (params?.last_active_from) {
+    query.set("last_active_from", params.last_active_from);
+  }
+  if (params?.last_active_to) {
+    query.set("last_active_to", params.last_active_to);
+  }
+  if (params?.sort) {
+    query.set("sort", params.sort);
   }
   if (params?.cursor) {
     query.set("cursor", params.cursor);
@@ -187,6 +222,16 @@ export async function fetchTrustSafetyOverview(): Promise<HqTrustSafetyOverview>
 export async function fetchHqAnalyticsOverview(): Promise<HqAnalyticsOverview> {
   const data = await apiRequest("/api/v1/hq/analytics/overview");
   return parseAnalyticsOverview(data);
+}
+
+export async function fetchCommandCentreHealth(): Promise<HqCommandCentreHealth> {
+  const data = await apiRequest("/api/v1/hq/command_centre/health");
+  return parseCommandCentreHealth(data);
+}
+
+export async function fetchCommandCentreBrands(): Promise<HqCommandCentreBrandsResponse> {
+  const data = await apiRequest("/api/v1/hq/command_centre/brands");
+  return parseCommandCentreBrands(data);
 }
 
 export async function fetchRepeatOffenders(limit?: number): Promise<HqRepeatOffenderList> {
@@ -312,15 +357,18 @@ export async function unbanAdminProfile(profileId: string): Promise<HqAdminEnfor
 }
 
 export async function fetchHqSecurityAlerts(params?: {
-  cursor?: string | null;
   limit?: number;
 }): Promise<HqSecurityAlertList> {
   const search = new URLSearchParams();
-  if (params?.cursor) search.set("cursor", params.cursor);
   if (params?.limit !== undefined) search.set("limit", String(params.limit));
   const query = search.toString();
   const data = await apiRequest(`/api/v1/hq/security_alerts${query ? `?${query}` : ""}`);
   return parseSecurityAlertList(data);
+}
+
+export async function fetchD8nVersion(): Promise<import("./types.ts").HqVersionInfo> {
+  const data = await apiRequest("/api/v1/version");
+  return parseVersionInfo(data);
 }
 
 export async function fetchProfilePhotoQueue(): Promise<HqProfilePhotoQueue> {
@@ -412,6 +460,9 @@ export function hqErrorMessage(error: unknown): string {
     }
     if (error.code === "invalid_filter") {
       return "That filter is not valid for this request.";
+    }
+    if (error.code === "invalid_search") {
+      return "Search text is too long or not valid.";
     }
     if (error.code === "invalid_transition") {
       return "That status change is not allowed from the report's current state.";

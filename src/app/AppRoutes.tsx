@@ -33,6 +33,7 @@ import OpsOperatorsPage from "../features/ops/pages/OpsOperatorsPage.tsx";
 import HqShell from "../features/hq/HqShell.tsx";
 import { HqProtectedRoute } from "../features/hq/HqProtectedRoute.tsx";
 import CommandCentrePage from "../features/hq/pages/CommandCentrePage.tsx";
+import AlertsPage from "../features/hq/pages/AlertsPage.tsx";
 import Member360Page from "../features/hq/pages/Member360Page.tsx";
 import MemberSearchPage from "../features/hq/pages/MemberSearchPage.tsx";
 import ReportDetailPage from "../features/hq/pages/ReportDetailPage.tsx";
@@ -181,7 +182,7 @@ export default function AppRoutes() {
         <Route path="members" element={<MemberSearchPage />} />
         <Route path="members/:lookup" element={<Member360Page />} />
         <Route path="live" element={<UnavailableHqPage path="/hq/live" />} />
-        <Route path="alerts" element={<UnavailableHqPage path="/hq/alerts" />} />
+        <Route path="alerts" element={<AlertsPage />} />
         <Route path="incidents" element={<UnavailableHqPage path="/hq/incidents" />} />
         <Route path="growth" element={<UnavailableHqPage path="/hq/growth" />} />
         <Route path="product" element={<UnavailableHqPage path="/hq/product" />} />

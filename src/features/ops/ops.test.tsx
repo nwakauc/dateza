@@ -152,6 +152,8 @@ describe("DateZA Operations console", () => {
               profile_visibility: "visible",
               joined_at: "2026-08-28T12:00:00Z",
               user_created_at: "2026-08-27T12:00:00Z",
+              last_active_at: "2026-08-29T12:00:00Z",
+              contact_verification: { email: true, phone: false },
               reports_received_count: 2,
               pending_photo_count: 1,
               active_enforcement: false,
@@ -175,12 +177,12 @@ describe("DateZA Operations console", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: /find a member/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /member directory/i })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Naledi" })).toHaveAttribute(
       "href",
       `/ops/users/${PROFILE_A}`,
     );
-    expect(screen.getByRole("link", { name: "Member 360" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Open" }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/user directory not yet available/i)).not.toBeInTheDocument();
   });
 

@@ -1223,3 +1223,241 @@
   margin: 8px 0 0;
   color: var(--hq-danger);
 }
+
+/* Member directory */
+.hq-directory__toolbar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hq-directory__search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hq-directory__search .hq-input,
+.hq-directory__search .ops-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.hq-directory__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hq-input,
+.hq-select {
+  padding: 8px 10px;
+  border-radius: var(--hq-radius-sm);
+  border: 1px solid var(--hq-border-strong);
+  background: var(--hq-bg-elevated);
+  color: var(--hq-text);
+  min-height: 36px;
+}
+
+.hq-select {
+  min-width: 140px;
+}
+
+.hq-directory__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.hq-directory-skeleton {
+  display: grid;
+  gap: 8px;
+}
+
+.hq-directory-skeleton__row {
+  height: 44px;
+  border-radius: var(--hq-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--hq-bg-elevated) 0%,
+    var(--hq-bg-card-hover) 50%,
+    var(--hq-bg-elevated) 100%
+  );
+  background-size: 200% 100%;
+  animation: hq-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes hq-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.hq-command-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.hq-command-stat {
+  padding: 12px;
+  border-radius: var(--hq-radius-sm);
+  border: 1px solid var(--hq-border);
+  background: var(--hq-bg-elevated);
+}
+
+.hq-command-stat__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hq-text-faint);
+}
+
+.hq-command-stat__value {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hq-command-stat__hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--hq-text-muted);
+}
+
+.hq-release-line {
+  margin: 0;
+  font-family: var(--hq-mono);
+  font-size: 12px;
+  color: var(--hq-text-muted);
+  word-break: break-all;
+}
+
+.hq-command-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  margin: 0 0 6px;
+}
+
+.hq-command-header__brand {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.hq-command-header__release {
+  font-family: var(--hq-mono);
+  font-size: 12px;
+  color: var(--hq-text-muted);
+}
+
+.hq-command-section {
+  margin-top: 16px;
+}
+
+.hq-command-section:first-child {
+  margin-top: 0;
+}
+
+.hq-command-section--muted .hq-command-stat {
+  opacity: 0.92;
+}
+
+.hq-command-section__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hq-text-faint);
+}
+
+.hq-command-refresh {
+  margin-top: 8px;
+}
+
+.hq-metric-value {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.hq-metric-value--available {
+  font-weight: 600;
+}
+
+.hq-metric-value--unavailable,
+.hq-metric-value--insufficient {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--hq-text-muted);
+  font-style: italic;
+}
+
+.hq-metric-info {
+  position: relative;
+  display: inline-flex;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.hq-metric-info__trigger {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--hq-border);
+  border-radius: 50%;
+  background: var(--hq-bg-elevated);
+  color: var(--hq-text-faint);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hq-metric-info__trigger:hover,
+.hq-metric-info__trigger:focus-visible {
+  color: var(--hq-text);
+  border-color: var(--hq-accent);
+  outline: none;
+}
+
+.hq-metric-info__popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(280px, 70vw);
+  padding: 10px 12px;
+  border-radius: var(--hq-radius-sm);
+  border: 1px solid var(--hq-border);
+  background: var(--hq-bg-elevated);
+  box-shadow: var(--hq-shadow);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--hq-text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.hq-metric-info__definition {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--hq-text);
+}
+
+.hq-metric-info__limitations {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.hq-brand-compare-wrap {
+  overflow-x: auto;
+}

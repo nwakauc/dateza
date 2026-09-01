@@ -26,7 +26,7 @@ export const HQ_NAV_GROUPS: HqNavGroup[] = [
     items: [
       { id: "command-centre", label: "Command Centre", path: "/hq", availability: "ready" },
       { id: "live-events", label: "Live / Events", path: "/hq/live", availability: "planned" },
-      { id: "alerts", label: "Alerts", path: "/hq/alerts", availability: "planned" },
+      { id: "alerts", label: "Alerts", path: "/hq/alerts", availability: "ready" },
       { id: "incidents", label: "Incidents", path: "/hq/incidents", availability: "planned" },
     ],
   },

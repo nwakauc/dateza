@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
-import { json, meOk, operatorOk, urlOf } from "./testFixtures.ts";
+import { json, meOk, operatorOk, commandCentreHealthOk, urlOf } from "./testFixtures.ts";
 
 function isReportDetail(url: string): boolean {
   return /\/api\/v1\/admin\/reports\/\d+/.test(url);
@@ -342,8 +342,42 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
-      if (url.includes("/api/v1/hq/operator") || isReportList(url)) {
-        return isReportList(url) ? json(200, { reports: [], next_cursor: null }) : operatorOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) {
+        return commandCentreHealthOk({
+          attention_signals: [
+            {
+              signal: "old_unresolved_report",
+              severity: "warning",
+              title: "Oldest open report is aging",
+              reason: "4 report(s) awaiting decision need operator review.",
+              value: 97200,
+              unit: "seconds",
+            },
+          ],
+        });
+      }
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return json(200, {
+          generated_at: "2026-08-30T12:00:00Z",
+          time_zone: "Africa/Johannesburg",
+          brands: [],
+        });
+      }
+      if (url.includes("/api/v1/version")) {
+        return json(200, {
+          app: "d8n",
+          git_sha: "abc",
+          release: "test",
+          image_version: null,
+          environment: "test",
+          rails_environment: "test",
+          build_timestamp: null,
+          booted_at: "2026-08-30T01:00:00Z",
+        });
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) {
+        return json(200, { alerts: [] });
       }
       return json(404, { error: "not_found" });
     });
@@ -351,9 +385,9 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
     renderAt("/hq");
     expect(await screen.findByRole("heading", { name: "Command Centre" })).toBeInTheDocument();
     const attention = screen.getByLabelText(/what needs my attention/i);
-    const link = within(attention).getByRole("link", { name: /trust & safety/i });
-    expect(link).toHaveAttribute("href", "/hq/trust-safety");
-    expect(within(attention).getByText(/sla is not configured/i)).toBeInTheDocument();
+    const link = within(attention).getByRole("link", { name: /open report queue/i });
+    expect(link).toHaveAttribute("href", "/hq/trust-safety?tab=queue");
+    expect(within(attention).getByText(/Oldest open report is aging/i)).toBeInTheDocument();
     expect(screen.queryByText(/0 overdue/i)).not.toBeInTheDocument();
   });
 });

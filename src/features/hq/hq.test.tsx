@@ -6,21 +6,79 @@ import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
 import { lookupHqMember } from "../../lib/hq/api.ts";
-import { json, meOk, operatorOk, urlOf } from "./testFixtures.ts";
+import {
+  commandCentreBrandsOk,
+  commandCentreHealthFixture,
+  commandCentreHealthOk,
+  json,
+  meOk,
+  operatorOk,
+  commandCentreRouteOk,
+  urlOf,
+} from "./testFixtures.ts";
 
 function withOperator(
   handler: (url: string) => ReturnType<typeof json> | undefined,
   mfaVerified = true,
+  operatorOverrides: Record<string, unknown> = {},
 ) {
   return (input: RequestInfo | URL) => {
     const url = urlOf(input);
     if (url.includes("/api/v1/me")) return meOk();
-    if (url.includes("/api/v1/hq/operator")) return operatorOk(mfaVerified);
+    if (url.includes("/api/v1/hq/operator")) return operatorOk(mfaVerified, operatorOverrides);
+    if (url.includes("/api/v1/version")) return versionOk();
+    const commandCentre = commandCentreRouteOk(url);
+    if (commandCentre) return commandCentre;
+    if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
     return handler(url) ?? json(404, { error: "not_found" });
   };
 }
 
 const PROFILE_ID = "11111111-1111-1111-1111-111111111111";
+
+function isMemberDirectoryList(url: string): boolean {
+  return /\/api\/v1\/hq\/members(\?|$)/.test(url);
+}
+
+function directoryMember(overrides: Record<string, unknown> = {}) {
+  return {
+    user_id: 42,
+    profile_id: PROFILE_ID,
+    display_name: "Sam Directory",
+    user_status: "active",
+    membership_status: "active",
+    profile_status: "active",
+    profile_visibility: "visible",
+    joined_at: "2026-01-02T00:00:00Z",
+    user_created_at: "2026-01-01T00:00:00Z",
+    last_active_at: "2026-08-01T12:00:00Z",
+    contact_verification: { email: true, phone: false },
+    reports_received_count: 1,
+    pending_photo_count: 0,
+    active_enforcement: false,
+    ...overrides,
+  };
+}
+
+function memberDirectoryOk(
+  members: Record<string, unknown>[] = [directoryMember()],
+  next_cursor: string | null = null,
+) {
+  return json(200, { members, next_cursor });
+}
+
+function versionOk() {
+  return json(200, {
+    app: "d8n",
+    git_sha: "abc123def456",
+    release: "2026.08.30",
+    image_version: null,
+    environment: "staging",
+    rails_environment: "production",
+    build_timestamp: "2026-08-30T00:00:00Z",
+    booted_at: "2026-08-30T01:00:00Z",
+  });
+}
 
 function member360Ok(overrides: Record<string, unknown> = {}) {
   return json(200, {
@@ -246,7 +304,8 @@ describe("D8N HQ Phase 1 integration", () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(
       withOperator((url) => {
-      if (url.includes("/api/v1/hq/members/")) {
+        if (isMemberDirectoryList(url)) return memberDirectoryOk();
+        if (url.includes("/api/v1/hq/members/")) {
         if (url.includes("/discovery_diagnostic")) {
           return json(200, {
             eligible: true,
@@ -277,9 +336,9 @@ describe("D8N HQ Phase 1 integration", () => {
     );
 
     renderAt("/hq/members");
-    await screen.findByLabelText(/member lookup/i);
-    await user.type(screen.getByLabelText(/member lookup/i), "lebo@example.com");
-    await user.click(screen.getByRole("button", { name: /look up/i }));
+    await screen.findByLabelText(/exact member lookup/i);
+    await user.type(screen.getByLabelText(/exact member lookup/i), "lebo@example.com");
+    await user.click(screen.getByRole("button", { name: /open member 360/i }));
 
     expect(await screen.findByRole("heading", { name: "Lebo" })).toBeInTheDocument();
     expect(screen.getAllByText(new RegExp(PROFILE_ID)).length).toBeGreaterThan(0);
@@ -292,15 +351,16 @@ describe("D8N HQ Phase 1 integration", () => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
       if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk([]);
       if (url.includes("/api/v1/hq/members/")) return json(404, { error: "member_unavailable" });
       return json(404, { error: "not_found" });
     });
     renderAt("/hq/members");
-    await screen.findByLabelText(/member lookup/i);
-    await user.type(screen.getByLabelText(/member lookup/i), "missing@example.com");
-    await user.click(screen.getByRole("button", { name: /look up/i }));
+    await screen.findByLabelText(/exact member lookup/i);
+    await user.type(screen.getByLabelText(/exact member lookup/i), "missing@example.com");
+    await user.click(screen.getByRole("button", { name: /open member 360/i }));
     expect(await screen.findByText(/no member found/i)).toBeInTheDocument();
-    expect(screen.getByText(/unauthorized-brand/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing matched that identifier/i)).toBeInTheDocument();
   });
 
   it("surfaces forbidden on lookup", async () => {
@@ -309,13 +369,14 @@ describe("D8N HQ Phase 1 integration", () => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
       if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) return memberDirectoryOk([]);
       if (url.includes("/api/v1/hq/members/")) return json(403, { error: "forbidden" });
       return json(404, { error: "not_found" });
     });
     renderAt("/hq/members");
-    await screen.findByLabelText(/member lookup/i);
-    await user.type(screen.getByLabelText(/member lookup/i), "x@example.com");
-    await user.click(screen.getByRole("button", { name: /look up/i }));
+    await screen.findByLabelText(/exact member lookup/i);
+    await user.type(screen.getByLabelText(/exact member lookup/i), "x@example.com");
+    await user.click(screen.getByRole("button", { name: /open member 360/i }));
     expect(await screen.findByText(/not authorized for this action/i)).toBeInTheDocument();
   });
 
@@ -515,16 +576,222 @@ describe("D8N HQ Phase 1 integration", () => {
     expect(await screen.findByRole("heading", { name: /could not load member 360/i })).toBeInTheDocument();
   });
 
-  it("does not invent Command Centre metrics", async () => {
+  it("renders Command Centre health snapshot from canonical API", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    expect(await screen.findByRole("heading", { name: "Command Centre" })).toBeInTheDocument();
+    expect(screen.queryByText(/\b72\/100\b/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/total memberships/i)).toBeInTheDocument();
+    expect(screen.getAllByText("500").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2026\.08\.30/).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/brand comparison/i)).toBeInTheDocument();
+  });
+
+  it("renders real zero without treating unavailable metrics as zero", async () => {
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();
       if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) {
+        return commandCentreHealthOk({
+          marketplace: {
+            ...commandCentreHealthFixture().brand_health.marketplace,
+            zero_discovery_allocations: {
+              yesterday: {
+                metric_id: "marketplace.zero_discovery_allocations",
+                version: 1,
+                definition: "Zero discovery test.",
+                status: "available",
+                value: 0,
+                unit: "count",
+                limitations: [],
+              },
+              last_7d: commandCentreHealthFixture().brand_health.marketplace.zero_discovery_allocations.last_7d,
+              last_30d: commandCentreHealthFixture().brand_health.marketplace.zero_discovery_allocations.last_30d,
+            },
+            time_to_first_like_median: {
+              metric_id: "marketplace.time_to_first_like_median",
+              version: 1,
+              definition: "Deferred median.",
+              status: "unavailable",
+              unit: null,
+              limitations: ["Deferred."],
+            },
+          },
+          trust_safety: {
+            ...commandCentreHealthFixture().brand_health.trust_safety,
+            oldest_open_report_age_seconds: {
+              metric_id: "trust.oldest_open_report_age_seconds",
+              version: 1,
+              definition: "Oldest open report age.",
+              status: "insufficient_data",
+              unit: null,
+              limitations: ["No open reports on this brand."],
+            },
+          },
+        });
+      }
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return commandCentreBrandsOk([{ brand: "dateza" }]);
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
+      return json(404, { error: "not_found" });
+    });
+
+    renderAt("/hq");
+    await screen.findByText(/total memberships/i);
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not enough data").length).toBeGreaterThan(0);
+  });
+
+  it("shows metric definition on info interaction", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    await screen.findByText(/total memberships/i);
+    const infoButtons = screen.getAllByRole("button", { name: /definition for memberships\.total/i });
+    await user.click(infoButtons[0]);
+    expect(
+      await screen.findByText(/Distinct users with a kept BrandMembership on the brand/i),
+    ).toBeInTheDocument();
+  });
+
+  it("renders backend attention signals with drill-down links", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) {
+        return commandCentreHealthOk({
+          attention_signals: [
+            {
+              signal: "old_unresolved_report",
+              severity: "warning",
+              title: "Oldest open report is aging",
+              reason: "Needs operator review.",
+              value: 300000,
+              unit: "seconds",
+            },
+          ],
+        });
+      }
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return commandCentreBrandsOk([{ brand: "dateza" }]);
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
+      return json(404, { error: "not_found" });
+    });
+
+    renderAt("/hq");
+    expect(await screen.findByText(/Oldest open report is aging/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /open report queue/i });
+    expect(link).toHaveAttribute("href", "/hq/trust-safety?tab=queue");
+  });
+
+  it("shows empty attention state when no signals returned", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    expect(await screen.findByText(/No operational attention signals/i)).toBeInTheDocument();
+  });
+
+  it("omits inaccessible brands from comparison table", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) return commandCentreHealthOk();
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return commandCentreBrandsOk([{ brand: "dateza" }]);
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
       return json(404, { error: "not_found" });
     });
     renderAt("/hq");
-    expect(await screen.findByRole("heading", { name: "Command Centre" })).toBeInTheDocument();
-    expect(screen.queryByText(/\b72\/100\b/)).not.toBeInTheDocument();
+    await screen.findByText(/total memberships/i);
+    expect(screen.queryByText(/brand comparison/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("otherbrand")).not.toBeInTheDocument();
+  });
+
+  it("survives partial Command Centre API failure", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) return commandCentreHealthOk();
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return json(500, { error: "server_error" });
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq");
+    expect(await screen.findByText(/Some command centre data could not load/i)).toBeInTheDocument();
+    expect(await screen.findByText(/total memberships/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Could not load brand comparison/i)).toBeInTheDocument();
+  });
+
+  it("gates Command Centre health without hq.analytics.read", async () => {
+    vi.mocked(fetch).mockImplementation(
+      withOperator(() => undefined, true, {
+        effective_capabilities: [
+          "hq.member.sensitive_read",
+          "hq.trust_safety.read",
+          "hq.security_alerts.read",
+        ],
+      }),
+    );
+    renderAt("/hq");
+    expect(await screen.findByText(/Analytics not enabled for your role/i)).toBeInTheDocument();
+    expect(screen.queryByText(/total memberships/i)).not.toBeInTheDocument();
+  });
+
+  it("loads member directory with filters and pagination", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (isMemberDirectoryList(url)) {
+        if (url.includes("search=sam")) {
+          return memberDirectoryOk([directoryMember({ display_name: "Sam Filtered" })]);
+        }
+        if (url.includes("cursor=page-2")) {
+          return memberDirectoryOk([directoryMember({ display_name: "Sam Page Two", user_id: 43 })]);
+        }
+        return memberDirectoryOk([directoryMember()], "page-2");
+      }
+      return json(404, { error: "not_found" });
+    });
+
+    renderAt("/hq/members");
+    expect(await screen.findByText("Sam Directory")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /load more/i }));
+    expect(await screen.findByText("Sam Page Two")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/search members/i), "sam");
+    await user.click(screen.getByRole("button", { name: /^search$/i }));
+    expect(await screen.findByText("Sam Filtered")).toBeInTheDocument();
+  });
+
+  it("hides alerts nav without hq.security_alerts.read", async () => {
+    vi.mocked(fetch).mockImplementation(
+      withOperator(() => undefined, true, {
+        effective_capabilities: [
+          "hq.member.sensitive_read",
+          "hq.trust_safety.read",
+          "admin.reports.read",
+        ],
+      }),
+    );
+    renderAt("/hq");
+    await screen.findByRole("heading", { name: "Command Centre" });
+    expect(screen.queryByRole("link", { name: /^alerts$/i })).not.toBeInTheDocument();
   });
 });
 

@@ -385,6 +385,26 @@
   color: var(--ops-text-muted);
 }
 
+.ops-input,
+.ops-select {
+  padding: 8px 10px;
+  border-radius: var(--ops-radius-sm);
+  border: 1px solid var(--ops-border);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.ops-select {
+  min-width: 140px;
+}
+
+.ops-chip {
+  border-radius: 999px;
+  font-size: 12px;
+}
+
 .ops-banner {
   border-radius: var(--ops-radius-sm);
   padding: 12px 14px;

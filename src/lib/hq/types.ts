@@ -16,6 +16,15 @@ export type HqMemberSummary = {
 export type HqProfileStatus = "draft" | "active" | "suspended";
 export type HqProfileVisibility = "hidden" | "visible";
 
+export type HqMemberDirectorySort = "newest" | "oldest" | "recently_active";
+export type HqMemberDirectoryContactVerification = "any" | "verified" | "unverified";
+export type HqMemberDirectoryEnforcementFilter = "any" | "active" | "none";
+
+export type HqMemberDirectoryContactVerificationState = {
+  email: boolean;
+  phone: boolean;
+};
+
 /** Safe operational row from GET /api/v1/hq/members — not full Member 360. */
 export type HqMemberDirectoryEntry = {
   user_id: number;
@@ -27,6 +36,8 @@ export type HqMemberDirectoryEntry = {
   profile_visibility: HqProfileVisibility | null;
   joined_at: string;
   user_created_at: string;
+  last_active_at: string | null;
+  contact_verification: HqMemberDirectoryContactVerificationState;
   reports_received_count: number;
   pending_photo_count: number;
   active_enforcement: boolean;
@@ -38,7 +49,17 @@ export type HqMemberDirectoryList = {
 };
 
 export type HqMemberDirectoryParams = {
+  search?: string | null;
   status?: HqMembershipStatus | null;
+  profile_status?: HqProfileStatus | null;
+  profile_visibility?: HqProfileVisibility | null;
+  contact_verification?: HqMemberDirectoryContactVerification | null;
+  enforcement?: HqMemberDirectoryEnforcementFilter | null;
+  created_from?: string | null;
+  created_to?: string | null;
+  last_active_from?: string | null;
+  last_active_to?: string | null;
+  sort?: HqMemberDirectorySort | null;
   cursor?: string | null;
   limit?: number;
 };
@@ -423,18 +444,21 @@ export type HqBanProfileBody = {
   report_id?: number | null;
 };
 
-/** Brand-scoped security alert from GET /api/v1/hq/security_alerts. */
-export type HqSecurityAlert = {
-  id: number;
-  event_type: string;
-  severity: "warning" | "high" | "critical";
-  member_360_lookup: string | null;
-  created_at: string;
+/** Warning/high/critical security events from GET /api/v1/hq/security_alerts. */
+export type HqSecurityAlertList = {
+  alerts: HqSecurityEvent[];
 };
 
-export type HqSecurityAlertList = {
-  alerts: HqSecurityAlert[];
-  next_cursor: string | null;
+/** Public release identity from GET /api/v1/version (no session required). */
+export type HqVersionInfo = {
+  app: "d8n";
+  git_sha: string | null;
+  release: string | null;
+  image_version: string | null;
+  environment: string;
+  rails_environment: string;
+  build_timestamp: string | null;
+  booted_at: string;
 };
 
 /** Authoritative HQ permissions — never infer from role labels. */
@@ -580,4 +604,98 @@ export type HqCreateOperatorBody = {
 export type HqUpdateOperatorBody = {
   role?: HqOperatorRole;
   status?: "active" | "suspended" | "revoked";
+};
+
+/** Canonical HQ metric status from Command Centre APIs. */
+export type HqMetricStatus = "available" | "unavailable" | "insufficient_data";
+
+export type HqMetricUnit = "count" | "ratio" | "seconds" | "metrics" | null;
+
+/** Typed metric payload — value is present only when status is available. */
+export type HqMetricValue = {
+  metric_id: string;
+  version: number;
+  definition: string;
+  status: HqMetricStatus;
+  unit: HqMetricUnit;
+  limitations: string[];
+  /** Scalar count/ratio/seconds, or status map for profiles.by_status. */
+  value?: number | Record<string, number>;
+  numerator?: number;
+  denominator?: number;
+};
+
+export type HqMetricWindow = {
+  label: string;
+  start_at: string;
+  end_at: string;
+};
+
+export type HqAttentionSignal = {
+  signal: string;
+  severity: "info" | "warning";
+  title: string;
+  reason: string;
+  value: number;
+  unit: string;
+};
+
+/** Founder Command Centre brand health snapshot from GET /api/v1/hq/command_centre/health. */
+export type HqCommandCentreHealth = {
+  brand: string;
+  generated_at: string;
+  time_zone: "Africa/Johannesburg";
+  windows: Record<string, HqMetricWindow>;
+  audience: {
+    memberships_total: HqMetricValue;
+    memberships_new: Record<string, HqMetricValue>;
+  };
+  activity: {
+    active_users: Record<string, HqMetricValue>;
+  };
+  profile_health: {
+    by_status: HqMetricValue;
+    visible_published: HqMetricValue;
+    activation_ratio: HqMetricValue;
+  };
+  marketplace: {
+    likes_created: Record<string, HqMetricValue>;
+    matches_created: Record<string, HqMetricValue>;
+    conversations_created: Record<string, HqMetricValue>;
+    zero_discovery_allocations: {
+      yesterday: HqMetricValue;
+      last_7d: HqMetricValue;
+      last_30d: HqMetricValue;
+    };
+    published_without_likes: HqMetricValue;
+    published_without_matches: HqMetricValue;
+    time_to_first_like_median: HqMetricValue;
+    time_to_first_match_median: HqMetricValue;
+    time_to_first_conversation_median: HqMetricValue;
+  };
+  trust_safety: {
+    open_reports: HqMetricValue;
+    awaiting_decision: HqMetricValue;
+    active_enforcements: HqMetricValue;
+    pending_photo_reviews: HqMetricValue;
+    oldest_open_report_age_seconds: HqMetricValue;
+  };
+  attention_signals: HqAttentionSignal[];
+};
+
+export type HqCommandCentreHealthResponse = {
+  brand_health: HqCommandCentreHealth;
+};
+
+export type HqCommandCentreBrandEntry = {
+  brand: string;
+  accessible: true;
+  role: string;
+  brand_health: HqCommandCentreHealth;
+};
+
+export type HqCommandCentreBrandsResponse = {
+  generated_at: string;
+  time_zone: "Africa/Johannesburg";
+  brands: HqCommandCentreBrandEntry[];
 };

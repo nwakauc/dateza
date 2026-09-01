@@ -87,18 +87,24 @@ export default function OpsSafetyPage() {
               { key: "member", header: "Member" },
               { key: "when", header: "When" },
             ]}
-            rows={(alerts?.alerts ?? []).map((row) => ({
+            rows={(alerts?.alerts ?? []).map((row) => {
+              const lookup =
+                typeof row.metadata.member_360_lookup === "string"
+                  ? row.metadata.member_360_lookup
+                  : null;
+              return {
               event: humanizeKey(row.event_type),
               severity: row.severity,
-              member: row.member_360_lookup ? (
-                <Link className="ops-inline-link" to={`/ops/users/${encodeURIComponent(row.member_360_lookup)}`}>
+              member: lookup ? (
+                <Link className="ops-inline-link" to={`/ops/users/${encodeURIComponent(lookup)}`}>
                   Open
                 </Link>
               ) : (
                 "—"
               ),
               when: formatWhen(row.created_at),
-            }))}
+            };
+            })}
             empty="No security alerts on this brand."
           />
         </section>

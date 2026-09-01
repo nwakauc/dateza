@@ -97,6 +97,10 @@ export async function apiRequest(
   const response = await fetch(path, {
     ...init,
     credentials: "include",
+    // HQ/admin JSON must never be served from a conditional cache entry. A 304
+    // has no body; our parsers expect JSON and will fail with "Safety data
+    // unavailable" even though auth succeeded.
+    cache: "no-store",
     headers,
     signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
