@@ -244,6 +244,7 @@ describe("D8N HQ Phase 1 integration", () => {
   beforeEach(() => {
     setBearerToken("opaque-token");
     clearBrandAdminAccessCache();
+    window.localStorage.setItem("hq:experience-mode:v1", "ops");
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -252,6 +253,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.unstubAllGlobals();
     setBearerToken(undefined);
     clearBrandAdminAccessCache();
+    window.localStorage.clear();
   });
 
   it("redirects unauthenticated operators from /hq to sign-in", async () => {
@@ -748,6 +750,71 @@ describe("D8N HQ Phase 1 integration", () => {
     renderAt("/hq");
     expect(await screen.findByText(/Analytics not enabled for your role/i)).toBeInTheDocument();
     expect(screen.queryByText(/total memberships/i)).not.toBeInTheDocument();
+  });
+
+  it("renders founder light dashboard with canonical health data", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    expect(await screen.findByText(/D8N at a glance/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Total members/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Company pulse/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Needs your attention/i)).toBeInTheDocument();
+  });
+
+  it("switches between founder and ops modes", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    await screen.findByText(/Company pulse/i);
+    await user.click(screen.getByRole("button", { name: /^Ops$/i }));
+    expect(await screen.findByText(/total memberships/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Ops$/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows unavailable and insufficient founder metric states", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "founder");
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = urlOf(input);
+      if (url.includes("/api/v1/me")) return meOk();
+      if (url.includes("/api/v1/hq/operator")) return operatorOk();
+      if (url.includes("/api/v1/version")) return versionOk();
+      if (url.includes("/api/v1/hq/command_centre/health")) {
+        return commandCentreHealthOk({
+          trust_safety: {
+            ...commandCentreHealthFixture().brand_health.trust_safety,
+            oldest_open_report_age_seconds: {
+              metric_id: "trust.oldest_open_report_age_seconds",
+              version: 1,
+              definition: "Oldest open report age.",
+              status: "insufficient_data",
+              unit: null,
+              limitations: ["No open reports on this brand."],
+            },
+          },
+          marketplace: {
+            ...commandCentreHealthFixture().brand_health.marketplace,
+            time_to_first_like_median: {
+              metric_id: "marketplace.time_to_first_like_median",
+              version: 1,
+              definition: "Deferred.",
+              status: "unavailable",
+              unit: null,
+              limitations: ["Deferred."],
+            },
+          },
+        });
+      }
+      if (url.includes("/api/v1/hq/command_centre/brands")) {
+        return commandCentreBrandsOk([{ brand: "dateza" }]);
+      }
+      if (url.includes("/api/v1/hq/security_alerts")) return json(200, { alerts: [] });
+      return json(404, { error: "not_found" });
+    });
+    renderAt("/hq");
+    await screen.findByText(/Company pulse/i);
+    expect(screen.getAllByText(/Not enough data yet/i).length).toBeGreaterThan(0);
   });
 
   it("loads member directory with filters and pagination", async () => {

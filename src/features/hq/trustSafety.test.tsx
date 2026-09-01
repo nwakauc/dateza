@@ -339,6 +339,7 @@ describe("D8N HQ Phase 2 Trust & Safety", () => {
   });
 
   it("links Command Centre attention rail to Trust & Safety without fake overdue counts", async () => {
+    window.localStorage.setItem("hq:experience-mode:v1", "ops");
     vi.mocked(fetch).mockImplementation((input) => {
       const url = urlOf(input);
       if (url.includes("/api/v1/me")) return meOk();

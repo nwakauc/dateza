@@ -3,15 +3,20 @@ import { Outlet, useLocation } from "react-router-dom";
 import { findHqNavItem } from "./navConfig.ts";
 import { HqBrandProvider } from "./HqBrandContext.tsx";
 import { HqMfaGate } from "./HqMfaGate.tsx";
+import { HqModeProvider } from "./HqModeContext.tsx";
+import { useHqMode } from "./useHqMode.ts";
 import { GlobalSearchPalette, HqHeader } from "./HqHeader.tsx";
 import { HqSidebar } from "./HqSidebar.tsx";
 import "./hq.css";
 
 function HqShellInner() {
   const location = useLocation();
+  const { mode } = useHqMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const navItem = findHqNavItem(location.pathname);
+  const isCommandCentre =
+    location.pathname === "/hq" || location.pathname.replace(/\/$/, "") === "/hq";
   const isReportDetail = /\/hq\/trust-safety\/reports\//.test(location.pathname);
   const title =
     location.pathname.startsWith("/hq/members/")
@@ -54,7 +59,12 @@ function HqShellInner() {
   }, []);
 
   return (
-    <div className="hq-root" data-sidebar-open={sidebarOpen ? "true" : "false"}>
+    <div
+      className="hq-root"
+      data-sidebar-open={sidebarOpen ? "true" : "false"}
+      data-hq-experience={isCommandCentre ? mode : "ops"}
+      data-hq-page={isCommandCentre ? "command-centre" : undefined}
+    >
       <HqSidebar onNavigate={closeSidebar} />
       <div className="hq-main">
         <HqHeader
@@ -83,7 +93,9 @@ export default function HqShell() {
   return (
     <HqBrandProvider>
       <HqMfaGate>
-        <HqShellInner />
+        <HqModeProvider>
+          <HqShellInner />
+        </HqModeProvider>
       </HqMfaGate>
     </HqBrandProvider>
   );

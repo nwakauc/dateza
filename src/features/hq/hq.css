@@ -1461,3 +1461,65 @@
 .hq-brand-compare-wrap {
   overflow-x: auto;
 }
+
+.hq-ops-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-main {
+  background: #f4f1ec;
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-header {
+  background: rgba(252, 251, 249, 0.92);
+  border-bottom-color: rgba(24, 24, 27, 0.08);
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-header h1,
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-header__titles > div > p {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-sidebar {
+  background: #fcfbf9;
+  border-right-color: rgba(24, 24, 27, 0.08);
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-nav-link {
+  color: #3f3f46;
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .hq-nav-link.active {
+  background: rgba(24, 24, 27, 0.06);
+  color: #18181b;
+}
+
+.hq-root[data-hq-page="command-centre"][data-hq-experience="founder"] .founder-mode-toggle {
+  background: #fff;
+}
+
+.hq-root[data-hq-experience="ops"] .founder-mode-toggle {
+  background: var(--hq-bg-elevated);
+  border-color: var(--hq-border);
+}
+
+.hq-root[data-hq-experience="ops"] .founder-mode-toggle button {
+  color: var(--hq-text-muted);
+}
+
+.hq-root[data-hq-experience="ops"] .founder-mode-toggle button.is-active {
+  background: rgba(124, 108, 240, 0.22);
+  color: var(--hq-text);
+}
