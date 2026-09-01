@@ -1,13 +1,10 @@
 import { Link } from "react-router-dom";
 import { HqSiteLink } from "./HqSiteLink.tsx";
 import { HqSidebarNav } from "./HqSidebarNav.tsx";
-import { useHqMode } from "./useHqMode.ts";
 import { useHqOperator } from "./useHqOperator.ts";
 
 export function HqSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { operator } = useHqOperator();
-  const { mode } = useHqMode();
-  const founderMode = mode === "founder";
 
   return (
     <aside className="hq-sidebar" aria-label="D8N HQ navigation">
@@ -21,7 +18,7 @@ export function HqSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <HqSidebarNav operator={operator} founderMode={founderMode} onNavigate={onNavigate} />
+      <HqSidebarNav operator={operator} onNavigate={onNavigate} />
 
       <div className="hq-sidebar__footer">
         <Link to="/ops" className="hq-site-link hq-site-link--sidebar" onClick={onNavigate}>

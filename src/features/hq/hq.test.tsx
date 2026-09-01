@@ -6,6 +6,7 @@ import App from "../../App.tsx";
 import { setBearerToken } from "../../lib/api/tokenStore.ts";
 import { clearBrandAdminAccessCache } from "../../lib/hq/adminAccess.ts";
 import { lookupHqMember } from "../../lib/hq/api.ts";
+import { clearNavExpansionState } from "./hqNavExpansion.ts";
 import {
   commandCentreBrandsOk,
   commandCentreHealthFixture,
@@ -244,6 +245,7 @@ describe("D8N HQ Phase 1 integration", () => {
   beforeEach(() => {
     setBearerToken("opaque-token");
     clearBrandAdminAccessCache();
+    clearNavExpansionState();
     window.localStorage.setItem("hq:experience-mode:v1", "ops");
     vi.stubGlobal("fetch", vi.fn());
   });
@@ -253,6 +255,7 @@ describe("D8N HQ Phase 1 integration", () => {
     vi.unstubAllGlobals();
     setBearerToken(undefined);
     clearBrandAdminAccessCache();
+    clearNavExpansionState();
     window.localStorage.clear();
   });
 
@@ -561,9 +564,12 @@ describe("D8N HQ Phase 1 integration", () => {
     });
 
     renderAt(`/hq/members/${PROFILE_ID}?sections=identity,product`);
-    const product = await screen.findByRole("button", { name: /product/i });
+    expect(await screen.findByText(/likes given/i)).toBeInTheDocument();
+    const product = screen
+      .getAllByRole("button")
+      .find((button) => button.getAttribute("aria-controls") === "hq-product-panel");
+    expect(product).toBeTruthy();
     expect(product).toHaveAttribute("aria-expanded", "true");
-    expect(within(product.closest("section")!).getByText(/likes given/i)).toBeInTheDocument();
   });
 
   it("shows backend failure on Member 360 load", async () => {
@@ -976,6 +982,10 @@ describe("D8N HQ Phase 1 integration", () => {
     await screen.findByRole("heading", { name: /Founder/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
 
+    const peopleTrigger = screen.getByRole("button", { name: /^people$/i });
+    if (peopleTrigger.getAttribute("aria-expanded") !== "true") {
+      await user.click(peopleTrigger);
+    }
     await user.click(screen.getByRole("link", { name: /^members$/i }));
     await screen.findByText("Member directory");
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
@@ -989,6 +999,10 @@ describe("D8N HQ Phase 1 integration", () => {
     await screen.findByRole("tab", { name: /^overview$/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
 
+    const commandTrigger = screen.getByRole("button", { name: /^command centre$/i });
+    if (commandTrigger.getAttribute("aria-expanded") !== "true") {
+      await user.click(commandTrigger);
+    }
     await user.click(screen.getByRole("link", { name: /security alerts/i }));
     expect(await screen.findByText(/failed login/i)).toBeInTheDocument();
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
@@ -1020,28 +1034,44 @@ describe("D8N HQ Phase 1 integration", () => {
     expect(peopleTrigger).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("shows coming-soon people items in ops mode but hides them in founder mode", async () => {
+  it("shows coming-soon people items in both founder and ops modes", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
-    window.localStorage.setItem("hq:experience-mode:v1", "ops");
-    renderAt("/hq");
-    const peopleTrigger = await screen.findByRole("button", { name: /^people$/i });
-    await user.click(peopleTrigger);
-    expect(await screen.findByRole("link", { name: /customers & support/i })).toBeInTheDocument();
 
-    cleanup();
-    window.localStorage.setItem("hq:experience-mode:v1", "founder");
-    renderAt("/hq");
-    await screen.findByRole("link", { name: /^members$/i });
-    expect(screen.queryByRole("link", { name: /customers & support/i })).not.toBeInTheDocument();
+    for (const mode of ["ops", "founder"] as const) {
+      cleanup();
+      clearNavExpansionState();
+      window.localStorage.setItem("hq:experience-mode:v1", mode);
+      renderAt("/hq");
+      const peopleTrigger = await screen.findByRole("button", { name: /^people$/i });
+      if (peopleTrigger.getAttribute("aria-expanded") !== "true") {
+        await user.click(peopleTrigger);
+      }
+      expect(await screen.findByRole("link", { name: /customers & support/i })).toBeInTheDocument();
+    }
   });
 
-  it("does not render hidden roadmap engineering items in the sidebar", async () => {
+  it("renders full roadmap engineering group with soon treatment", async () => {
+    const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
     renderAt("/hq");
-    await screen.findByRole("link", { name: /command centre/i });
-    expect(screen.queryByRole("button", { name: /^engineering$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /deployments/i })).not.toBeInTheDocument();
+    const engineeringTrigger = await screen.findByRole("button", { name: /^engineering$/i });
+    await user.click(engineeringTrigger);
+    expect(await screen.findByRole("link", { name: /deployments/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /deployments/i })).toHaveTextContent(/soon/i);
+  });
+
+  it("expands the command centre accordion when on /hq", async () => {
+    vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
+    renderAt("/hq");
+    await screen.findByRole("heading", { name: "Command Centre" });
+    const nav = await screen.findByRole("navigation", { name: "HQ sections" });
+    const trigger = within(nav).getByRole("button", { name: /^command centre$/i });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(within(nav).getByRole("link", { name: /^command centre$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });
 

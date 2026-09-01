@@ -7,7 +7,7 @@ import { isNavGroupExpanded, setNavGroupExpanded } from "./hqNavExpansion.ts";
 import {
   HQ_NAV,
   isHqNavItemActive,
-  type HqNavEntry,
+  isNavItemSoon,
   type HqNavGroup,
   type HqNavItem,
 } from "./navConfig.ts";
@@ -17,46 +17,20 @@ function capabilityIdForItem(item: HqNavItem): string {
   return item.id;
 }
 
-function visibleItems(
+function accessibleItems(
   items: HqNavItem[],
   operator: HqCurrentOperator | null | undefined,
-  founderMode: boolean,
 ): HqNavItem[] {
-  return items.filter((item) => {
-    if (item.visibility === "hidden") return false;
-    if (!canAccessNavItem(operator, capabilityIdForItem(item))) return false;
-    if (founderMode && item.visibility === "coming_soon" && item.availability !== "ready") {
-      return false;
-    }
-    return true;
-  });
+  return items.filter((item) => canAccessNavItem(operator, capabilityIdForItem(item)));
 }
 
-function visibleEntries(
-  entries: HqNavEntry[],
+function accessibleGroups(
   operator: HqCurrentOperator | null | undefined,
-  founderMode: boolean,
-): HqNavEntry[] {
-  const result: HqNavEntry[] = [];
-
-  for (const entry of entries) {
-    if (entry.type === "link") {
-      if (entry.item.visibility === "hidden") continue;
-      if (!canAccessNavItem(operator, capabilityIdForItem(entry.item))) continue;
-      result.push(entry);
-      continue;
-    }
-
-    const items = visibleItems(entry.group.items, operator, founderMode);
-    if (items.length === 0) continue;
-    if (items.length === 1) {
-      result.push({ type: "link", item: items[0]! });
-      continue;
-    }
-    result.push({ type: "group", group: { ...entry.group, items } });
-  }
-
-  return result;
+): HqNavGroup[] {
+  return HQ_NAV.map((entry) => ({
+    ...entry.group,
+    items: accessibleItems(entry.group.items, operator),
+  })).filter((group) => group.items.length > 0);
 }
 
 function groupHasActiveChild(group: HqNavGroup, pathname: string, search: string): boolean {
@@ -67,13 +41,11 @@ function NavGroup({
   group,
   pathname,
   search,
-  founderMode,
   onNavigate,
 }: {
   group: HqNavGroup;
   pathname: string;
   search: string;
-  founderMode: boolean;
   onNavigate?: () => void;
 }) {
   const activeChild = groupHasActiveChild(group, pathname, search);
@@ -83,9 +55,8 @@ function NavGroup({
   const expanded = activeChild || toggleExpanded;
 
   const toggle = useCallback(() => {
-    if (activeChild) return;
     setToggleExpanded((value) => {
-      const next = !value;
+      const next = activeChild ? true : !value;
       setNavGroupExpanded(group.id, next);
       return next;
     });
@@ -109,6 +80,7 @@ function NavGroup({
         <div className="hq-nav-accordion__items">
           {group.items.map((item) => {
             const active = isHqNavItemActive(item, pathname, search);
+            const soon = isNavItemSoon(item);
             return (
               <NavLink
                 key={item.id}
@@ -117,13 +89,7 @@ function NavGroup({
                   "hq-nav-link",
                   "hq-nav-link--child",
                   active ? "hq-nav-link--active" : "",
-                  item.visibility === "coming_soon" || item.availability !== "ready"
-                    ? "hq-nav-link--soon"
-                    : "",
-                  founderMode &&
-                  (item.visibility === "coming_soon" || item.availability !== "ready")
-                    ? "hq-nav-link--later"
-                    : "",
+                  soon ? "hq-nav-link--soon" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -131,7 +97,7 @@ function NavGroup({
                 aria-current={active ? "page" : undefined}
               >
                 <span className="hq-nav-link__label">{item.label}</span>
-                {item.visibility === "coming_soon" || item.availability !== "ready" ? (
+                {soon ? (
                   <span className="hq-nav-link__meta" title="Coming soon">
                     <Lock size={11} aria-hidden="true" />
                     <span>Soon</span>
@@ -148,59 +114,28 @@ function NavGroup({
 
 export function HqSidebarNav({
   operator,
-  founderMode,
   onNavigate,
 }: {
   operator: HqCurrentOperator | null | undefined;
-  founderMode: boolean;
   onNavigate?: () => void;
 }) {
   const location = useLocation();
   const pathname = location.pathname;
   const search = location.search;
 
-  const entries = useMemo(
-    () => visibleEntries(HQ_NAV, operator, founderMode),
-    [operator, founderMode],
-  );
+  const groups = useMemo(() => accessibleGroups(operator), [operator]);
 
   return (
     <nav className="hq-sidebar__nav" aria-label="HQ sections">
-      {entries.map((entry) => {
-        if (entry.type === "link") {
-          const item = entry.item;
-          const active = isHqNavItemActive(item, pathname, search);
-          return (
-            <NavLink
-              key={item.id}
-              to={item.path}
-              className={[
-                "hq-nav-link",
-                "hq-nav-link--top",
-                active ? "hq-nav-link--active" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              end
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-            >
-              <span className="hq-nav-link__label">{item.label}</span>
-            </NavLink>
-          );
-        }
-
-        return (
-          <NavGroup
-            key={entry.group.id}
-            group={entry.group}
-            pathname={pathname}
-            search={search}
-            founderMode={founderMode}
-            onNavigate={onNavigate}
-          />
-        );
-      })}
+      {groups.map((group) => (
+        <NavGroup
+          key={group.id}
+          group={group}
+          pathname={pathname}
+          search={search}
+          onNavigate={onNavigate}
+        />
+      ))}
     </nav>
   );
 }

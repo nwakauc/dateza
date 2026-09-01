@@ -1,7 +1,7 @@
 export type HqNavAvailability = "ready" | "planned" | "phase_gated";
 
-/** Whether an item appears in the sidebar at all. */
-export type HqNavVisibility = "available" | "coming_soon" | "hidden";
+/** `available` = live today; `coming_soon` = reserved route, shown with Soon treatment. */
+export type HqNavVisibility = "available" | "coming_soon";
 
 export type HqNavItem = {
   id: string;
@@ -10,7 +10,6 @@ export type HqNavItem = {
   path: string;
   availability: HqNavAvailability;
   visibility: HqNavVisibility;
-  badge?: string;
 };
 
 export type HqNavGroup = {
@@ -19,23 +18,40 @@ export type HqNavGroup = {
   items: HqNavItem[];
 };
 
-export type HqNavEntry =
-  | { type: "link"; item: HqNavItem }
-  | { type: "group"; group: HqNavGroup };
+export type HqNavEntry = { type: "group"; group: HqNavGroup };
+
+function soon(
+  item: Omit<HqNavItem, "availability" | "visibility"> & {
+    availability?: HqNavAvailability;
+  },
+): HqNavItem {
+  const availability = item.availability ?? "planned";
+  return {
+    ...item,
+    availability,
+    visibility: availability === "ready" ? "available" : "coming_soon",
+  };
+}
+
+function live(item: Omit<HqNavItem, "availability" | "visibility">): HqNavItem {
+  return { ...item, availability: "ready", visibility: "available" };
+}
 
 /**
- * HQ navigation information architecture.
- * Only `available` and selective `coming_soon` items render; `hidden` items stay out of the sidebar.
+ * Full HQ navigation IA — every planned area is visible; unimplemented routes use Soon treatment.
  */
 export const HQ_NAV: HqNavEntry[] = [
   {
-    type: "link",
-    item: {
-      id: "command-centre",
-      label: "Command Centre",
-      path: "/hq",
-      availability: "ready",
-      visibility: "available",
+    type: "group",
+    group: {
+      id: "command",
+      label: "Command centre",
+      items: [
+        live({ id: "command-centre", label: "Command Centre", path: "/hq" }),
+        soon({ id: "live-events", label: "Live / Events", path: "/hq/live" }),
+        live({ id: "alerts", label: "Security alerts", path: "/hq/alerts" }),
+        soon({ id: "incidents", label: "Incidents", path: "/hq/incidents" }),
+      ],
     },
   },
   {
@@ -44,20 +60,13 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "people",
       label: "People",
       items: [
-        {
-          id: "members",
-          label: "Members",
-          path: "/hq/members",
-          availability: "ready",
-          visibility: "available",
-        },
-        {
+        live({ id: "members", label: "Members", path: "/hq/members" }),
+        soon({
           id: "customers",
           label: "Customers & Support",
           path: "/hq/customers",
           availability: "phase_gated",
-          visibility: "coming_soon",
-        },
+        }),
       ],
     },
   },
@@ -67,27 +76,9 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "product",
       label: "Product",
       items: [
-        {
-          id: "product",
-          label: "Product Intelligence",
-          path: "/hq/product",
-          availability: "planned",
-          visibility: "hidden",
-        },
-        {
-          id: "marketplace",
-          label: "Marketplace Health",
-          path: "/hq/marketplace",
-          availability: "planned",
-          visibility: "hidden",
-        },
-        {
-          id: "growth",
-          label: "Growth & Marketing",
-          path: "/hq/growth",
-          availability: "planned",
-          visibility: "hidden",
-        },
+        soon({ id: "product", label: "Product Intelligence", path: "/hq/product" }),
+        soon({ id: "marketplace", label: "Marketplace Health", path: "/hq/marketplace" }),
+        soon({ id: "growth", label: "Growth & Marketing", path: "/hq/growth" }),
       ],
     },
   },
@@ -97,57 +88,11 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "trust",
       label: "Trust & Safety",
       items: [
-        {
-          id: "trust-overview",
-          label: "Overview",
-          path: "/hq/trust-safety",
-          availability: "ready",
-          visibility: "available",
-        },
-        {
-          id: "trust-reports",
-          label: "Reports",
-          path: "/hq/trust-safety?tab=queue",
-          availability: "ready",
-          visibility: "available",
-        },
-        {
-          id: "trust-photos",
-          label: "Photo moderation",
-          path: "/hq/trust-safety?tab=overview",
-          availability: "ready",
-          visibility: "available",
-        },
-        {
-          id: "trust-enforcements",
-          label: "Enforcements",
-          path: "/hq/trust-safety?tab=enforcements",
-          availability: "ready",
-          visibility: "available",
-        },
-        {
-          id: "trust-offenders",
-          label: "Repeat offenders",
-          path: "/hq/trust-safety?tab=offenders",
-          availability: "ready",
-          visibility: "available",
-        },
-      ],
-    },
-  },
-  {
-    type: "group",
-    group: {
-      id: "security",
-      label: "Security",
-      items: [
-        {
-          id: "alerts",
-          label: "Security alerts",
-          path: "/hq/alerts",
-          availability: "ready",
-          visibility: "available",
-        },
+        live({ id: "trust-overview", label: "Overview", path: "/hq/trust-safety" }),
+        live({ id: "trust-reports", label: "Reports", path: "/hq/trust-safety?tab=queue" }),
+        live({ id: "trust-photos", label: "Photo moderation", path: "/hq/trust-safety?tab=overview" }),
+        live({ id: "trust-enforcements", label: "Enforcements", path: "/hq/trust-safety?tab=enforcements" }),
+        live({ id: "trust-offenders", label: "Repeat offenders", path: "/hq/trust-safety?tab=offenders" }),
       ],
     },
   },
@@ -157,17 +102,13 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "engineering",
       label: "Engineering",
       items: [
-        { id: "reliability", label: "Reliability", path: "/hq/reliability", availability: "planned", visibility: "hidden" },
-        { id: "errors", label: "Errors", path: "/hq/errors", availability: "planned", visibility: "hidden" },
-        { id: "apm", label: "APM & Traces", path: "/hq/apm", availability: "planned", visibility: "hidden" },
-        { id: "traces", label: "Traces", path: "/hq/traces", availability: "planned", visibility: "hidden" },
-        { id: "logs", label: "Logs", path: "/hq/logs", availability: "planned", visibility: "hidden" },
-        { id: "jobs", label: "Jobs & Queues", path: "/hq/jobs", availability: "planned", visibility: "hidden" },
-        { id: "database", label: "Database", path: "/hq/database", availability: "planned", visibility: "hidden" },
-        { id: "infra", label: "Infrastructure", path: "/hq/infrastructure", availability: "planned", visibility: "hidden" },
-        { id: "deployments", label: "Deployments", path: "/hq/deployments", availability: "planned", visibility: "hidden" },
-        { id: "data-health", label: "Data Health", path: "/hq/data-health", availability: "planned", visibility: "hidden" },
-        { id: "security-platform", label: "Security", path: "/hq/security", availability: "planned", visibility: "hidden" },
+        soon({ id: "reliability", label: "Reliability", path: "/hq/reliability" }),
+        soon({ id: "errors", label: "Errors", path: "/hq/errors" }),
+        soon({ id: "apm", label: "APM & Traces", path: "/hq/apm" }),
+        soon({ id: "jobs", label: "Jobs & Queues", path: "/hq/jobs" }),
+        soon({ id: "database", label: "Database", path: "/hq/database" }),
+        soon({ id: "infra", label: "Infrastructure", path: "/hq/infrastructure" }),
+        soon({ id: "deployments", label: "Deployments", path: "/hq/deployments" }),
       ],
     },
   },
@@ -177,9 +118,10 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "platform",
       label: "Platform",
       items: [
-        { id: "brands", label: "Brands", path: "/hq/brands", availability: "planned", visibility: "hidden" },
-        { id: "admin", label: "Operators / Admin", path: "/hq/admin", availability: "planned", visibility: "hidden" },
-        { id: "audit", label: "Audit", path: "/hq/audit", availability: "planned", visibility: "hidden" },
+        soon({ id: "brands", label: "Brands", path: "/hq/brands" }),
+        soon({ id: "admin", label: "Operators / Admin", path: "/hq/admin" }),
+        soon({ id: "audit", label: "Audit", path: "/hq/audit" }),
+        soon({ id: "security-platform", label: "Security", path: "/hq/security" }),
       ],
     },
   },
@@ -189,9 +131,8 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "business",
       label: "Business",
       items: [
-        { id: "revenue", label: "Revenue", path: "/hq/revenue", availability: "phase_gated", visibility: "hidden" },
-        { id: "live-events", label: "Live / Events", path: "/hq/live", availability: "planned", visibility: "hidden" },
-        { id: "incidents", label: "Incidents", path: "/hq/incidents", availability: "planned", visibility: "hidden" },
+        soon({ id: "revenue", label: "Revenue", path: "/hq/revenue", availability: "phase_gated" }),
+        soon({ id: "acquisition", label: "Acquisition", path: "/hq/acquisition" }),
       ],
     },
   },
@@ -201,40 +142,32 @@ export const HQ_NAV: HqNavEntry[] = [
       id: "intelligence",
       label: "Intelligence",
       items: [
-        {
+        soon({
           id: "company-intelligence",
           label: "Company Intelligence",
           path: "/hq/intelligence",
           availability: "phase_gated",
-          visibility: "hidden",
-        },
-        {
+        }),
+        soon({
           id: "briefings",
           label: "Executive Briefings",
           path: "/hq/briefings",
           availability: "phase_gated",
-          visibility: "hidden",
-        },
+        }),
       ],
     },
   },
 ];
 
 /** @deprecated Use HQ_NAV — kept for route lookup helpers. */
-export const HQ_NAV_GROUPS: HqNavGroup[] = HQ_NAV.filter(
-  (entry): entry is { type: "group"; group: HqNavGroup } => entry.type === "group",
-).map((entry) => entry.group);
+export const HQ_NAV_GROUPS: HqNavGroup[] = HQ_NAV.map((entry) => entry.group);
 
 function allNavItems(): HqNavItem[] {
-  const items: HqNavItem[] = [];
-  for (const entry of HQ_NAV) {
-    if (entry.type === "link") {
-      items.push(entry.item);
-    } else {
-      items.push(...entry.group.items);
-    }
-  }
-  return items;
+  return HQ_NAV.flatMap((entry) => entry.group.items);
+}
+
+export function isNavItemSoon(item: HqNavItem): boolean {
+  return item.availability !== "ready" || item.visibility === "coming_soon";
 }
 
 export function navItemPathname(path: string): string {
@@ -308,7 +241,6 @@ export function findHqNavItem(pathname: string, search = ""): HqNavItem | undefi
 export function findHqNavGroupIdForPath(pathname: string, search = ""): string | null {
   const normalized = normalizePathname(pathname);
   for (const entry of HQ_NAV) {
-    if (entry.type !== "group") continue;
     for (const item of entry.group.items) {
       if (isHqNavItemActive(item, normalized, search)) {
         return entry.group.id;

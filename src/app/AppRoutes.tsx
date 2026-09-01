@@ -188,6 +188,7 @@ export default function AppRoutes() {
         <Route path="product" element={<UnavailableHqPage path="/hq/product" />} />
         <Route path="marketplace" element={<UnavailableHqPage path="/hq/marketplace" />} />
         <Route path="revenue" element={<UnavailableHqPage path="/hq/revenue" />} />
+        <Route path="acquisition" element={<UnavailableHqPage path="/hq/acquisition" />} />
         <Route path="customers" element={<UnavailableHqPage path="/hq/customers" />} />
         <Route path="trust-safety" element={<TrustSafetyPage />} />
         <Route path="trust-safety/reports/:reportId" element={<ReportDetailPage />} />
