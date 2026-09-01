@@ -1,85 +1,19 @@
-import { useMemo } from "react";
+import {
+  Area,
+  AreaChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-export type ChartSeries = {
-  key: string;
-  label: string;
-  value: number | null;
-  color: string;
-  unavailable?: boolean;
-};
+export type { ChartSeries } from "./founderChartTypes.ts";
 
-type GroupedBarChartProps = {
-  series: ChartSeries[];
-  ariaLabel: string;
-  height?: number;
-};
-
-export function FounderGroupedBarChart({
-  series,
-  ariaLabel,
-  height = 220,
-}: GroupedBarChartProps) {
-  const max = useMemo(() => {
-    const values = series.map((item) => item.value ?? 0);
-    return Math.max(1, ...values);
-  }, [series]);
-
-  const width = 100;
-  const barWidth = Math.min(18, (width - 12) / Math.max(series.length, 1) - 4);
-
-  return (
-    <figure className="founder-chart founder-chart--bars" aria-label={ariaLabel}>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-hidden="true"
-        preserveAspectRatio="none"
-        className="founder-chart__svg"
-      >
-        {series.map((item, index) => {
-          const x = 8 + index * (barWidth + 8);
-          const value = item.value ?? 0;
-          const barHeight = item.unavailable || item.value === null ? 4 : (value / max) * (height - 48);
-          const y = height - 28 - barHeight;
-          return (
-            <g key={item.key}>
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                rx={3}
-                fill={item.unavailable || item.value === null ? "#d4d4d4" : item.color}
-                className="founder-chart__bar"
-              />
-              <text
-                x={x + barWidth / 2}
-                y={height - 10}
-                textAnchor="middle"
-                className="founder-chart__axis-label"
-              >
-                {item.label}
-              </text>
-              <text
-                x={x + barWidth / 2}
-                y={y - 6}
-                textAnchor="middle"
-                className="founder-chart__value-label"
-              >
-                {item.unavailable ? "—" : item.value === null ? "—" : item.value}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <figcaption className="visually-hidden">
-        {series
-          .map((item) => `${item.label}: ${item.unavailable ? "unavailable" : item.value ?? "no data"}`)
-          .join(", ")}
-      </figcaption>
-    </figure>
-  );
-}
+const PULSE_CHART_HEIGHT = 112;
+const DONUT_SIZE = 80;
+const SPARKLINE_HEIGHT = 28;
 
 type DonutSegment = {
   key: string;
@@ -87,6 +21,114 @@ type DonutSegment = {
   value: number;
   color: string;
 };
+
+type PulseSeries = {
+  key: string;
+  label: string;
+  color: string;
+  points: Array<{ window: string; value: number | null; unavailable?: boolean }>;
+};
+
+export function FounderSparkline({
+  values,
+  color,
+  ariaLabel,
+}: {
+  values: Array<number | null>;
+  color: string;
+  ariaLabel: string;
+}) {
+  const numeric = values.map((value) => (value === null ? 0 : value));
+  const max = Math.max(1, ...numeric);
+  const width = 64;
+  const height = SPARKLINE_HEIGHT;
+  const step = numeric.length > 1 ? width / (numeric.length - 1) : width;
+  const points = numeric
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - 4 - (value / max) * (height - 8);
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      className="founder-sparkline"
+      viewBox={`0 0 ${width} ${height}`}
+      width={width}
+      height={height}
+      role="img"
+      aria-label={ariaLabel}
+    >
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+}
+
+export function FounderPulseAreaChart({
+  series,
+  ariaLabel,
+}: {
+  series: PulseSeries[];
+  ariaLabel: string;
+}) {
+  const windowLabels = series[0]?.points.map((point) => point.window) ?? [];
+  const data = windowLabels.map((window, index) => {
+    const row: Record<string, string | number> = { window };
+    for (const item of series) {
+      const point = item.points[index];
+      row[item.key] =
+        point?.unavailable || point?.value === null ? 0 : (point?.value ?? 0);
+    }
+    return row;
+  });
+
+  return (
+    <figure className="founder-chart founder-chart--pulse-area" aria-label={ariaLabel}>
+      <div className="founder-chart__plot" style={{ height: PULSE_CHART_HEIGHT }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 6, right: 8, left: -28, bottom: 0 }}>
+            <XAxis
+              dataKey="window"
+              tick={{ fontSize: 10, fill: "var(--founder-text-faint)" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis hide domain={[0, "auto"]} />
+            {series.map((item) => (
+              <Area
+                key={item.key}
+                type="monotone"
+                dataKey={item.key}
+                name={item.label}
+                stroke={item.color}
+                fill={item.color}
+                fillOpacity={0.1}
+                strokeWidth={2}
+                isAnimationActive={false}
+                dot={{ r: 2.5, strokeWidth: 0 }}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <figcaption className="visually-hidden">
+        {series
+          .map((item) =>
+            `${item.label}: ${item.points.map((point) => `${point.window} ${point.value ?? "—"}`).join(", ")}`,
+          )
+          .join("; ")}
+      </figcaption>
+    </figure>
+  );
+}
 
 export function FounderDonutChart({
   segments,
@@ -100,55 +142,51 @@ export function FounderDonutChart({
   ariaLabel: string;
 }) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  const radius = 42;
-  const stroke = 14;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
 
   return (
     <figure className="founder-chart founder-chart--donut" aria-label={ariaLabel}>
-      <svg viewBox="0 0 120 120" role="img" aria-hidden="true" className="founder-chart__svg">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="#eceae6" strokeWidth={stroke} />
-        <g transform="rotate(-90 60 60)">
-          {total > 0
-            ? segments.map((segment) => {
-                const fraction = segment.value / total;
-                const dash = fraction * circumference;
-                const circle = (
-                  <circle
-                    key={segment.key}
-                    cx="60"
-                    cy="60"
-                    r={radius}
-                    fill="none"
-                    stroke={segment.color}
-                    strokeWidth={stroke}
-                    strokeDasharray={`${dash} ${circumference - dash}`}
-                    strokeDashoffset={-offset}
-                    strokeLinecap="round"
-                  />
-                );
-                offset += dash;
-                return circle;
-              })
-            : null}
-        </g>
-        <text x="60" y="56" textAnchor="middle" className="founder-chart__donut-center">
-          {centerValue}
-        </text>
-        <text x="60" y="72" textAnchor="middle" className="founder-chart__donut-sub">
-          {totalLabel}
-        </text>
-      </svg>
-      <ul className="founder-chart__legend">
-        {segments.map((segment) => (
-          <li key={segment.key}>
-            <span className="founder-chart__swatch" style={{ background: segment.color }} />
-            <span>{segment.label}</span>
-            <strong>{segment.value.toLocaleString("en-ZA")}</strong>
-          </li>
-        ))}
-      </ul>
+      <div className="founder-chart__donut-layout">
+        <div
+          className="founder-chart__donut-plot"
+          style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={segments}
+                dataKey="value"
+                nameKey="label"
+                innerRadius={24}
+                outerRadius={36}
+                strokeWidth={0}
+                isAnimationActive={false}
+              >
+                {segments.map((segment) => (
+                  <Cell key={segment.key} fill={segment.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="founder-chart__donut-center-label" aria-hidden="true">
+            <strong>{centerValue}</strong>
+            <span>{totalLabel}</span>
+          </div>
+        </div>
+        <ul className="founder-chart__legend">
+          {segments.map((segment) => {
+            const pct = total > 0 ? ((segment.value / total) * 100).toFixed(1) : "0";
+            return (
+              <li key={segment.key}>
+                <span className="founder-chart__swatch" style={{ background: segment.color }} />
+                <span>{segment.label}</span>
+                <strong>
+                  {pct}%
+                </strong>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </figure>
   );
 }
@@ -189,7 +227,7 @@ export function FounderHorizontalBars({
   );
 }
 
-export function FounderChartSkeleton({ variant = "bars" }: { variant?: "bars" | "donut" }) {
+export function FounderChartSkeleton({ variant = "bars" }: { variant?: "bars" | "donut" | "area" }) {
   return (
     <div
       className={`founder-chart-skeleton founder-chart-skeleton--${variant}`}

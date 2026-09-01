@@ -1,7 +1,7 @@
 /* Founder light experience — HQ application shell (all /hq routes). */
 
 .hq-root[data-hq-experience="founder"] {
-  --hq-bg: #f4f1ec;
+  --hq-bg: #f0f2f5;
   --hq-bg-elevated: #fcfbf9;
   --hq-bg-card: #ffffff;
   --hq-bg-card-hover: #f7f5f1;

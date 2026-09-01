@@ -756,7 +756,7 @@ describe("D8N HQ Phase 1 integration", () => {
     window.localStorage.setItem("hq:experience-mode:v1", "founder");
     vi.mocked(fetch).mockImplementation(withOperator(() => undefined));
     renderAt("/hq");
-    expect(await screen.findByText(/D8N at a glance/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Founder/i })).toBeInTheDocument();
     expect(await screen.findByText(/Total members/i)).toBeInTheDocument();
     expect(await screen.findByText(/Company pulse/i)).toBeInTheDocument();
     expect(await screen.findByText(/Needs your attention/i)).toBeInTheDocument();
@@ -973,7 +973,7 @@ describe("D8N HQ Phase 1 integration", () => {
     });
 
     renderAt("/hq");
-    await screen.findByText(/D8N at a glance/i);
+    await screen.findByRole("heading", { name: /Founder/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
 
     await user.click(screen.getByRole("link", { name: /^members$/i }));
@@ -994,7 +994,7 @@ describe("D8N HQ Phase 1 integration", () => {
     expect(window.localStorage.getItem("hq:experience-mode:v1")).toBe("founder");
 
     await user.click(screen.getByRole("link", { name: /^command centre$/i }));
-    await screen.findByText(/D8N at a glance/i);
+    await screen.findByRole("heading", { name: /Founder/i });
     expect(document.querySelector(".hq-root")).toHaveAttribute("data-hq-experience", "founder");
   });
 });

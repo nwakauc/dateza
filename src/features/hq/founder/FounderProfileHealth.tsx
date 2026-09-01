@@ -4,10 +4,13 @@ import { FounderDonutChart } from "./charts/FounderCharts.tsx";
 import { FounderMetricInfo, FounderMetricValue } from "./FounderMetricInfo.tsx";
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "#c9c5be",
-  active: "#1f9d63",
-  suspended: "#d97706",
+  active: "#22c55e",
+  draft: "#94a3b8",
+  suspended: "#f59e0b",
+  deleted: "#ef4444",
 };
+
+const ACTIVATION_TARGET = 0.7;
 
 export function FounderProfileHealth({ health }: { health: HqCommandCentreHealth }) {
   const byStatus = health.profile_health.by_status;
@@ -21,7 +24,7 @@ export function FounderProfileHealth({ health }: { health: HqCommandCentreHealth
       key,
       label: key.replace(/_/g, " "),
       value,
-      color: STATUS_COLORS[key] ?? "#8b8b8b",
+      color: STATUS_COLORS[key] ?? "#a78bfa",
     }));
 
   const total =
@@ -29,9 +32,14 @@ export function FounderProfileHealth({ health }: { health: HqCommandCentreHealth
     statusPresentation.numeric ??
     0;
 
+  const activationPct =
+    activation.status === "available" && activation.numeric !== null
+      ? Math.min(100, activation.numeric * 100)
+      : null;
+
   return (
-    <section className="founder-panel" aria-labelledby="founder-profile-title">
-      <header className="founder-panel__header">
+    <section className="founder-panel founder-panel--profile" aria-labelledby="founder-profile-title">
+      <header className="founder-panel__header founder-panel__header--compact">
         <div>
           <h2 id="founder-profile-title" className="founder-panel__title">
             Profile health
@@ -44,7 +52,7 @@ export function FounderProfileHealth({ health }: { health: HqCommandCentreHealth
       {segments && segments.length > 0 ? (
         <FounderDonutChart
           segments={segments}
-          totalLabel="profiles"
+          totalLabel="Total"
           centerValue={total.toLocaleString("en-ZA")}
           ariaLabel="Profile status distribution"
         />
@@ -52,26 +60,35 @@ export function FounderProfileHealth({ health }: { health: HqCommandCentreHealth
         <p className="founder-empty-inline">{statusPresentation.text}</p>
       )}
 
-      <div className="founder-profile-footer">
-        <div className="founder-profile-stat">
-          <span className="founder-profile-stat__label">
-            Visible published
-            <FounderMetricInfo metric={health.profile_health.visible_published} label="Visible published" />
+      <div className="founder-profile-activation">
+        <div className="founder-profile-activation__head">
+          <span className="founder-profile-activation__label">
+            Activation rate
+            <FounderMetricInfo
+              metric={health.profile_health.activation_ratio}
+              label="Activation ratio"
+            />
           </span>
-          <FounderMetricValue presentation={published} large />
+          <FounderMetricValue presentation={activation} />
         </div>
-        <div className="founder-profile-stat">
-          <span className="founder-profile-stat__label">
-            Activation
-            <FounderMetricInfo metric={health.profile_health.activation_ratio} label="Activation ratio" />
-          </span>
-          <FounderMetricValue presentation={activation} large />
-          {activation.status === "available" && activation.numeric !== null ? (
-            <div className="founder-activation-bar" aria-hidden="true">
-              <span style={{ width: `${Math.min(100, activation.numeric * 100)}%` }} />
-            </div>
-          ) : null}
-        </div>
+        {activationPct !== null ? (
+          <div className="founder-activation-bar founder-activation-bar--target" aria-hidden="true">
+            <span style={{ width: `${activationPct}%` }} />
+            <mark style={{ left: `${ACTIVATION_TARGET * 100}%` }} />
+          </div>
+        ) : null}
+        <p className="founder-profile-activation__target">Target {ACTIVATION_TARGET * 100}%</p>
+      </div>
+
+      <div className="founder-profile-published">
+        <span className="founder-profile-stat__label">
+          Visible published
+          <FounderMetricInfo
+            metric={health.profile_health.visible_published}
+            label="Visible published"
+          />
+        </span>
+        <FounderMetricValue presentation={published} />
       </div>
     </section>
   );

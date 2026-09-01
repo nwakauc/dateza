@@ -24,6 +24,14 @@ beforeEach(() => {
   if (typeof URL.revokeObjectURL !== "function") {
     URL.revokeObjectURL = () => undefined;
   }
+  if (typeof ResizeObserver === "undefined") {
+    class ResizeObserverStub {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+  }
   vi.stubGlobal(
     "fetch",
     vi.fn(() => Promise.resolve(unauthorizedResponse())),

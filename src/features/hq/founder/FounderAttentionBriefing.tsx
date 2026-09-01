@@ -11,10 +11,23 @@ const FOUNDER_ACTION_LABELS: Record<string, string> = {
   metric_unavailable: "Learn more",
 };
 
+const SIGNAL_EMOJI: Record<string, string> = {
+  pending_photo_reviews: "🖼️",
+  old_unresolved_report: "📣",
+  zero_discovery_allocations: "👥",
+  active_enforcements: "⚖️",
+  metric_unavailable: "💡",
+};
+
 function founderActionLabel(signal: HqAttentionSignal): string | null {
   const drillDown = attentionSignalDrillDown(signal);
   if (!drillDown) return null;
   return FOUNDER_ACTION_LABELS[signal.signal] ?? drillDown.label;
+}
+
+function signalEmoji(signal: HqAttentionSignal): string {
+  if (signal.severity === "warning") return "⚠️";
+  return SIGNAL_EMOJI[signal.signal] ?? "✨";
 }
 
 export function FounderAttentionBriefing({
@@ -46,11 +59,11 @@ export function FounderAttentionBriefing({
         <div className="founder-attention__skeleton founder-skeleton" aria-hidden="true" />
       ) : signals.length === 0 ? (
         <p className="founder-attention__empty">
-          Nothing flagged right now. The company looks steady from the current snapshot.
+          Nothing flagged right now — looking good ✨
         </p>
       ) : (
         <ol className="founder-attention__list">
-          {signals.map((signal, index) => {
+          {signals.map((signal) => {
             const drillDown = attentionSignalDrillDown(signal);
             const action = founderActionLabel(signal);
             return (
@@ -58,8 +71,8 @@ export function FounderAttentionBriefing({
                 key={signal.signal}
                 className={`founder-attention__item founder-attention__item--${signal.severity}`}
               >
-                <span className="founder-attention__index">
-                  {String(index + 1).padStart(2, "0")}
+                <span className="founder-attention__icon" aria-hidden="true">
+                  {signalEmoji(signal)}
                 </span>
                 <div className="founder-attention__body">
                   <h3>{signal.title}</h3>

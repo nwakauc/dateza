@@ -35,7 +35,6 @@ export function FounderOverview({
     <div className="founder-overview" data-loading={load === "loading" ? "true" : "false"}>
       <header className="founder-intro">
         <div className="founder-intro__copy">
-          <p className="founder-intro__eyebrow">D8N at a glance</p>
           <h1 className="founder-intro__title">
             {founderGreeting()}, Founder <span aria-hidden="true">👋</span>
           </h1>
