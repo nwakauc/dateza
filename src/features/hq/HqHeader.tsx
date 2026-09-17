@@ -6,7 +6,7 @@ import { useHqBrand } from "./useHqBrand.ts";
 import { formatOperatorRole } from "../../lib/hq/capabilities.ts";
 
 export function BrandSelector() {
-  const { status, brandName, brandSlug } = useHqBrand();
+  const { status, brandName, brandSlug, operator } = useHqBrand();
 
   if (status === "loading") {
     return (
@@ -16,14 +16,22 @@ export function BrandSelector() {
     );
   }
 
+  const otherAssignments = (operator?.brand_assignments ?? []).filter(
+    (assignment) => assignment.brand !== brandSlug,
+  );
+  const title =
+    otherAssignments.length > 0
+      ? `Brand is resolved from the API host — this view shows ${brandName ?? brandSlug} data only. ` +
+        `You also have HQ access to: ${otherAssignments.map((a) => a.brand).join(", ")}. ` +
+        `Sign in on each brand's own host to see its data; a cross-brand switcher is not available yet.`
+      : "Brand is resolved from the API host. Cross-brand All Company is not available in Phase 1.";
+
   return (
-    <div
-      className="hq-control"
-      title="Brand is resolved from the API host. Cross-brand All Company is not available in Phase 1."
-      aria-label="Brand context"
-    >
+    <div className="hq-control" title={title} aria-label="Brand context">
       <span>{brandName ?? brandSlug ?? "Unknown brand"}</span>
-      <span className="hq-nav-link__meta">Host</span>
+      <span className="hq-nav-link__meta">
+        {otherAssignments.length > 0 ? `Host · +${otherAssignments.length} more` : "Host"}
+      </span>
     </div>
   );
 }
