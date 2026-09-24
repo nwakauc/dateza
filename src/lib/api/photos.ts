@@ -158,21 +158,46 @@ export function createPhotoUploadIntent(input: {
   });
 }
 
-export async function putPhotoBytes(
+const UPLOAD_TIMEOUT_MS = 120_000;
+
+/**
+ * XHR rather than fetch: fetch cannot report request-body progress, and an
+ * upload the member cannot watch is an upload they assume has frozen. On a
+ * phone connection a photo is the slowest thing DateZA asks anyone to do, so
+ * it is the one place progress genuinely matters.
+ */
+export function putPhotoBytes(
   url: string,
   headers: Record<string, string>,
   body: ArrayBuffer,
+  onProgress?: (fraction: number) => void,
 ): Promise<void> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers,
-    body,
-    credentials: "omit",
-    signal: AbortSignal.timeout(120_000),
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("PUT", url, true);
+    for (const [name, value] of Object.entries(headers)) {
+      request.setRequestHeader(name, value);
+    }
+    request.timeout = UPLOAD_TIMEOUT_MS;
+    request.withCredentials = false;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        onProgress?.(event.loaded / event.total);
+      }
+    };
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress?.(1);
+        resolve();
+        return;
+      }
+      reject(new ApiError(request.status, undefined, "upload_put_failed"));
+    };
+    request.onerror = () => reject(new ApiError(0, undefined, "upload_put_failed"));
+    request.ontimeout = () => reject(new ApiError(0, undefined, "upload_timeout"));
+    request.onabort = () => reject(new ApiError(0, undefined, "upload_put_failed"));
+    request.send(body);
   });
-  if (!response.ok) {
-    throw new ApiError(response.status, undefined, "upload_put_failed");
-  }
 }
 
 export function attachOwnerPhoto(signedId: string, position?: number): Promise<OwnerPhoto> {

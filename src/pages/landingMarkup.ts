@@ -262,6 +262,26 @@ export const landingMarkup = `
   </div>
 </div>
 
+<div class="dz-section dz-seo" id="about-dateza" style="padding:54px 64px 20px">
+  <div class="dz-seo-grid" style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);gap:36px;align-items:start">
+    <div>
+      <div style="font-size:11.5px;font-weight:800;letter-spacing:2px;color:#E8375A;margin-bottom:10px">WHAT IS DATEZA?</div>
+      <h2 class="dz-h2" style="font-family:'Instrument Serif',serif;font-size:42px;line-height:1.08;margin:0 0 16px">A dating app for South Africa.</h2>
+      <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#5F5566;max-width:38rem">DateZA is for adults 18 and over who want to meet people here. You join free, create a profile, see who is around, like or pass, and chat when it is mutual. Then you take it offline — in public, at your pace.</p>
+      <p style="margin:0;font-size:16px;line-height:1.65;color:#5F5566;max-width:38rem">Contact can be confirmed after you join. Block, report and unmatch stay free. RealMe identity checks are not available yet, so we do not pretend they are.</p>
+    </div>
+    <div class="dz-seo-links" style="display:flex;flex-direction:column;gap:14px;padding-top:28px">
+      <a href="/south-african-dating" style="color:#E8375A;font-weight:700;text-decoration:none">South African dating →</a>
+      <a href="/singles" style="color:#E8375A;font-weight:700;text-decoration:none">Meet South African singles →</a>
+      <a href="/dating" style="color:#E8375A;font-weight:700;text-decoration:none">Dating by city →</a>
+      <a href="/dating-advice" style="color:#E8375A;font-weight:700;text-decoration:none">Dating advice →</a>
+      <a href="/how-it-works" style="color:#E8375A;font-weight:700;text-decoration:none">How DateZA works →</a>
+      <a href="/dating-safely" style="color:#E8375A;font-weight:700;text-decoration:none">Safety on DateZA →</a>
+      <a href="/about" style="color:#E8375A;font-weight:700;text-decoration:none">About DateZA →</a>
+    </div>
+  </div>
+</div>
+
 <div class="dz-section dz-cta" id="get-app" style="position:relative;margin:0 64px 30px;background:#1C1720;border-radius:36px;padding:80px 60px;text-align:center;overflow:hidden">
   <svg width="120" height="90" viewBox="0 0 120 90" style="position:absolute;top:30px;left:80px;opacity:.85"><path d="M10 74 C 30 36, 60 26, 74 42 C 82 52, 70 62, 62 54 C 54 46, 70 28, 106 20" fill="none" stroke="#F5B62E" stroke-width="2.5" stroke-linecap="round"></path></svg>
   <svg width="56" height="50" viewBox="0 0 46 40" style="position:absolute;bottom:40px;right:100px;animation:dz-pulse 2.6s ease-in-out infinite"><path d="M23 36S6 26 6 15.2C6 8.8 11 4.5 16.2 4.5c2.5 0 4.7 1 5.8 2.6 1.1-1.6 3.3-2.6 5.8-2.6C33 4.5 38 8.8 38 15.2 38 26 23 36 23 36z" fill="none" stroke="#E8375A" stroke-width="2.5"></path></svg>
@@ -275,7 +295,7 @@ export const landingMarkup = `
 
 <div class="dz-section dz-footer" style="display:flex;align-items:center;justify-content:space-between;padding:22px 64px 30px;font-size:12px;color:#9A8F98">
   <a href="#top" style="display:flex;align-items:center;gap:7px;color:inherit;text-decoration:none;cursor:pointer"><svg width="15" height="15" viewBox="0 0 30 30"><path d="M15 26S4 19.3 4 11.9C4 7.5 7.4 4.6 11 4.6c1.7 0 3.2.7 4 1.8.8-1.1 2.3-1.8 4-1.8 3.6 0 7 2.9 7 7.3C26 19.3 15 26 15 26z" fill="#E8375A"></path></svg><b style="color:#1C1720">DateZA</b> · NO DNA. JUST RSA. 🇿🇦</a>
-  <div style="display:flex;gap:24px"><a href="/dating-safely" style="color:inherit;text-decoration:none;cursor:pointer">Safety</a><a href="/privacy" style="color:inherit;text-decoration:none;cursor:pointer">Privacy</a><a href="/help" style="color:inherit;text-decoration:none;cursor:pointer">Help Centre</a><a href="/careers" style="color:inherit;text-decoration:none;cursor:pointer">Careers</a></div>
+  <div class="dz-footer-links" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center"><a href="/south-african-dating" style="color:inherit;text-decoration:none;cursor:pointer">South African dating</a><a href="/singles" style="color:inherit;text-decoration:none;cursor:pointer">Singles</a><a href="/dating" style="color:inherit;text-decoration:none;cursor:pointer">Cities</a><a href="/dating-advice" style="color:inherit;text-decoration:none;cursor:pointer">Advice</a><a href="/dating-safely" style="color:inherit;text-decoration:none;cursor:pointer">Safety</a><a href="/about" style="color:inherit;text-decoration:none;cursor:pointer">About</a><a href="/privacy" style="color:inherit;text-decoration:none;cursor:pointer">Privacy</a><a href="/help" style="color:inherit;text-decoration:none;cursor:pointer">Help Centre</a></div>
   <span>© 2026 DateZA. All rights reserved.</span>
 </div>
 </div>`;

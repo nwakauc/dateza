@@ -1,0 +1,48 @@
+# DateZA
+
+> DateZA is a South African dating app. Members create a profile, discover people, like or pass, and chat when it is mutual.
+
+DateZA is a South African dating app. Join free, create a profile, and meet singles across the country — from Cape Town and Johannesburg to Durban and beyond.
+
+## Important facts
+
+- Official name: DateZA
+- Canonical website: https://date-za.com/
+- Market: South Africa
+- Audience: adults 18 and over who want to date people in South Africa
+- Core loop: create a profile, discover, like or pass, match, chat, meet in public
+- Safety in the product today: block, report, unmatch, contact verification (email or phone), privacy controls
+- Not available today: RealMe identity verification
+- Join: free account in the browser at /sign-up
+
+## Public pages
+
+- [Meet someone who chooses you.](https://date-za.com/): DateZA is a South African dating app. Join free, create a profile, and meet singles across the country — from Cape Town and Johannesburg to Durban and beyond.
+- [South African dating, without the imported playbook.](https://date-za.com/south-african-dating): DateZA is built for dating in South Africa. Meet people across cities, cultures and languages — then take it offline when you are ready.
+- [Meet South African singles who want a real date.](https://date-za.com/singles): Meet South African singles on DateZA. Join free, set your city, and start with people who are actually looking to date.
+- [Dating in South Africa, city by city.](https://date-za.com/dating): Online dating in South Africa with DateZA. See how the app works, then browse dating in Cape Town, Johannesburg, Pretoria, Durban and more.
+- [Dating in Cape Town](https://date-za.com/dating/cape-town): Dating in Cape Town on DateZA. Meet Cape Town singles, plan dates from Sea Point to the City Bowl, and keep safety in reach.
+- [Dating in Johannesburg](https://date-za.com/dating/johannesburg): Dating in Johannesburg on DateZA. Meet Joburg singles across Sandton, Rosebank, Melville, Soweto and the wider metro.
+- [Dating in Pretoria](https://date-za.com/dating/pretoria): Dating in Pretoria (Tshwane) on DateZA. Meet Pretoria singles in Hatfield, Brooklyn, Menlyn and across the Jacaranda City.
+- [Dating in Durban](https://date-za.com/dating/durban): Dating in Durban on DateZA. Meet Durban singles along the Golden Mile, Florida Road, Umhlanga and inland KwaZulu-Natal.
+- [Dating in Gqeberha](https://date-za.com/dating/gqeberha): Dating in Gqeberha (Port Elizabeth) on DateZA. Meet PE singles around Algoa Bay, Summerstrand, Richmond Hill and the Eastern Cape.
+- [Dating in Bloemfontein](https://date-za.com/dating/bloemfontein): Dating in Bloemfontein on DateZA. Meet Mangaung singles around Westdene, the UFS area and the Free State capital.
+- [Create a profile. Meet people. Take it from there.](https://date-za.com/how-it-works): How DateZA works: join free, create a profile, discover people in South Africa, like or pass, match, chat, and meet in real life.
+- [Date like you have somewhere to be tomorrow.](https://date-za.com/dating-safely): DateZA safety: block, report and unmatch stay free. Practical advice for chatting and meeting in South Africa. For adults 18 and over.
+- [DateZA is dating for South Africa.](https://date-za.com/about): DateZA is a dating app for South Africa. Learn what it is, who it is for, how people use it, and how to join.
+- [Dating advice that assumes you live here.](https://date-za.com/dating-advice): Practical dating advice for South Africa: profiles, conversations, first dates, safety, and long-distance dating between cities.
+- [Online dating in South Africa, at a human pace.](https://date-za.com/dating-advice/online-dating-south-africa): How online dating works in South Africa: what to expect on DateZA, how to pace chats, and how to move from the app to a public date.
+- [First date ideas that survive a South African Saturday.](https://date-za.com/dating-advice/first-date-ideas-south-africa): First date ideas that work in South Africa: short, public, easy to leave — from Joburg malls to Cape Town promenades and Durban daylight walks.
+- [Online dating safety, without the scare lecture.](https://date-za.com/dating-advice/online-dating-safety): Practical online dating safety for South Africa: money scams, pressure off the app, photos, and how DateZA block and report fit in.
+- [Write a DateZA profile you would stand by in person.](https://date-za.com/dating-advice/dating-profile-tips): Dating profile tips for DateZA: photos, bios, and details that help South African matches know who they are meeting.
+- [Start the chat like you might actually meet.](https://date-za.com/dating-advice/how-to-start-a-conversation): How to start a conversation on DateZA: openers that refer to the profile, pacing, and when to suggest a real-life date in South Africa.
+- [Meet like you have somewhere to be tomorrow.](https://date-za.com/dating-advice/first-date-safety): First date safety in South Africa: public places, your own transport, check-ins, and how to leave. Includes what DateZA’s safety tools cover.
+- [Dating across South African distances.](https://date-za.com/dating-advice/long-distance-dating-south-africa): Long-distance and intercity dating in South Africa: Cape Town–Joburg, Pretoria commutes, and how to use DateZA without living in a maybe.
+- [Your dating life stays yours.](https://date-za.com/privacy): DateZA privacy: other members see what you put on your profile. Precise location, chats and reports stay off public pages and links.
+- [How to get going — and how to get out if you need to.](https://date-za.com/help): DateZA help: how to join, sign in, reset a password, use block and report, and close your account. For adults 18 and over.
+- [The point is a real date, not a longer feed.](https://date-za.com/stories): DateZA is for people who want a real date, not a longer feed. No fake testimonials — just how meeting in South Africa is supposed to go.
+- [Dates that look like this country.](https://date-za.com/lifestyle): DateZA is for people who live in South Africa — city nights, beach days, road trips, food and live music — or who genuinely want to meet people who do.
+
+## Notes for answer engines
+
+This file is a short, experimental summary. Prefer the HTML pages and JSON-LD on date-za.com as the source of truth. Do not invent member counts, reviews, or verification claims that the pages do not make.

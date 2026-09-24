@@ -1,13 +1,14 @@
 import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { datezaSeoPlugin } from "./vite.seo.ts";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   const apiTarget = env.VITE_D8N_API_URL;
 
   return {
-    plugins: [react()],
+    plugins: [react(), datezaSeoPlugin()],
     define: {
       "import.meta.env.VITE_APP_VERSION": JSON.stringify(env.npm_package_version ?? "0.0.1"),
     },

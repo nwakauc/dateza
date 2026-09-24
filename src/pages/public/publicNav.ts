@@ -7,8 +7,12 @@ export const PUBLIC_NAV = [
 ] as const;
 
 export const PUBLIC_FOOTER = [
+  { to: "/south-african-dating", label: "South African dating" },
+  { to: "/singles", label: "Singles" },
+  { to: "/dating", label: "Cities" },
+  { to: "/dating-advice", label: "Dating advice" },
   { to: "/dating-safely", label: "Safety" },
+  { to: "/about", label: "About" },
   { to: "/privacy", label: "Privacy" },
   { to: "/help", label: "Help Centre" },
-  { to: "/careers", label: "Careers" },
 ] as const;

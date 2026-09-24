@@ -22,16 +22,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+/**
+ * Some errors carry a machine-readable bound alongside the code rather than
+ * inside `details` — `invalid_byte_size` answers with the server's own
+ * `byte_size_limit`. Folding those in keeps limits where they belong (the
+ * server) instead of being copied into client constants that go stale.
+ */
+const TOP_LEVEL_DETAIL_KEYS = ["byte_size_limit"] as const;
+
 function parseErrorDetails(data: unknown): Record<string, string[]> | undefined {
-  if (!isRecord(data) || !isRecord(data.details)) {
+  if (!isRecord(data)) {
     return undefined;
   }
   const details: Record<string, string[]> = {};
-  for (const [key, value] of Object.entries(data.details)) {
-    if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
-      details[key] = value;
-    } else if (typeof value === "string") {
-      details[key] = [value];
+  if (isRecord(data.details)) {
+    for (const [key, value] of Object.entries(data.details)) {
+      if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+        details[key] = value;
+      } else if (typeof value === "string") {
+        details[key] = [value];
+      }
+    }
+  }
+  for (const key of TOP_LEVEL_DETAIL_KEYS) {
+    const value = data[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      details[key] = [String(value)];
     }
   }
   return Object.keys(details).length > 0 ? details : undefined;

@@ -66,12 +66,19 @@ describe("SPA routes", () => {
     ["/privacy", /your dating life stays yours/i],
     ["/help", /how to get going/i],
     ["/careers", /building dateza/i],
-    ["/cities", /across sa/i],
+    ["/cities", /dating in south africa, city by city/i],
     ["/get-the-app", /ready in your browser/i],
+    ["/about", /dateza is dating for south africa/i],
+    ["/south-african-dating", /south african dating, without the imported playbook/i],
+    ["/singles", /meet south african singles who want a real date/i],
+    ["/dating/cape-town", /^dating in cape town$/i],
+    ["/dating-advice", /dating advice that assumes you live here/i],
   ] as const)("renders the public %s page", (path, heading) => {
     renderAt(path);
     expect(screen.getByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /join dateza free/i })).toHaveAttribute("href", "/sign-up");
+    const joinLinks = screen.getAllByRole("link", { name: /join dateza free/i });
+    expect(joinLinks.length).toBeGreaterThan(0);
+    expect(joinLinks.every((link) => link.getAttribute("href") === "/sign-up")).toBe(true);
   });
 });
 

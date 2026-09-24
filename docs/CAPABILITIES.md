@@ -17,6 +17,7 @@ shipped them. See "Known documentation drift" below.
 | Capability | Priority | Frontend state | D8N dependency | Verification evidence | Release confidence |
 | --- | --- | --- | --- | --- | --- |
 | Public responsive landing page | P1 | Implemented: landing plus working public nav destinations (how it works, dating safely, stories, lifestyle, privacy, help, careers, cities, get the app) | None | `src/app/AppRoutes.test.tsx` | Review in browsers |
+| Public SEO acquisition surface | P1 | Implemented: production canonicals on `date-za.com`, robots.txt, sitemap.xml, Open Graph/Twitter, JSON-LD, city and dating-advice pages, `/cities` → `/dating`. Authenticated/app routes stay noindex. RealMe is not claimed. | None | `src/lib/seo/seo.test.ts`, `src/app/AppRoutes.test.tsx` | Submit `https://date-za.com/sitemap.xml` in Search Console after deploy |
 | SPA routing and public 404 | P0 | Implemented | None | lint, typecheck, build | Review in browsers |
 | Session bootstrap | P0 | Implemented through same-origin `/api/*` gateway | `GET /api/v1/me` HttpOnly browser session + CSRF | `src/features/session/session.test.tsx`, `src/lib/api/client.test.ts` | Needs deployed iOS Safari + Chromium proof |
 | Registration and sessions | P0 | Implemented through same-origin `/api/*` gateway | Brand-bound browser-session register/login, `DELETE /api/v1/auth/session`, recovery | `src/features/auth/auth.test.tsx`, ADR-0003 | Needs deployed register → `/me` → onboarding → refresh proof |

@@ -40,17 +40,7 @@ import ReportDetailPage from "../features/hq/pages/ReportDetailPage.tsx";
 import TrustSafetyPage from "../features/hq/pages/TrustSafetyPage.tsx";
 import UnavailableHqPage from "../features/hq/pages/UnavailableHqPage.tsx";
 import LandingPage from "../pages/LandingPage.tsx";
-import {
-  CareersPage,
-  CitiesPage,
-  DatingSafelyPage,
-  GetTheAppPage,
-  HelpPage,
-  HowItWorksPage,
-  LifestylePage,
-  PrivacyPage,
-  StoriesPage,
-} from "../pages/public/MarketingPages.tsx";
+import { SeoCatalogRoute } from "../pages/public/SeoCatalogRoute.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
 function HqPlannedPage() {
   const location = useLocation();
@@ -61,15 +51,33 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/how-it-works" element={<HowItWorksPage />} />
-      <Route path="/dating-safely" element={<DatingSafelyPage />} />
-      <Route path="/stories" element={<StoriesPage />} />
-      <Route path="/lifestyle" element={<LifestylePage />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
-      <Route path="/help" element={<HelpPage />} />
-      <Route path="/careers" element={<CareersPage />} />
-      <Route path="/cities" element={<CitiesPage />} />
-      <Route path="/get-the-app" element={<GetTheAppPage />} />
+      <Route path="/south-african-dating" element={<SeoCatalogRoute path="/south-african-dating" />} />
+      <Route path="/singles" element={<SeoCatalogRoute path="/singles" />} />
+      <Route path="/dating" element={<SeoCatalogRoute path="/dating" />} />
+      <Route path="/dating/cape-town" element={<SeoCatalogRoute path="/dating/cape-town" />} />
+      <Route path="/dating/johannesburg" element={<SeoCatalogRoute path="/dating/johannesburg" />} />
+      <Route path="/dating/pretoria" element={<SeoCatalogRoute path="/dating/pretoria" />} />
+      <Route path="/dating/durban" element={<SeoCatalogRoute path="/dating/durban" />} />
+      <Route path="/dating/gqeberha" element={<SeoCatalogRoute path="/dating/gqeberha" />} />
+      <Route path="/dating/bloemfontein" element={<SeoCatalogRoute path="/dating/bloemfontein" />} />
+      <Route path="/how-it-works" element={<SeoCatalogRoute path="/how-it-works" />} />
+      <Route path="/dating-safely" element={<SeoCatalogRoute path="/dating-safely" />} />
+      <Route path="/about" element={<SeoCatalogRoute path="/about" />} />
+      <Route path="/dating-advice" element={<SeoCatalogRoute path="/dating-advice" />} />
+      <Route path="/dating-advice/online-dating-south-africa" element={<SeoCatalogRoute path="/dating-advice/online-dating-south-africa" />} />
+      <Route path="/dating-advice/first-date-ideas-south-africa" element={<SeoCatalogRoute path="/dating-advice/first-date-ideas-south-africa" />} />
+      <Route path="/dating-advice/online-dating-safety" element={<SeoCatalogRoute path="/dating-advice/online-dating-safety" />} />
+      <Route path="/dating-advice/dating-profile-tips" element={<SeoCatalogRoute path="/dating-advice/dating-profile-tips" />} />
+      <Route path="/dating-advice/how-to-start-a-conversation" element={<SeoCatalogRoute path="/dating-advice/how-to-start-a-conversation" />} />
+      <Route path="/dating-advice/first-date-safety" element={<SeoCatalogRoute path="/dating-advice/first-date-safety" />} />
+      <Route path="/dating-advice/long-distance-dating-south-africa" element={<SeoCatalogRoute path="/dating-advice/long-distance-dating-south-africa" />} />
+      <Route path="/stories" element={<SeoCatalogRoute path="/stories" />} />
+      <Route path="/lifestyle" element={<SeoCatalogRoute path="/lifestyle" />} />
+      <Route path="/privacy" element={<SeoCatalogRoute path="/privacy" />} />
+      <Route path="/help" element={<SeoCatalogRoute path="/help" />} />
+      <Route path="/careers" element={<SeoCatalogRoute path="/careers" />} />
+      <Route path="/cities" element={<Navigate to="/dating" replace />} />
+      <Route path="/get-the-app" element={<SeoCatalogRoute path="/get-the-app" />} />
       <Route
         path="/sign-up"
         element={

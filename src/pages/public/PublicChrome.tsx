@@ -31,6 +31,9 @@ export function PublicChrome({ children }: Props) {
 
   return (
     <div className="dz-page public-site">
+      <a className="public-skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="dz-nav public-chrome__nav">
         <Link className="dz-logo public-chrome__logo dateza-brand-link" to="/" aria-label="DateZA home" onClick={closeMenu}>
           <DateZaBrand size="lg" className="public-chrome__brand" />

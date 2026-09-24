@@ -4,8 +4,9 @@ import { PublicChrome } from "../pages/public/PublicChrome.tsx";
 import { SessionStatusPage } from "../features/session/SessionStatusPage.tsx";
 import { useSession } from "../features/session/useSession.ts";
 import AppShell from "../features/shell/AppShell.tsx";
+import { DEFAULT_TITLE } from "../lib/seo/site.ts";
 
-const HOME_TITLE = "DateZA — Meet someone who chooses you.";
+const HOME_TITLE = DEFAULT_TITLE;
 const NOT_FOUND_TITLE = "Page not found — DateZA";
 
 export default function NotFoundPage() {

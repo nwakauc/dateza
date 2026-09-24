@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="DateZA  Dating in South Africa">
+  <rect width="1200" height="630" fill="#FFF7F4"/>
+  <circle cx="1040" cy="-40" r="280" fill="#E8375A" fill-opacity="0.08"/>
+  <circle cx="160" cy="700" r="220" fill="#E8375A" fill-opacity="0.06"/>
+  <path d="M210 250S92 185 92 114C92 71 126 43 162 43c17 0 32 7 40 18 8-11 23-18 40-18 36 0 70 28 70 71 0 71-102 136-102 136z" fill="#E8375A"/>
+  <text x="340" y="230" font-family="Georgia, 'Times New Roman', serif" font-size="92" fill="#1C1720">Date<tspan fill="#E8375A">ZA</tspan></text>
+  <text x="340" y="300" font-family="Georgia, 'Times New Roman', serif" font-size="36" font-style="italic" fill="#5F5566">Dating in South Africa</text>
+  <text x="340" y="380" font-family="Outfit, 'Segoe UI', sans-serif" font-size="22" fill="#7A6F80">Meet someone who chooses you. Right here.</text>
+  <text x="340" y="520" font-family="Outfit, 'Segoe UI', sans-serif" font-size="16" font-weight="700" letter-spacing="3" fill="#9A8F98">NO DNA. JUST RSA.</text>
+</svg>

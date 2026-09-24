@@ -1,21 +1,25 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "../../lib/api/errors.ts";
-import { md5Base64 } from "../../lib/api/checksum.ts";
+import { deleteOwnerPhoto, listOwnerPhotos } from "../../lib/api/photos.ts";
 import {
-  attachOwnerPhoto,
-  createPhotoUploadIntent,
-  deleteOwnerPhoto,
-  isAllowedPhotoType,
-  listOwnerPhotos,
-  putPhotoBytes,
-} from "../../lib/api/photos.ts";
+  photoErrorMessage as sharedPhotoErrorMessage,
+  uploadAndAttachPhoto,
+  type PhotoUploadPhase,
+} from "../profile/photoActions.ts";
 import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
 import type { ConfiguredCollection, ProfileOnboardingStatus } from "../../lib/api/profileTypes.ts";
 import { onboardingErrorMessage } from "./onboardingErrors.ts";
 
 type Slot =
   | { kind: "photo"; photo: OwnerPhoto }
-  | { kind: "local"; previewUrl: string; progress: "uploading" | "failed"; message?: string }
+  | {
+      kind: "local";
+      previewUrl: string;
+      progress: "uploading" | "failed";
+      phase: PhotoUploadPhase;
+      percent: number;
+      message?: string;
+    }
   | { kind: "add" };
 
 type Props = {
@@ -43,41 +47,19 @@ function photoErrorMessage(error: unknown): string {
     if (error.status === 404) {
       return "Photos aren’t available right now. Try again in a moment.";
     }
-    if (error.code === "unsupported_content_type") {
-      return "Use a JPEG, PNG, or WebP photo.";
-    }
-    if (error.code === "invalid_byte_size") {
-      return "That photo is too large. Choose one under 10 MB.";
-    }
-    if (error.code === "invalid_image") {
-      return "That file doesn’t look like a photo. Try another.";
-    }
-    if (error.code === "upload_put_failed" || error.code === "upload_not_found") {
-      return "The upload didn’t finish. Try again.";
-    }
-    if (error.code === "upload_already_used") {
-      return "That upload was already used. Choose the photo again.";
+    if (error.code) {
+      return sharedPhotoErrorMessage(error);
     }
   }
   return onboardingErrorMessage(error);
 }
 
-function contentTypeFor(file: File): string | undefined {
-  if (isAllowedPhotoType(file.type)) {
-    return file.type;
-  }
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
-    return "image/jpeg";
-  }
-  if (name.endsWith(".png")) {
-    return "image/png";
-  }
-  if (name.endsWith(".webp")) {
-    return "image/webp";
-  }
-  return undefined;
-}
+/** Says what is happening without naming any of the machinery doing it. */
+const PHASE_LABEL: Record<PhotoUploadPhase, string> = {
+  preparing: "Getting your photo ready…",
+  uploading: "Uploading…",
+  finishing: "Almost there…",
+};
 
 export function PhotosStep({
   collection,
@@ -95,6 +77,11 @@ export function PhotosStep({
   const [localPreview, setLocalPreview] = useState<string | undefined>();
   const [localState, setLocalState] = useState<"uploading" | "failed" | undefined>();
   const [localMessage, setLocalMessage] = useState<string | undefined>();
+  const [phase, setPhase] = useState<PhotoUploadPhase>("preparing");
+  const [percent, setPercent] = useState(0);
+  // Kept so "Try again" can resend the photo the member already chose rather
+  // than sending them back to the picker to find it a second time.
+  const lastFileRef = useRef<File | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const onReconcileRef = useRef(onReconcile);
@@ -193,6 +180,8 @@ export function PhotosStep({
             kind: "local" as const,
             previewUrl: localPreview,
             progress: localState ?? "uploading",
+            phase,
+            percent,
             message: localMessage,
           },
         ]
@@ -207,17 +196,13 @@ export function PhotosStep({
     fileRef.current?.click();
   }
 
-  async function uploadFile(file: File) {
+  // No size check before this point on purpose. The old one was a copy of a
+  // server rule that turned down the member's photo before anything had tried
+  // to make it smaller — and since DateZA needs a photo before a profile can
+  // go live, that was a wall with nothing behind it. Preparation runs first
+  // now, and the server stays the authority on what is too big.
+  async function uploadFile(file: File, replacing?: number) {
     if (busyRef.current) {
-      return;
-    }
-    const contentType = contentTypeFor(file);
-    if (!contentType) {
-      setLoadError("Use a JPEG, PNG, or WebP photo.");
-      return;
-    }
-    if (file.size < 1 || file.size > 10 * 1024 * 1024) {
-      setLoadError("That photo is too large. Choose one under 10 MB.");
       return;
     }
 
@@ -225,6 +210,9 @@ export function PhotosStep({
     setBusy(true);
     setLoadError(undefined);
     setLocalMessage(undefined);
+    setPhase("preparing");
+    setPercent(0);
+    lastFileRef.current = file;
     if (localPreview) {
       URL.revokeObjectURL(localPreview);
     }
@@ -233,26 +221,23 @@ export function PhotosStep({
     setLocalState("uploading");
 
     try {
-      const bytes = await file.arrayBuffer();
-      const checksum = md5Base64(bytes);
-      const intent = await createPhotoUploadIntent({
-        content_type: contentType,
-        byte_size: bytes.byteLength,
-        checksum,
-        filename: file.name,
+      // Use the list the upload already fetched rather than asking again —
+      // a second round trip here only delays the member and, when a photo is
+      // still being prepared, hides the state that says so.
+      let nextPhotos = await uploadAndAttachPhoto(file, undefined, {
+        onPhase: setPhase,
+        onProgress: (fraction) => setPercent(Math.round(fraction * 100)),
       });
-      await putPhotoBytes(intent.url, intent.headers, bytes);
-      await attachOwnerPhoto(intent.signed_id);
-      const replacing = replaceIdRef.current;
       if (replacing !== undefined) {
         await deleteOwnerPhoto(replacing);
+        nextPhotos = await listOwnerPhotos();
       }
-      const nextPhotos = await listOwnerPhotos();
       setPhotos(nextPhotos);
       await onReconcile();
       URL.revokeObjectURL(preview);
       setLocalPreview(undefined);
       setLocalState(undefined);
+      lastFileRef.current = undefined;
     } catch (caught) {
       setLocalState("failed");
       setLocalMessage(photoErrorMessage(caught));
@@ -264,6 +249,16 @@ export function PhotosStep({
         fileRef.current.value = "";
       }
     }
+  }
+
+  /** Resends the photo already chosen; falls back to the picker if it is gone. */
+  function retryUpload() {
+    const file = lastFileRef.current;
+    if (!file) {
+      openPicker();
+      return;
+    }
+    void uploadFile(file);
   }
 
   async function removePhoto(id: number) {
@@ -319,7 +314,7 @@ export function PhotosStep({
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) {
-            void uploadFile(file);
+            void uploadFile(file, replaceIdRef.current);
           }
         }}
       />
@@ -347,10 +342,14 @@ export function PhotosStep({
               <li key="local">
                 <div className="onboard-photo-slot onboard-photo-slot--busy">
                   <img src={slot.previewUrl} alt="" />
-                  <div className="onboard-photo-slot__veil">
-                    {slot.progress === "uploading" ? "Uploading…" : slot.message ?? "Couldn’t add that photo"}
+                  <div className="onboard-photo-slot__veil" role="status">
+                    {slot.progress === "uploading"
+                      ? slot.phase === "uploading" && slot.percent > 0
+                        ? `Uploading… ${slot.percent}%`
+                        : PHASE_LABEL[slot.phase]
+                      : slot.message ?? "Couldn’t add that photo"}
                     {slot.progress === "failed" ? (
-                      <button type="button" className="onboard-photo-slot__retry" onClick={() => openPicker()}>
+                      <button type="button" className="onboard-photo-slot__retry" onClick={retryUpload}>
                         Try again
                       </button>
                     ) : null}

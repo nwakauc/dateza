@@ -1,35 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { md5Base64 } from "../../lib/api/checksum.ts";
-import { ApiError } from "../../lib/api/errors.ts";
-import {
-  attachOwnerPhoto,
-  createPhotoUploadIntent,
-  deleteOwnerPhoto,
-  isAllowedPhotoType,
-  listOwnerPhotos,
-  putPhotoBytes,
-} from "../../lib/api/photos.ts";
+import { deleteOwnerPhoto, listOwnerPhotos } from "../../lib/api/photos.ts";
+import { photoErrorMessage, uploadAndAttachPhoto } from "./photoActions.ts";
 import type { OwnerPhoto } from "../../lib/api/photoTypes.ts";
 import { useOwnAccount } from "../shell/useOwnAccount.ts";
 
-function photoErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.code === "unsupported_content_type") return "Use a JPEG, PNG, or WebP photo.";
-    if (error.code === "invalid_byte_size") return "That photo is too large. Choose one under 10 MB.";
-    if (error.code === "invalid_image") return "That file doesn’t look like a photo. Try another.";
-  }
-  return "We could not update your photos. Try again.";
-}
-
-function contentTypeFor(file: File): string | undefined {
-  if (isAllowedPhotoType(file.type)) return file.type;
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
-  if (name.endsWith(".png")) return "image/png";
-  if (name.endsWith(".webp")) return "image/webp";
-  return undefined;
-}
 
 export default function PhotosPage() {
   const account = useOwnAccount();
@@ -40,6 +15,7 @@ export default function PhotosPage() {
   const [photos, setPhotos] = useState<OwnerPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | undefined>();
   const [error, setError] = useState<string | undefined>();
 
   useEffect(() => {
@@ -68,35 +44,26 @@ export default function PhotosPage() {
 
   async function uploadFile(file: File) {
     if (busyRef.current) return;
-    const contentType = contentTypeFor(file);
-    if (!contentType) {
-      setError("Use a JPEG, PNG, or WebP photo.");
-      return;
-    }
-    if (file.size < 1 || file.size > 10 * 1024 * 1024) {
-      setError("That photo is too large. Choose one under 10 MB.");
-      return;
-    }
     busyRef.current = true;
     setBusy(true);
     setError(undefined);
+    setProgress(undefined);
     try {
-      const bytes = await file.arrayBuffer();
-      const intent = await createPhotoUploadIntent({
-        content_type: contentType,
-        byte_size: bytes.byteLength,
-        checksum: md5Base64(bytes),
-        filename: file.name,
-      });
-      await putPhotoBytes(intent.url, intent.headers, bytes);
-      await attachOwnerPhoto(intent.signed_id);
-      setPhotos(await listOwnerPhotos());
+      // Same shared path as onboarding: prepare, then hash and declare the
+      // bytes actually sent. No client-side size rule — the server owns that,
+      // and a photo too big to send is a photo we should shrink, not refuse.
+      setPhotos(
+        await uploadAndAttachPhoto(file, undefined, {
+          onProgress: (fraction) => setProgress(Math.round(fraction * 100)),
+        }),
+      );
       account.refresh();
     } catch (caught) {
       setError(photoErrorMessage(caught));
     } finally {
       busyRef.current = false;
       setBusy(false);
+      setProgress(undefined);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -160,7 +127,7 @@ export default function PhotosPage() {
             disabled={busy}
             aria-label="Add photo"
           >
-            {busy ? "…" : "+"}
+            {busy ? (progress === undefined ? "…" : `${progress}%`) : "+"}
           </button>
         </div>
       )}

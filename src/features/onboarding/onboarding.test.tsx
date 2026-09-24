@@ -1095,7 +1095,7 @@ describe("onboarding location step", () => {
     expect(publishCalls).toBe(0);
   });
 
-  it("persists location before publishing, in that order, then reaches Discover", async () => {
+  it("persists location, then publishes on its own, in that order, and reaches Discover", async () => {
     const user = userEvent.setup();
     setBearerToken("opaque-session-token");
     const callOrder: string[] = [];
@@ -1159,9 +1159,9 @@ describe("onboarding location step", () => {
     await screen.findByRole("heading", { name: /where are you dating from/i });
     await user.click(screen.getByRole("button", { name: /use my current location/i }));
 
-    await screen.findByRole("heading", { name: /ready when you are/i });
-    await user.click(screen.getByRole("button", { name: /publish profile/i }));
-
+    // Nothing left to ask, so nothing left to press: a member who has answered
+    // everything should already be findable rather than left as a draft behind
+    // one more button they might never come back to.
     expect(await screen.findByRole("heading", { level: 1, name: /^discover$/i })).toBeInTheDocument();
     expect(callOrder).toEqual(["location", "publication"]);
   });

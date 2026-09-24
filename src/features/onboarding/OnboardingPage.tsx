@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { ApiError } from "../../lib/api/errors.ts";
 import {
@@ -119,6 +119,7 @@ export default function OnboardingPage() {
   const [holdPhotos, setHoldPhotos] = useState(false);
   const [profileId, setProfileId] = useState<string | undefined>();
   const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const autoPublishedRef = useRef(false);
 
   const applyProfile = useCallback((nextProfile: OwnerProfile | null, nextOnboarding: ProfileOnboardingStatus) => {
     setOnboarding(nextOnboarding);
@@ -328,7 +329,7 @@ export default function OnboardingPage() {
     }
   }
 
-  async function publish() {
+  async function publish(options?: { silentFailure?: boolean }) {
     if (pending) {
       return;
     }
@@ -339,11 +340,39 @@ export default function OnboardingPage() {
       const result = await getCurrentProfile();
       applyProfile(result.profile, result.onboarding);
     } catch (caught) {
-      setError(onboardingErrorMessage(caught));
+      // The automatic attempt stays quiet: the member has not asked for
+      // anything yet, so an error here would be a complaint about something
+      // they did not do. The button below is still there for them.
+      if (!options?.silentFailure) {
+        setError(onboardingErrorMessage(caught));
+      }
     } finally {
       setPending(false);
     }
   }
+
+  const publishRef = useRef(publish);
+  useEffect(() => {
+    publishRef.current = publish;
+  });
+
+  /**
+   * Publish as soon as the member has satisfied everything, rather than
+   * leaving a finished profile sitting as a draft behind one more button.
+   * Someone who fills in every answer and then closes the tab should already
+   * be findable; reaching this point is the intent.
+   *
+   * Tried once per visit. If it fails the member sees the ordinary publish
+   * screen and can press the button themselves.
+   */
+  useEffect(() => {
+    if (autoPublishedRef.current) return;
+    if (holdPhotos) return;
+    if (onboarding?.next_step !== "publication") return;
+    if (!locationConfirmed) return;
+    autoPublishedRef.current = true;
+    void publishRef.current({ silentFailure: true });
+  }, [holdPhotos, locationConfirmed, onboarding?.next_step]);
 
   function toggleOption(
     groupKey: string,
@@ -544,7 +573,7 @@ export default function OnboardingPage() {
         intro="Publish when you want other members to find you."
         percent={percent}
       >
-        <PublishStep onSubmit={publish} pending={pending} error={error} />
+        <PublishStep onSubmit={() => publish()} pending={pending} error={error} />
       </OnboardingShell>
     );
   }

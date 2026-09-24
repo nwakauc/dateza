@@ -1,1 +1,1 @@
-{"root":["./vite.config.ts"],"version":"5.9.3"}
+{"root":["./vite.config.ts","./vite.seo.ts","./src/lib/seo/catalog.ts","./src/lib/seo/head.ts","./src/lib/seo/injecthtml.ts","./src/lib/seo/llms.ts","./src/lib/seo/prerenderhtml.ts","./src/lib/seo/richtext.ts","./src/lib/seo/robots.ts","./src/lib/seo/schema.ts","./src/lib/seo/seo.test.ts","./src/lib/seo/site.ts","./src/lib/seo/sitemap.ts","./src/lib/seo/types.ts","./src/lib/seo/copy/advice.ts","./src/lib/seo/copy/cities.ts","./src/lib/seo/copy/existing.ts","./src/lib/seo/copy/hubs.ts"],"version":"5.9.3"}

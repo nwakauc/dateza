@@ -1,0 +1,37 @@
+import { CANONICAL_ORIGIN } from "./site.ts";
+
+export function buildRobotsTxt(): string {
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "Allow: /assets/",
+    "Allow: /images/",
+    "Allow: /og-image.svg",
+    "Allow: /favicon.svg",
+    "",
+    "Disallow: /sign-in",
+    "Disallow: /sign-up",
+    "Disallow: /forgot-password",
+    "Disallow: /reset-password",
+    "Disallow: /onboarding",
+    "Disallow: /home",
+    "Disallow: /signed-in",
+    "Disallow: /discover",
+    "Disallow: /discovery",
+    "Disallow: /find",
+    "Disallow: /likes",
+    "Disallow: /chats",
+    "Disallow: /notifications",
+    "Disallow: /profile",
+    "Disallow: /settings",
+    "Disallow: /safety",
+    "Disallow: /hq",
+    "Disallow: /ops",
+    "Disallow: /api",
+    "Disallow: /careers",
+    "Disallow: /get-the-app",
+    "",
+    `Sitemap: ${CANONICAL_ORIGIN}/sitemap.xml`,
+    "",
+  ].join("\n");
+}
